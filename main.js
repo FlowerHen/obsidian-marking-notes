@@ -773,6 +773,24 @@ __export(ui_exports, {
   PopoverEditor: () => PopoverEditor,
   PopoverViewer: () => PopoverViewer
 });
+function bindMobilePopoverViewport(container, isMobile) {
+  const viewport = window.visualViewport;
+  if (!isMobile || !viewport)
+    return null;
+  const reposition = () => {
+    const visibleBottom = viewport.offsetTop + viewport.height;
+    container.style.maxHeight = `${Math.max(220, viewport.height - 20)}px`;
+    const height = container.offsetHeight;
+    container.style.top = `${Math.max(10, visibleBottom - height - 10)}px`;
+  };
+  viewport.addEventListener("resize", reposition);
+  viewport.addEventListener("scroll", reposition);
+  reposition();
+  return () => {
+    viewport.removeEventListener("resize", reposition);
+    viewport.removeEventListener("scroll", reposition);
+  };
+}
 var import_obsidian, FloatingMenu, PopoverEditor, PopoverViewer, ButlerFloatingPanel;
 var init_ui = __esm({
   "src/ui.ts"() {
@@ -1297,6 +1315,9 @@ var init_ui = __esm({
         footer.appendChild(inputRow);
         this.container.appendChild(footer);
         document.body.appendChild(this.container);
+        const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+        if (mobileViewportCleanup)
+          this.registerCleanup(mobileViewportCleanup);
         this.updateTitleDisplay();
         await this.renderMarkdownView();
         this.makeDraggable(header);
@@ -1703,6 +1724,9 @@ var init_ui = __esm({
         body.appendChild(viewContainer);
         this.container.appendChild(body);
         document.body.appendChild(this.container);
+        const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+        if (mobileViewportCleanup)
+          this.registerCleanup(mobileViewportCleanup);
         this.makeDraggable(header);
         const escHandler = (e) => {
           if (e.key === "Escape") {

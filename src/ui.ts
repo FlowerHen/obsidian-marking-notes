@@ -24,6 +24,25 @@ export interface PopoverContext {
 	webSearchEnabled?: boolean;
 }
 
+function bindMobilePopoverViewport(container: HTMLElement, isMobile: boolean): (() => void) | null {
+	const viewport = window.visualViewport;
+	if (!isMobile || !viewport) return null;
+
+	const reposition = () => {
+		const visibleBottom = viewport.offsetTop + viewport.height;
+		container.style.maxHeight = `${Math.max(220, viewport.height - 20)}px`;
+		const height = container.offsetHeight;
+		container.style.top = `${Math.max(10, visibleBottom - height - 10)}px`;
+	};
+	viewport.addEventListener("resize", reposition);
+	viewport.addEventListener("scroll", reposition);
+	reposition();
+	return () => {
+		viewport.removeEventListener("resize", reposition);
+		viewport.removeEventListener("scroll", reposition);
+	};
+}
+
 // --- Floating Action Menu ---
 
 export class FloatingMenu {
@@ -625,6 +644,8 @@ export class PopoverEditor {
 		this.container.appendChild(footer);
 
 		document.body.appendChild(this.container);
+		const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+		if (mobileViewportCleanup) this.registerCleanup(mobileViewportCleanup);
 
 		// Render title and markdown
 		this.updateTitleDisplay();
@@ -1111,6 +1132,8 @@ export class PopoverViewer {
 		this.container.appendChild(body);
 
 		document.body.appendChild(this.container);
+		const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+		if (mobileViewportCleanup) this.registerCleanup(mobileViewportCleanup);
 
 		// Draggable
 		this.makeDraggable(header);
