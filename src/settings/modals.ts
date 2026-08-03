@@ -1,9 +1,10 @@
-import { App, Modal, Setting } from 'obsidian';
+import { type App, Modal, Setting } from 'obsidian';
 
 import { COLOR_PALETTE, DEFAULT_TAGS, TEXT_COLOR_PALETTE } from '../domain/constants';
 import type { LightningCommand, MarkingTag } from '../domain/types';
 import { applyTagHighlightStyle } from '../tag-styles';
 import { showEmojiGrid } from '../ui/emoji-picker';
+import { UI_ICONS } from '../ui/icons';
 
 export class LightningCommandEditModal extends Modal {
     cmd: LightningCommand;
@@ -12,7 +13,7 @@ export class LightningCommandEditModal extends Modal {
 
     constructor(app: App, cmd: LightningCommand, tags: MarkingTag[], onSave: (cmd: LightningCommand) => void) {
         super(app);
-        this.cmd = JSON.parse(JSON.stringify(cmd));
+        this.cmd = { ...cmd };
         this.tags = tags;
         this.onSave = onSave;
     }
@@ -20,7 +21,7 @@ export class LightningCommandEditModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.createEl('h3', { text: `编辑指令: ${this.cmd.icon} ${this.cmd.name}` });
+        contentEl.createEl('h3', { text: `${UI_ICONS.actionRewrite} 编辑指令: ${this.cmd.icon} ${this.cmd.name}` });
 
         new Setting(contentEl).setName('名称').addText((text) => text.setValue(this.cmd.name).onChange((value) => {
             this.cmd.name = value;
@@ -78,7 +79,7 @@ export class LightningCommandEditModal extends Modal {
                 });
         }
 
-        contentEl.createEl('h5', { text: '高级覆盖 (Overrides)' });
+        contentEl.createEl('h5', { text: `${UI_ICONS.advanced} 高级覆盖 (Overrides)` });
         new Setting(contentEl).setName('Temperature 覆写').setDesc('留空使用默认值。推荐极低温 0-0.3 确保严谨。')
             .addText((text) => text.setPlaceholder('留空').setValue(this.cmd.temperature?.toString() ?? '').onChange((value) => {
                 this.cmd.temperature = value ? parseFloat(value) : undefined;
@@ -89,9 +90,9 @@ export class LightningCommandEditModal extends Modal {
             }));
 
         const btnDiv = contentEl.createEl('div', { attr: { style: 'display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;' } });
-        const cancelBtn = btnDiv.createEl('button', { text: '取消' });
+        const cancelBtn = btnDiv.createEl('button', { text: `${UI_ICONS.cancel} 取消` });
         cancelBtn.onclick = () => this.close();
-        const saveBtn = btnDiv.createEl('button', { text: '💾 保存', cls: 'mod-cta' });
+        const saveBtn = btnDiv.createEl('button', { text: `${UI_ICONS.save} 保存`, cls: 'mod-cta' });
         saveBtn.onclick = () => {
             this.onSave(this.cmd);
             this.close();
@@ -109,7 +110,7 @@ export class TagEditModal extends Modal {
 
     constructor(app: App, tag: MarkingTag, onSave: (tag: MarkingTag) => void) {
         super(app);
-        this.tag = JSON.parse(JSON.stringify(tag));
+        this.tag = { ...tag };
         this.onSave = onSave;
     }
 
@@ -120,7 +121,7 @@ export class TagEditModal extends Modal {
     private renderContent() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.createEl('h3', { text: `编辑标签: ${this.tag.emoji} ${this.tag.name}` });
+        contentEl.createEl('h3', { text: `${UI_ICONS.tags} 编辑标签: ${this.tag.emoji} ${this.tag.name}` });
 
         const previewRow = contentEl.createEl('div', { attr: { style: 'margin-bottom: 16px; padding: 12px; background: var(--background-primary); border-radius: 8px; text-align: center;' } });
         const previewEl = previewRow.createEl('span', { text: `${this.tag.emoji} 这是一段示例文本预览`, attr: { style: 'font-size: 1.1em; padding: 4px 16px; border-radius: 4px;' } });
@@ -176,9 +177,9 @@ export class TagEditModal extends Modal {
         });
 
         const btnDiv = contentEl.createEl('div', { attr: { style: 'display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;' } });
-        const cancelBtn = btnDiv.createEl('button', { text: '取消' });
+        const cancelBtn = btnDiv.createEl('button', { text: `${UI_ICONS.cancel} 取消` });
         cancelBtn.onclick = () => this.close();
-        const saveBtn = btnDiv.createEl('button', { text: '💾 保存', cls: 'mod-cta' });
+        const saveBtn = btnDiv.createEl('button', { text: `${UI_ICONS.save} 保存`, cls: 'mod-cta' });
         saveBtn.onclick = () => {
             this.onSave(this.tag);
             this.close();

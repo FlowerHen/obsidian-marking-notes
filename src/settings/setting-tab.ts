@@ -5,6 +5,7 @@ import { COLOR_PALETTE } from '../domain/constants';
 import type { MarkingNoteSettings, MarkingTag, ModelProvider, StewardConfig } from '../domain/types';
 import { applyTagHighlightStyle } from '../tag-styles';
 import { showEmojiGrid } from '../ui/emoji-picker';
+import { UI_ICONS } from '../ui/icons';
 import { MAX_STEWARD_COMMANDS } from './command-presets';
 import { LightningCommandEditModal, TagEditModal } from './modals';
 
@@ -58,11 +59,11 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
             tabButtons[tab] = btn;
         };
 
-        createTab('general', '⚙️ 通用');
-        createTab('tags', '🏷️ 标签');
-        createTab('models', '🔌 模型');
-        createTab('stewards', '🤖 管家');
-        createTab('advanced', '🔧 高级');
+        createTab('general', `${UI_ICONS.general} 通用`);
+        createTab('tags', `${UI_ICONS.tags} 标签`);
+        createTab('models', `${UI_ICONS.models} 模型`);
+        createTab('stewards', `${UI_ICONS.steward} 管家`);
+        createTab('advanced', `${UI_ICONS.advanced} 高级`);
 
         const generalEl = sectionEls.general;
         const tagsEl = sectionEls.tags;
@@ -80,7 +81,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
     }
 
     private renderGeneralSettings(container: HTMLElement) {
-        container.createEl('h3', { text: '⚙️ 通用设置', cls: 'mn-settings-section-title' });
+        container.createEl('h3', { text: `${UI_ICONS.general} 通用设置`, cls: 'mn-settings-section-title' });
         new Setting(container)
             .setName('启用 AI 原文改写面板')
             .setDesc('在悬浮菜单中增加一个按钮，用于就地修改原文（无需生成高亮和脚标）。')
@@ -106,12 +107,12 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
             });
 
         const generalHint = container.createEl('div', { cls: 'mn-settings-card' });
-        generalHint.createEl('div', { text: '🪄 悬浮菜单说明', attr: { style: 'font-weight: 600; margin-bottom: 6px;' } });
+        generalHint.createEl('div', { text: `${UI_ICONS.actionChat} 悬浮菜单说明`, attr: { style: 'font-weight: 600; margin-bottom: 6px;' } });
         generalHint.createEl('div', { text: '标注悬浮菜单开关已从设置页移除，可通过命令面板中的“打开/关闭标注悬浮窗”进行控制。', cls: 'setting-item-description' });
     }
 
     private renderAdvancedSettings(container: HTMLElement) {
-        container.createEl('h3', { text: '🔧 开发', cls: 'mn-settings-section-title' });
+        container.createEl('h3', { text: `${UI_ICONS.advanced} 开发`, cls: 'mn-settings-section-title' });
 
         new Setting(container)
             .setName('调试模式')
@@ -148,7 +149,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
         if (!this.plugin.settings.enableDeveloperMode) return;
 
         const promptCard = container.createEl('div', { cls: 'mn-settings-card' });
-        promptCard.createEl('h4', { text: '🧠 系统级提示词模板', attr: { style: 'margin: 0 0 8px 0;' } });
+        promptCard.createEl('h4', { text: `${UI_ICONS.prompt} 系统级提示词模板`, attr: { style: 'margin: 0 0 8px 0;' } });
         promptCard.createEl('p', { text: '这些模板会直接影响引擎级输出格式。请保留占位符，例如 __FOOTNOTE_ID__、__DEFAULT_SUMMARY_PROMPT__、__TARGET_LANGUAGE__。', cls: 'setting-item-description' });
 
         new Setting(promptCard)
@@ -183,7 +184,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
     }
 
     private renderTagSettings(container: HTMLElement) {
-        container.createEl('h3', { text: '🏷️ 标注标签 (Tags)', cls: 'mn-settings-section-title' });
+        container.createEl('h3', { text: `${UI_ICONS.tags} 标注标签 (Tags)`, cls: 'mn-settings-section-title' });
         container.createEl('p', { text: '点击标签卡片进入编辑。标注时可选择或自动关联标签。', cls: 'setting-item-description' });
 
         const addButton = container.createEl('button', { text: '➕ 新建标签', cls: 'mod-cta' });
@@ -234,7 +235,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
     }
 
     private renderModelSettings(container: HTMLElement) {
-        container.createEl('h3', { text: '🔌 模型提供商 (Model Providers)', cls: 'mn-settings-section-title' });
+        container.createEl('h3', { text: `${UI_ICONS.models} 模型提供商 (Model Providers)`, cls: 'mn-settings-section-title' });
         container.createEl('p', { text: '支持任何 OpenAI 兼容的 API（OpenAI / DeepSeek / Ollama / LM Studio 等）', cls: 'setting-item-description' });
 
         const addButton = container.createEl('button', { text: '➕ 添加模型提供商', cls: 'mod-cta' });
@@ -274,7 +275,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
                 };
             }
 
-            const btnTest = btnGroup.createEl('button', { text: '🔗 测试连通' });
+            const btnTest = btnGroup.createEl('button', { text: '↔ 测试连通' });
             btnTest.onclick = async () => {
                 btnTest.innerText = '⏳ 测试中...';
                 try {
@@ -284,7 +285,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
                     btnTest.innerText = '❌ 失败';
                 }
                 setTimeout(() => {
-                    btnTest.innerText = '🔗 测试连通';
+                    btnTest.innerText = '↔ 测试连通';
                 }, 3000);
             };
 
@@ -318,7 +319,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
     }
 
     private renderStewardSettings(container: HTMLElement, switchTab: (tab: SettingsTabKey) => void) {
-        container.createEl('h3', { text: '🏷️ 切换当前管家', cls: 'mn-settings-section-title' });
+        container.createEl('h3', { text: `${UI_ICONS.steward} 切换当前管家`, cls: 'mn-settings-section-title' });
         container.createEl('p', { text: '选择在 Marking Note 中悬浮窗和快捷指令使用的管家。', cls: 'setting-item-description' });
 
         new Setting(container)
@@ -339,7 +340,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
     }
 
     private renderInlineStewardSettings(container: HTMLElement) {
-        container.createEl('h3', { text: '✏️ 全局改写管家 (Inline Steward)', cls: 'mn-settings-section-title', attr: { style: 'margin-top: 30px;' } });
+        container.createEl('h3', { text: `${UI_ICONS.actionRewrite} 全局改写管家 (Inline Steward)`, cls: 'mn-settings-section-title', attr: { style: 'margin-top: 30px;' } });
         container.createEl('p', { text: '这是专用于在选中文本悬浮菜单处直接擦除旧文本并覆盖原文的管家，无需设置标题和格式，直接起效。', cls: 'setting-item-description' });
 
         const inlineDiv = container.createEl('div', { cls: 'steward-card', attr: { style: 'border: 1px solid var(--text-muted); padding: 15px; margin-bottom: 20px; border-radius: 8px;' } });
@@ -372,10 +373,10 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
             }));
 
         const inlineCmdSection = inlineDiv.createEl('div', { attr: { style: 'margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);' } });
-        inlineCmdSection.createEl('h5', { text: '✏️ 改写指令 (Inline Commands)' });
+        inlineCmdSection.createEl('h5', { text: `${UI_ICONS.actionRewrite} 改写指令 (Inline Commands)` });
 
         const inlineCommands = this.plugin.settings.inlineSteward.commands;
-        const btnAddInlineCmd = inlineCmdSection.createEl('button', { text: `➕ 添加改写指令 (${inlineCommands.length}/${MAX_STEWARD_COMMANDS})` });
+        const btnAddInlineCmd = inlineCmdSection.createEl('button', { text: `${UI_ICONS.add} 添加改写指令 (${inlineCommands.length}/${MAX_STEWARD_COMMANDS})` });
         btnAddInlineCmd.disabled = inlineCommands.length >= MAX_STEWARD_COMMANDS;
         btnAddInlineCmd.onclick = async () => {
             if (inlineCommands.length >= MAX_STEWARD_COMMANDS) return;
@@ -426,7 +427,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
     }
 
     private renderEditableStewardSettings(container: HTMLElement, switchTab: (tab: SettingsTabKey) => void) {
-        container.createEl('h3', { text: '🤖 管家维护与配置', cls: 'mn-settings-section-title', attr: { style: 'margin-top: 30px;' } });
+        container.createEl('h3', { text: `${UI_ICONS.steward} 管家维护与配置`, cls: 'mn-settings-section-title', attr: { style: 'margin-top: 30px;' } });
         container.createEl('p', { text: '选择一个管家进行修改，或创建新管家。', cls: 'setting-item-description' });
 
         if (!this.editingStewardId && this.plugin.settings.stewards.length > 0) {
@@ -568,7 +569,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
             }));
 
         const cmdSection = stewardDiv.createEl('div', { cls: 'mn-command-section' });
-        cmdSection.createEl('h5', { text: '⚡ 快捷指令' });
+        cmdSection.createEl('h5', { text: `${UI_ICONS.actionChat} 快捷指令` });
         cmdSection.createEl('p', { text: '每类最多 8 条，取消勾选后不会出现在选区操作栏。默认摘要已改为全局提示词。', cls: 'setting-item-description' });
 
         const tabBar = cmdSection.createEl('div', { cls: 'mn-command-tabs' });
@@ -588,7 +589,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
             }
         };
 
-        for (const [category, label] of [['conversation', '💬 对话指令'], ['augment', '➕ 增补指令']] as const) {
+        for (const [category, label] of [['conversation', `${UI_ICONS.actionChat} 对话指令`], ['augment', `${UI_ICONS.actionAugment} 增补指令`] ] as const) {
             const button = tabBar.createEl('button', { text: label, cls: 'mn-command-tab' });
             button.onclick = () => switchCategory(category);
             tabButtons[category] = button;
@@ -600,7 +601,7 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
             const commands = category === 'conversation'
                 ? steward.commands
                 : (steward.augmentCommands || (steward.augmentCommands = []));
-            const addButton = panel.createEl('button', { text: `➕ 添加指令 (${commands.length}/${MAX_STEWARD_COMMANDS})` });
+            const addButton = panel.createEl('button', { text: `${UI_ICONS.add} 添加指令 (${commands.length}/${MAX_STEWARD_COMMANDS})` });
             addButton.disabled = commands.length >= MAX_STEWARD_COMMANDS;
             addButton.title = addButton.disabled ? `最多 ${MAX_STEWARD_COMMANDS} 条` : '添加快捷指令';
             addButton.onclick = async () => {

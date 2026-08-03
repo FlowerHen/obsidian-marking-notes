@@ -14,6 +14,7 @@ import { annotationRepository } from "./repository/annotation-repository";
 import { setEditorValuePreservingViewport } from "./editor-viewport";
 import { MergeService } from "./services/merge-service";
 import { applyTagButtonStyle, getTagBorderAccent } from "./tag-styles";
+import { UI_ICONS } from "./ui/icons";
 
 export const MARKING_SIDEBAR_VIEW_TYPE = "marking-sidebar-view";
 
@@ -120,9 +121,9 @@ export class MarkingSidebarView extends ItemView {
 
 		// Header
 		const headerDiv = container.createEl("div", { cls: "mn-sidebar-header" });
-		headerDiv.createEl("h4", { text: "📝 Marking Note" });
+		headerDiv.createEl("h4", { text: `${UI_ICONS.actionRewrite} Marking Note` });
 		const refreshBtn = headerDiv.createEl("button", {
-			text: "🔄",
+			text: UI_ICONS.refresh,
 			cls: "mn-sidebar-refresh",
 		});
 		refreshBtn.title = "手动刷新";
@@ -138,7 +139,7 @@ export class MarkingSidebarView extends ItemView {
 		}
 
 		container.createEl("p", {
-			text: `📄 ${activeFile.basename}`,
+			text: `▤ ${activeFile.basename}`,
 			cls: "mn-sidebar-filename",
 		});
 
@@ -168,13 +169,13 @@ export class MarkingSidebarView extends ItemView {
 
 		// Stage Dropdown Button
 		const stateLabels: Record<string, string> = {
-			"0": "⏳ 待处理",
-			"1": "✏️ AI标注",
-			"2": "👁️ 审阅",
-			"3": "✅ 已归档",
+			"0": "○ 待处理",
+			"1": "✎ AI标注",
+			"2": `${UI_ICONS.view} 审阅`,
+			"3": "✓ 已归档",
 		};
 		const stageBtnText =
-			this.stateFilter !== null ? stateLabels[this.stateFilter] : "🔍 全部阶段";
+			this.stateFilter !== null ? stateLabels[this.stateFilter] : `${UI_ICONS.filter} 全部阶段`;
 		const stageBtn = filterBar.createEl("div", {
 			cls: `mn-filter-dropdown-btn ${this.stateFilter !== null ? "mn-filter-active" : ""}`,
 		});
@@ -187,8 +188,8 @@ export class MarkingSidebarView extends ItemView {
 
 		// Tag Dropdown Button
 		const tags = this.plugin.settings.tags || [];
-		let tagBtnText = "🏷️ 全部标签";
-		if (this.tagFilter === "__none__") tagBtnText = "🏷️ 无标签";
+		let tagBtnText = `${UI_ICONS.tags} 全部标签`;
+		if (this.tagFilter === "__none__") tagBtnText = `${UI_ICONS.tags} 无标签`;
 		else if (this.tagFilter !== null) {
 			const activeTag = tags.find((t) => t.id === this.tagFilter);
 			if (activeTag) tagBtnText = `${activeTag.emoji} ${activeTag.name}`;
@@ -253,14 +254,14 @@ export class MarkingSidebarView extends ItemView {
 			cls: "mn-card-top",
 			attr: { style: "display: flex; align-items: center;" },
 		});
-		topRow.createEl("span", { text: "🔗", cls: "mn-card-icon" });
+		topRow.createEl("span", { text: UI_ICONS.merge, cls: "mn-card-icon" });
 		topRow.createEl("span", { text: mergedNote.title, cls: "mn-card-text" });
 
 		card.createEl("p", { text: mergedNote.preview, cls: "mn-card-summary" });
 
 		const actions = card.createEl("div", { cls: "mn-card-actions" });
 		const openBtn = actions.createEl("button", {
-			text: "📖 查看",
+			text: `${UI_ICONS.view} 查看`,
 			cls: "mn-action-btn",
 		});
 		openBtn.onclick = (e) => {
@@ -339,7 +340,7 @@ export class MarkingSidebarView extends ItemView {
 			);
 		}
 		container.createEl("div", {
-			text: "🔒 合并笔记当前为只读内容，用于集中查看与回顾。",
+			text: `${UI_ICONS.view} 合并笔记当前为只读内容，用于集中查看与回顾。`,
 			attr: {
 				style: "margin-top: 8px; font-size: 0.8em; color: var(--text-muted);",
 			},
@@ -353,10 +354,10 @@ export class MarkingSidebarView extends ItemView {
 		filePath: string,
 	) {
 		const stateLabels: Record<string, string> = {
-			"0": "⏳",
-			"1": "✏️",
-			"2": "👁️",
-			"3": "✅",
+			"0": "○",
+			"1": "✎",
+			"2": UI_ICONS.view,
+			"3": "✓",
 		};
 		const tags = this.plugin.settings.tags || [];
 		const tag = node.tagId ? tags.find((t) => t.id === node.tagId) : null;
@@ -413,7 +414,7 @@ export class MarkingSidebarView extends ItemView {
 
 		// Jump
 		const jumpBtn = actions.createEl("button", {
-			text: "📍 定位",
+			text: `${UI_ICONS.locate} 定位`,
 			cls: "mn-action-btn",
 		});
 		jumpBtn.onclick = (e) => {
@@ -440,7 +441,7 @@ export class MarkingSidebarView extends ItemView {
 		}
 
 		// Tag button — shows tag name+emoji with fill when assigned, otherwise plain icon
-		const tagBtnText = tag ? `${tag.emoji} ${tag.name}` : "🏷️";
+		const tagBtnText = tag ? `${tag.emoji} ${tag.name}` : UI_ICONS.tags;
 		const tagBtn = actions.createEl("button", {
 			text: tagBtnText,
 			cls: "mn-action-btn",
@@ -761,9 +762,9 @@ export class MarkingSidebarView extends ItemView {
 
 		const stateLabels: Record<string, string> = {
 			"0": "⏳ 待处理",
-			"1": "✏️ AI标注",
-			"2": "👁️ 审阅",
-			"3": "✅ 已归档",
+			"1": "✎ AI标注",
+			"2": `${UI_ICONS.view} 审阅`,
+			"3": "✓ 已归档",
 		};
 		const stateCounts: Record<string, number> = {
 			"0": 0,
@@ -777,7 +778,7 @@ export class MarkingSidebarView extends ItemView {
 		const allItem = dropdown.createEl("div", {
 			cls: `mn-filter-dropdown-item ${this.stateFilter === null ? "mn-item-active" : ""}`,
 		});
-		allItem.createEl("span", { text: "🔍 全部阶段" });
+		allItem.createEl("span", { text: `${UI_ICONS.filter} 全部阶段` });
 		allItem.onclick = () => {
 			this.stateFilter = null;
 			this.renderContent();
@@ -831,7 +832,7 @@ export class MarkingSidebarView extends ItemView {
 		const allItem = dropdown.createEl("div", {
 			cls: `mn-filter-dropdown-item ${this.tagFilter === null ? "mn-item-active" : ""}`,
 		});
-		allItem.createEl("span", { text: "🏷️ 全部标签" });
+		allItem.createEl("span", { text: `${UI_ICONS.tags} 全部标签` });
 		allItem.onclick = () => {
 			this.tagFilter = null;
 			this.renderContent();
@@ -862,7 +863,7 @@ export class MarkingSidebarView extends ItemView {
 			const noneItem = dropdown.createEl("div", {
 				cls: `mn-filter-dropdown-item ${this.tagFilter === "__none__" ? "mn-item-active" : ""}`,
 			});
-			noneItem.createEl("span", { text: "🏷️ 无标签" });
+			noneItem.createEl("span", { text: `${UI_ICONS.tags} 无标签` });
 			noneItem.createEl("span", {
 				text: String(noTagCount),
 				cls: "mn-filter-count",
@@ -1244,7 +1245,7 @@ export class MarkingSidebarView extends ItemView {
 
 			// Merge button
 			const mergeBtn = this.bulkBar.createEl("button", {
-				text: "🔗 合并",
+				text: `${UI_ICONS.merge} 合并`,
 				cls: "mod-cta mn-bulk-btn",
 			});
 			mergeBtn.title = "合并选中标注";
@@ -1287,7 +1288,7 @@ export class MergeModeModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 
-		contentEl.createEl("h3", { text: "🔗 合并标注" });
+		contentEl.createEl("h3", { text: `${UI_ICONS.merge} 合并标注` });
 		contentEl.createEl("p", {
 			text: `已选择 ${this.selectedCount} 个标注，请选择合并模式：`,
 			attr: { style: "margin-bottom: 16px; color: var(--text-muted);" },
@@ -1415,7 +1416,7 @@ export class GuidedMergeModal extends Modal {
 
 	renderTopicStep(contentEl: HTMLElement) {
 		contentEl.createEl("h3", {
-			text: "📚 话题聚类",
+			text: "⌘ 话题聚类",
 			attr: { style: "margin: 0 0 8px 0;" },
 		});
 		contentEl.createEl("p", {
@@ -1505,7 +1506,7 @@ export class GuidedMergeModal extends Modal {
 
 	renderStructureStep(contentEl: HTMLElement) {
 		contentEl.createEl("h3", {
-			text: "🏗️ 输出结构",
+			text: "≡ 输出结构",
 			attr: { style: "margin: 0 0 8px 0;" },
 		});
 		contentEl.createEl("p", {
@@ -1582,7 +1583,7 @@ export class GuidedMergeModal extends Modal {
 
 		// Execute button
 		const executeBtn = contentEl.createEl("button", {
-			text: "🚀 开始AI合并",
+			text: "▶ 开始 AI 合并",
 			attr: {
 				style:
 					"width: 100%; padding: 12px; background: var(--interactive-accent); color: var(--text-on-accent); border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 600;",
