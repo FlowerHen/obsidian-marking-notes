@@ -7,2112 +7,1910 @@ var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) =>
-	function __init() {
-		return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])((fn = 0))), res;
-	};
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __export = (target, all) => {
-	for (var name in all)
-		__defProp(target, name, { get: all[name], enumerable: true });
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
 };
 var __copyProps = (to, from, except, desc) => {
-	if ((from && typeof from === "object") || typeof from === "function") {
-		for (let key of __getOwnPropNames(from))
-			if (!__hasOwnProp.call(to, key) && key !== except)
-				__defProp(to, key, {
-					get: () => from[key],
-					enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable,
-				});
-	}
-	return to;
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
 };
-var __toCommonJS = (mod) =>
-	__copyProps(__defProp({}, "__esModule", { value: true }), mod);
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/domain/annotation-format.ts
 function parseInlineMarkers(text) {
-	var _a;
-	const resultBlocks = new Map(
-		parseResultBlocks(text).map((block) => [block.id, block]),
-	);
-	const markers = [];
-	for (const match of text.matchAll(INLINE_MARKER)) {
-		const from = (_a = match.index) != null ? _a : 0;
-		const block = resultBlocks.get(match[2]);
-		markers.push({
-			id: match[2],
-			state: (block == null ? void 0 : block.state) || "unprocessed",
-			tagId: (block == null ? void 0 : block.tagId) || "",
-			summary: (block == null ? void 0 : block.summary) || "",
-			text: match[1],
-			from,
-			to: from + match[0].length,
-			highlightEnd: from + 2 + match[1].length + 2,
-		});
-	}
-	return markers;
+  var _a;
+  const resultBlocks = new Map(
+    parseResultBlocks(text).map((block) => [block.id, block])
+  );
+  const markers = [];
+  for (const match of text.matchAll(INLINE_MARKER)) {
+    const from = (_a = match.index) != null ? _a : 0;
+    const block = resultBlocks.get(match[2]);
+    markers.push({
+      id: match[2],
+      state: (block == null ? void 0 : block.state) || "unprocessed",
+      tagId: (block == null ? void 0 : block.tagId) || "",
+      summary: (block == null ? void 0 : block.summary) || "",
+      text: match[1],
+      from,
+      to: from + match[0].length,
+      highlightEnd: from + 2 + match[1].length + 2
+    });
+  }
+  return markers;
 }
 function parseResultBlocks(text) {
-	var _a;
-	const blocks = [];
-	for (const match of text.matchAll(RESULT_BLOCK)) {
-		const parsed = parseResultBlockBody(match[1]);
-		if (!parsed || !parsed.id) continue;
-		const from = (_a = match.index) != null ? _a : 0;
-		blocks.push({
-			...parsed,
-			from,
-			to: from + match[0].length,
-		});
-	}
-	return blocks;
+  var _a;
+  const blocks = [];
+  for (const match of text.matchAll(RESULT_BLOCK)) {
+    const parsed = parseResultBlockBody(match[1]);
+    if (!parsed || !parsed.id)
+      continue;
+    const from = (_a = match.index) != null ? _a : 0;
+    blocks.push({
+      ...parsed,
+      from,
+      to: from + match[0].length
+    });
+  }
+  return blocks;
 }
 function updateResultBlock(text, id, content) {
-	const block = parseResultBlocks(text).find(
-		(candidate) => candidate.id === id,
-	);
-	if (!block) return text;
-	const replacement = formatResultBlock({ ...block, content });
-	return `${text.slice(0, block.from)}${replacement}${text.slice(block.to)}`;
+  const block = parseResultBlocks(text).find(
+    (candidate) => candidate.id === id
+  );
+  if (!block)
+    return text;
+  const replacement = formatResultBlock({ ...block, content });
+  return `${text.slice(0, block.from)}${replacement}${text.slice(block.to)}`;
 }
 function updateResultBlockMetadata(text, id, patch) {
-	const block = parseResultBlocks(text).find(
-		(candidate) => candidate.id === id,
-	);
-	if (!block) return text;
-	return (
-		text.slice(0, block.from) +
-		formatResultBlock({ ...block, ...patch }) +
-		text.slice(block.to)
-	);
+  const block = parseResultBlocks(text).find(
+    (candidate) => candidate.id === id
+  );
+  if (!block)
+    return text;
+  return text.slice(0, block.from) + formatResultBlock({ ...block, ...patch }) + text.slice(block.to);
 }
 function appendResultBlock(text, block) {
-	const trimmed = text.trimEnd();
-	const heading = trimmed.includes(RESULTS_HEADING)
-		? ""
-		: `
+  const trimmed = text.trimEnd();
+  const heading = trimmed.includes(RESULTS_HEADING) ? "" : `
 
 ${RESULTS_HEADING}`;
-	return `${trimmed}${heading}
+  return `${trimmed}${heading}
 
 ${formatResultBlock(block)}
 `;
 }
 function deleteResultBlock(text, id) {
-	const block = parseResultBlocks(text).find(
-		(candidate) => candidate.id === id,
-	);
-	if (!block) return text;
-	return (
-		text.slice(0, block.from) +
-		text
-			.slice(block.to)
-			.replace(/\n{3,}/g, "\n\n")
-			.trimEnd()
-	);
+  const block = parseResultBlocks(text).find(
+    (candidate) => candidate.id === id
+  );
+  if (!block)
+    return text;
+  return text.slice(0, block.from) + text.slice(block.to).replace(/\n{3,}/g, "\n\n").trimEnd();
 }
 function parseResultBlockBody(body) {
-	const separator = body.indexOf("\n---\n");
-	if (separator < 0) return null;
-	const metadata = /* @__PURE__ */ new Map();
-	for (const line of body.slice(0, separator).split("\n")) {
-		const colon = line.indexOf(":");
-		if (colon < 0) continue;
-		metadata.set(line.slice(0, colon).trim(), line.slice(colon + 1).trim());
-	}
-	return {
-		id: metadata.get("id") || "",
-		state: metadata.get("state") || "unprocessed",
-		tagId: metadata.get("tag") || "",
-		summary: metadata.get("summary") || "",
-		content: body.slice(separator + "\n---\n".length).trim(),
-	};
+  const separator = body.indexOf("\n---\n");
+  if (separator < 0)
+    return null;
+  const metadata = /* @__PURE__ */ new Map();
+  for (const line of body.slice(0, separator).split("\n")) {
+    const colon = line.indexOf(":");
+    if (colon < 0)
+      continue;
+    metadata.set(line.slice(0, colon).trim(), line.slice(colon + 1).trim());
+  }
+  return {
+    id: metadata.get("id") || "",
+    state: metadata.get("state") || "unprocessed",
+    tagId: metadata.get("tag") || "",
+    summary: metadata.get("summary") || "",
+    content: body.slice(separator + "\n---\n".length).trim()
+  };
 }
 function formatResultBlock(block) {
-	return [
-		"```marking-note-result",
-		`id: ${block.id}`,
-		`state: ${block.state}`,
-		`tag: ${block.tagId}`,
-		`summary: ${block.summary}`,
-		"---",
-		block.content,
-		"```",
-	].join("\n");
+  return [
+    "```marking-note-result",
+    `id: ${block.id}`,
+    `state: ${block.state}`,
+    `tag: ${block.tagId}`,
+    `summary: ${block.summary}`,
+    "---",
+    block.content,
+    "```"
+  ].join("\n");
 }
 function migrateLegacyDocument(text) {
-	const annotations = parseLegacyAnnotations(text);
-	if (annotations.length === 0) {
-		return { text, migrated: 0, skipped: [] };
-	}
-	const callouts = parseLegacyCallouts(text);
-	const missingCallouts = annotations
-		.filter((annotation) => !callouts.has(annotation.id))
-		.map((annotation) => annotation.id);
-	if (missingCallouts.length > 0) {
-		return { text, migrated: 0, skipped: missingCallouts };
-	}
-	let nextText = text;
-	for (const annotation of [...annotations].reverse()) {
-		const inline = `==${annotation.text}==<!-- marking-note:id=${annotation.id} -->`;
-		nextText = `${nextText.slice(0, annotation.from)}${inline}${nextText.slice(annotation.to)}`;
-	}
-	nextText = removeLegacyCallouts(nextText, callouts);
-	const blocks = annotations.map((annotation) =>
-		formatResultBlock({
-			id: annotation.id,
-			state: annotation.state,
-			tagId: annotation.tagId,
-			summary: annotation.summary,
-			content: callouts.get(annotation.id) || "",
-		}),
-	);
-	nextText = appendResults(nextText, blocks);
-	return { text: nextText, migrated: annotations.length, skipped: [] };
+  const annotations = parseLegacyAnnotations(text);
+  if (annotations.length === 0) {
+    return { text, migrated: 0, skipped: [] };
+  }
+  const callouts = parseLegacyCallouts(text);
+  const missingCallouts = annotations.filter((annotation) => !callouts.has(annotation.id)).map((annotation) => annotation.id);
+  if (missingCallouts.length > 0) {
+    return { text, migrated: 0, skipped: missingCallouts };
+  }
+  let nextText = text;
+  for (const annotation of [...annotations].reverse()) {
+    const inline = `==${annotation.text}==<!-- marking-note:id=${annotation.id} -->`;
+    nextText = `${nextText.slice(0, annotation.from)}${inline}${nextText.slice(annotation.to)}`;
+  }
+  nextText = removeLegacyCallouts(nextText, callouts);
+  const blocks = annotations.map(
+    (annotation) => formatResultBlock({
+      id: annotation.id,
+      state: annotation.state,
+      tagId: annotation.tagId,
+      summary: annotation.summary,
+      content: callouts.get(annotation.id) || ""
+    })
+  );
+  nextText = appendResults(nextText, blocks);
+  return { text: nextText, migrated: annotations.length, skipped: [] };
 }
 function parseLegacyAnnotations(text) {
-	var _a, _b;
-	const annotations = [];
-	for (const match of text.matchAll(LEGACY_ANNOTATION)) {
-		annotations.push({
-			id: match[3],
-			state: stateNames[match[2]],
-			text: match[1],
-			summary: (match[5] || "").trim(),
-			tagId: match[4] || "",
-			from: (_a = match.index) != null ? _a : 0,
-			to: ((_b = match.index) != null ? _b : 0) + match[0].length,
-		});
-	}
-	return annotations;
+  var _a, _b;
+  const annotations = [];
+  for (const match of text.matchAll(LEGACY_ANNOTATION)) {
+    annotations.push({
+      id: match[3],
+      state: stateNames[match[2]],
+      text: match[1],
+      summary: (match[5] || "").trim(),
+      tagId: match[4] || "",
+      from: (_a = match.index) != null ? _a : 0,
+      to: ((_b = match.index) != null ? _b : 0) + match[0].length
+    });
+  }
+  return annotations;
 }
 function parseLegacyCallouts(text) {
-	const callouts = /* @__PURE__ */ new Map();
-	for (const match of text.matchAll(LEGACY_CALLOUT)) {
-		const content = match[2]
-			.split("\n")
-			.filter(Boolean)
-			.map((line) => (line.startsWith("> ") ? line.slice(2) : line.slice(1)))
-			.join("\n")
-			.trim();
-		callouts.set(match[1], content);
-	}
-	return callouts;
+  const callouts = /* @__PURE__ */ new Map();
+  for (const match of text.matchAll(LEGACY_CALLOUT)) {
+    const content = match[2].split("\n").filter(Boolean).map((line) => line.startsWith("> ") ? line.slice(2) : line.slice(1)).join("\n").trim();
+    callouts.set(match[1], content);
+  }
+  return callouts;
 }
 function removeLegacyCallouts(text, callouts) {
-	let nextText = text;
-	for (const id of callouts.keys()) {
-		const pattern = new RegExp(
-			`^> \\[!ai-footnote\\]- #${escapeRegExp(id)}\\n((?:^>.*(?:\\n|$))*)`,
-			"gm",
-		);
-		nextText = nextText.replace(pattern, "");
-	}
-	return nextText.replace(/\n{3,}/g, "\n\n").trimEnd();
+  let nextText = text;
+  for (const id of callouts.keys()) {
+    const pattern = new RegExp(
+      `^> \\[!ai-footnote\\]- #${escapeRegExp(id)}\\n((?:^>.*(?:\\n|$))*)`,
+      "gm"
+    );
+    nextText = nextText.replace(pattern, "");
+  }
+  return nextText.replace(/\n{3,}/g, "\n\n").trimEnd();
 }
 function appendResults(text, blocks) {
-	const separator = text.trimEnd();
-	return `${separator}
+  const separator = text.trimEnd();
+  const hasHeading = new RegExp(
+    `(^|\\n)${escapeRegExp(RESULTS_HEADING)}(?:\\n|$)`
+  ).test(separator);
+  const heading = hasHeading ? "" : `
 
-${RESULTS_HEADING}
+${RESULTS_HEADING}`;
+  return `${separator}${heading}
 
 ${blocks.join("\n\n")}
 `;
 }
 function escapeRegExp(value) {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-var INLINE_MARKER,
-	RESULT_BLOCK,
-	LEGACY_ANNOTATION,
-	LEGACY_CALLOUT,
-	RESULTS_HEADING,
-	stateNames;
+var INLINE_MARKER, RESULT_BLOCK, LEGACY_ANNOTATION, LEGACY_CALLOUT, RESULTS_HEADING, stateNames;
 var init_annotation_format = __esm({
-	"src/domain/annotation-format.ts"() {
-		INLINE_MARKER =
-			/==([\s\S]*?)==<!--\s*marking-note:id=([a-zA-Z0-9_-]+)\s*-->/g;
-		RESULT_BLOCK = /```marking-note-result\n([\s\S]*?)\n```/g;
-		LEGACY_ANNOTATION =
-			/==([\s\S]*?)==\[\^\[([0-3])\]\[#([a-zA-Z0-9_-]+)\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]/g;
-		LEGACY_CALLOUT =
-			/^> \[!ai-footnote\]- #([a-zA-Z0-9_-]+)\n((?:^>.*(?:\n|$))*)/gm;
-		RESULTS_HEADING = "## Marking Note Results";
-		stateNames = {
-			0: "unprocessed",
-			1: "annotated",
-			2: "reviewed",
-			3: "mastered",
-		};
-	},
+  "src/domain/annotation-format.ts"() {
+    INLINE_MARKER = /==([\s\S]*?)==<!--\s*marking-note:id=([^\s]+?)\s*-->/g;
+    RESULT_BLOCK = /```marking-note-result\n([\s\S]*?)\n```/g;
+    LEGACY_ANNOTATION = /==([\s\S]*?)==\[\^\[([0-3])\]\[#([a-zA-Z0-9_-]+)\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]/g;
+    LEGACY_CALLOUT = /^> \[!ai-footnote\]- #([a-zA-Z0-9_-]+)\n((?:^>.*(?:\n|$))*)/gm;
+    RESULTS_HEADING = "## Marking Note Results";
+    stateNames = {
+      "0": "unprocessed",
+      "1": "annotated",
+      "2": "reviewed",
+      "3": "mastered"
+    };
+  }
 });
 
 // src/state.ts
 function parseMarkingNodes(text) {
-	const nodes = [];
-	const coveredRanges = [];
-	for (const marker of parseInlineMarkers(text)) {
-		nodes.push({
-			id: marker.id,
-			state: STATE_BY_NAME[marker.state] || MarkState.Unprocessed,
-			text: marker.text,
-			summary: marker.summary,
-			from: marker.from,
-			to: marker.to,
-			isPlain: false,
-			highlightEnd: marker.highlightEnd,
-			tagId: marker.tagId || void 0,
-		});
-		coveredRanges.push([marker.from, marker.to]);
-	}
-	const annotatedRegex = new RegExp(ANNOTATED_REGEX.source, "g");
-	let annotatedMatch = annotatedRegex.exec(text);
-	while (annotatedMatch !== null) {
-		const match = annotatedMatch;
-		const highlightText = match[1];
-		const highlightEnd = match.index + 2 + highlightText.length + 2;
-		nodes.push({
-			id: match[3],
-			state: match[2],
-			text: highlightText,
-			summary: (match[5] || "").trim(),
-			from: match.index,
-			to: match.index + match[0].length,
-			isPlain: false,
-			highlightEnd,
-			tagId: match[4] || void 0,
-		});
-		coveredRanges.push([match.index, match.index + match[0].length]);
-		annotatedMatch = annotatedRegex.exec(text);
-	}
-	const plainRegex = new RegExp(PLAIN_HIGHLIGHT_REGEX.source, "g");
-	let plainMatch = plainRegex.exec(text);
-	while (plainMatch !== null) {
-		const match = plainMatch;
-		const start = match.index;
-		const end = match.index + match[0].length;
-		const overlaps = coveredRanges.some(
-			([cs, ce]) => start >= cs && start < ce,
-		);
-		if (!overlaps) {
-			nodes.push({
-				id: `plain-${start}`,
-				state: MarkState.Unprocessed,
-				text: match[1],
-				summary: "",
-				from: start,
-				to: end,
-				isPlain: true,
-				highlightEnd: end,
-			});
-		}
-		plainMatch = plainRegex.exec(text);
-	}
-	nodes.sort((a, b) => a.from - b.from);
-	return nodes;
+  const nodes = [];
+  const coveredRanges = [];
+  for (const marker of parseInlineMarkers(text)) {
+    nodes.push({
+      id: marker.id,
+      state: STATE_BY_NAME[marker.state] || MarkState.Unprocessed,
+      text: marker.text,
+      summary: marker.summary,
+      from: marker.from,
+      to: marker.to,
+      isPlain: false,
+      highlightEnd: marker.highlightEnd,
+      tagId: marker.tagId || void 0
+    });
+    coveredRanges.push([marker.from, marker.to]);
+  }
+  const annotatedRegex = new RegExp(ANNOTATED_REGEX.source, "g");
+  let annotatedMatch = annotatedRegex.exec(text);
+  while (annotatedMatch !== null) {
+    const match = annotatedMatch;
+    const highlightText = match[1];
+    const highlightEnd = match.index + 2 + highlightText.length + 2;
+    nodes.push({
+      id: match[3],
+      state: match[2],
+      text: highlightText,
+      summary: (match[5] || "").trim(),
+      from: match.index,
+      to: match.index + match[0].length,
+      isPlain: false,
+      highlightEnd,
+      tagId: match[4] || void 0
+    });
+    coveredRanges.push([match.index, match.index + match[0].length]);
+    annotatedMatch = annotatedRegex.exec(text);
+  }
+  const plainRegex = new RegExp(PLAIN_HIGHLIGHT_REGEX.source, "g");
+  let plainMatch = plainRegex.exec(text);
+  while (plainMatch !== null) {
+    const match = plainMatch;
+    const start = match.index;
+    const end = match.index + match[0].length;
+    const overlaps = coveredRanges.some(
+      ([cs, ce]) => start >= cs && start < ce
+    );
+    if (!overlaps) {
+      nodes.push({
+        id: `plain-${start}`,
+        state: MarkState.Unprocessed,
+        text: match[1],
+        summary: "",
+        from: start,
+        to: end,
+        isPlain: true,
+        highlightEnd: end
+      });
+    }
+    plainMatch = plainRegex.exec(text);
+  }
+  nodes.sort((a, b) => a.from - b.from);
+  return nodes;
 }
 function parseMergedNoteNodes(text) {
-	const lines = text.split("\n");
-	const nodes = [];
-	let currentOffset = 0;
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		if (!line.startsWith("> [!ai-merged]- ")) {
-			currentOffset += line.length + 1;
-			continue;
-		}
-		const startOffset = currentOffset;
-		const id = line.slice("> [!ai-merged]- ".length).trim();
-		const bodyLines = [];
-		let j = i + 1;
-		let endOffset = currentOffset + line.length + 1;
-		while (j < lines.length && lines[j].startsWith(">")) {
-			bodyLines.push(
-				lines[j].startsWith("> ") ? lines[j].slice(2) : lines[j].slice(1),
-			);
-			endOffset += lines[j].length + 1;
-			j++;
-		}
-		const meaningfulLine =
-			bodyLines.find((candidate) => {
-				const trimmed = candidate.trim();
-				return trimmed.length > 0 && trimmed !== "---";
-			}) || "";
-		const preview = meaningfulLine
-			.replace(/^#+\s*/, "")
-			.replace(/^📌\s*/, "")
-			.trim();
-		nodes.push({
-			id,
-			title: `\u{1F517} \u5408\u5E76\u7B14\u8BB0 \xB7 ${id}`,
-			preview: preview || "\u5DF2\u751F\u6210\u5408\u5E76\u7B14\u8BB0",
-			from: startOffset,
-			to: Math.max(startOffset, endOffset - 1),
-		});
-		i = j - 1;
-		currentOffset = endOffset;
-	}
-	return nodes;
+  const lines = text.split("\n");
+  const nodes = [];
+  let currentOffset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.startsWith("> [!ai-merged]- ")) {
+      currentOffset += line.length + 1;
+      continue;
+    }
+    const startOffset = currentOffset;
+    const id = line.slice("> [!ai-merged]- ".length).trim();
+    const bodyLines = [];
+    let j = i + 1;
+    let endOffset = currentOffset + line.length + 1;
+    while (j < lines.length && lines[j].startsWith(">")) {
+      bodyLines.push(
+        lines[j].startsWith("> ") ? lines[j].slice(2) : lines[j].slice(1)
+      );
+      endOffset += lines[j].length + 1;
+      j++;
+    }
+    const meaningfulLine = bodyLines.find((candidate) => {
+      const trimmed = candidate.trim();
+      return trimmed.length > 0 && trimmed !== "---";
+    }) || "";
+    const preview = meaningfulLine.replace(/^#+\s*/, "").replace(/^📌\s*/, "").trim();
+    nodes.push({
+      id,
+      title: `\u{1F517} \u5408\u5E76\u7B14\u8BB0 \xB7 ${id}`,
+      preview: preview || "\u5DF2\u751F\u6210\u5408\u5E76\u7B14\u8BB0",
+      from: startOffset,
+      to: Math.max(startOffset, endOffset - 1)
+    });
+    i = j - 1;
+    currentOffset = endOffset;
+  }
+  return nodes;
 }
 var MarkState, ANNOTATED_REGEX, PLAIN_HIGHLIGHT_REGEX, STATE_BY_NAME;
 var init_state = __esm({
-	"src/state.ts"() {
-		init_annotation_format();
-		MarkState = {
-			Unprocessed: "0",
-			AIAnnotated: "1",
-			HumanReview: "2",
-			Archived: "3",
-		};
-		ANNOTATED_REGEX =
-			/==([\s\S]*?)==\[\^\[([0-3])\]\[(#[a-zA-Z0-9_-]+)\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]/g;
-		PLAIN_HIGHLIGHT_REGEX = /==([\s\S]*?)==/g;
-		STATE_BY_NAME = {
-			unprocessed: MarkState.Unprocessed,
-			annotated: MarkState.AIAnnotated,
-			reviewed: MarkState.HumanReview,
-			mastered: MarkState.Archived,
-		};
-	},
+  "src/state.ts"() {
+    init_annotation_format();
+    MarkState = {
+      Unprocessed: "0",
+      AIAnnotated: "1",
+      HumanReview: "2",
+      Archived: "3"
+    };
+    ANNOTATED_REGEX = /==([\s\S]*?)==\[\^\[([0-3])\]\[(#[a-zA-Z0-9_-]+)\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]/g;
+    PLAIN_HIGHLIGHT_REGEX = /==([\s\S]*?)==/g;
+    STATE_BY_NAME = {
+      unprocessed: MarkState.Unprocessed,
+      annotated: MarkState.AIAnnotated,
+      reviewed: MarkState.HumanReview,
+      mastered: MarkState.Archived
+    };
+  }
 });
 
 // src/domain/ids.ts
 function generateAnnotationId() {
-	const suffix = Date.now().toString(36).slice(-4).toUpperCase();
-	const sequence = Math.floor(Math.random() * 100)
-		.toString()
-		.padStart(2, "0");
-	return `#AX${suffix}${sequence}`;
+  const suffix = Date.now().toString(36).slice(-4).toUpperCase();
+  const sequence = Math.floor(Math.random() * 100).toString().padStart(2, "0");
+  return `#AX${suffix}${sequence}`;
 }
 function generateMergeId() {
-	const suffix = Date.now().toString(36).slice(-4).toUpperCase();
-	const sequence = Math.floor(Math.random() * 100)
-		.toString()
-		.padStart(2, "0");
-	return `\u5408\u5E76-${suffix}${sequence}`;
+  const suffix = Date.now().toString(36).slice(-4).toUpperCase();
+  const sequence = Math.floor(Math.random() * 100).toString().padStart(2, "0");
+  return `\u5408\u5E76-${suffix}${sequence}`;
 }
 var init_ids = __esm({
-	"src/domain/ids.ts"() {},
+  "src/domain/ids.ts"() {
+  }
 });
 
 // src/storage.ts
 var _StorageEngine, StorageEngine;
 var init_storage = __esm({
-	"src/storage.ts"() {
-		init_ids();
-		_StorageEngine = class {
-			/**
-			 * Appends a new callout to the bottom of the editor's document.
-			 * Ensures the vault separator exists.
-			 */
-			static appendCallout(editor, id, content) {
-				const doc = editor.getDoc();
-				const fullText = doc.getValue();
-				if (!fullText.includes("AI Data Vault")) {
-					const lastLineIndex2 = doc.lineCount() - 1;
-					const lastLineLength2 = doc.getLine(lastLineIndex2).length;
-					const pos2 = { line: lastLineIndex2, ch: lastLineLength2 };
-					editor.replaceRange(_StorageEngine.VAULT_SEPARATOR, pos2);
-				}
-				const lastLineIndex = doc.lineCount() - 1;
-				const lastLineLength = doc.getLine(lastLineIndex).length;
-				const pos = { line: lastLineIndex, ch: lastLineLength };
-				const calloutText = `
+  "src/storage.ts"() {
+    init_ids();
+    _StorageEngine = class {
+      /**
+       * Appends a new callout to the bottom of the editor's document.
+       * Ensures the vault separator exists.
+       */
+      static appendCallout(editor, id, content) {
+        const doc = editor.getDoc();
+        const fullText = doc.getValue();
+        if (!fullText.includes("AI Data Vault")) {
+          const lastLineIndex2 = doc.lineCount() - 1;
+          const lastLineLength2 = doc.getLine(lastLineIndex2).length;
+          const pos2 = { line: lastLineIndex2, ch: lastLineLength2 };
+          editor.replaceRange(_StorageEngine.VAULT_SEPARATOR, pos2);
+        }
+        const lastLineIndex = doc.lineCount() - 1;
+        const lastLineLength = doc.getLine(lastLineIndex).length;
+        const pos = { line: lastLineIndex, ch: lastLineLength };
+        const calloutText = `
 
 > [!${_StorageEngine.FOOTNOTE_CALLOUT}]- ${id}
-${content
-	.split("\n")
-	.map((line) => `> ${line}`)
-	.join("\n")}
+${content.split("\n").map((line) => `> ${line}`).join("\n")}
 `;
-				editor.replaceRange(calloutText, pos);
-			}
-			/**
-			 * Finds a callout by ID in the text and returns its character range.
-			 */
-			static findCalloutRange(text, id) {
-				const lines = text.split("\n");
-				let currentOffset = 0;
-				for (let i = 0; i < lines.length; i++) {
-					const line = lines[i];
-					if (
-						line.startsWith(`> [!${_StorageEngine.FOOTNOTE_CALLOUT}]- ${id}`) ||
-						line.startsWith(`> [!${_StorageEngine.MERGED_CALLOUT}]- ${id}`)
-					) {
-						const startOffset = currentOffset;
-						let j = i + 1;
-						while (j < lines.length && lines[j].startsWith(">")) {
-							j++;
-						}
-						const endLine = j - 1;
-						let endOffset = currentOffset;
-						for (let k = i; k <= endLine; k++) {
-							endOffset += lines[k].length + 1;
-						}
-						return { from: startOffset, to: endOffset - 1 };
-					}
-					currentOffset += line.length + 1;
-				}
-				return null;
-			}
-			/**
-			 * Gets the content of a specific callout by ID.
-			 */
-			static getCalloutContent(text, id) {
-				const range = _StorageEngine.findCalloutRange(text, id);
-				if (!range) return null;
-				const raw = text.slice(range.from, range.to);
-				const lines = raw.split("\n");
-				return lines
-					.slice(1)
-					.filter((l) => l.startsWith("> "))
-					.map((l) => l.slice(2))
-					.join("\n")
-					.trim();
-			}
-			/**
-			 * Generates a unique ID for a merged callout.
-			 */
-			static generateMergeId() {
-				return generateMergeId();
-			}
-			/**
-			 * Merges multiple annotation callouts into a single combined callout.
-			 *
-			 * @param id - The ID for the merged callout (e.g., "合并-AX123456")
-			 * @param nodes - Array of MarkingNode objects with their callout contents
-			 * @returns The formatted callout string ready to append
-			 */
-			static mergeCallouts(id, nodes) {
-				const sections = [];
-				for (const { node, content } of nodes) {
-					const tagLabel = node.tagId ? ` [${node.tagId}]` : "";
-					const textPreview =
-						node.text.length > 40 ? node.text.slice(0, 40) + "..." : node.text;
-					const header = `## \u{1F4CC} ${textPreview}${tagLabel}`;
-					sections.push(header);
-					sections.push("");
-					sections.push(`> \u{1F4DD} **\u539F\u6587**: ${node.text}`);
-					sections.push("");
-					if (content) {
-						sections.push(content);
-					} else if (node.summary) {
-						sections.push(node.summary);
-					}
-					sections.push("");
-					sections.push("---");
-					sections.push("");
-				}
-				const mergedContent = sections.join("\n").trim();
-				return `
+        editor.replaceRange(calloutText, pos);
+      }
+      /**
+       * Finds a callout by ID in the text and returns its character range.
+       */
+      static findCalloutRange(text, id) {
+        const lines = text.split("\n");
+        let currentOffset = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line.startsWith(`> [!${_StorageEngine.FOOTNOTE_CALLOUT}]- ${id}`) || line.startsWith(`> [!${_StorageEngine.MERGED_CALLOUT}]- ${id}`)) {
+            const startOffset = currentOffset;
+            let j = i + 1;
+            while (j < lines.length && lines[j].startsWith(">")) {
+              j++;
+            }
+            const endLine = j - 1;
+            let endOffset = currentOffset;
+            for (let k = i; k <= endLine; k++) {
+              endOffset += lines[k].length + 1;
+            }
+            return { from: startOffset, to: endOffset - 1 };
+          }
+          currentOffset += line.length + 1;
+        }
+        return null;
+      }
+      /**
+       * Gets the content of a specific callout by ID.
+       */
+      static getCalloutContent(text, id) {
+        const range = _StorageEngine.findCalloutRange(text, id);
+        if (!range)
+          return null;
+        const raw = text.slice(range.from, range.to);
+        const lines = raw.split("\n");
+        return lines.slice(1).filter((l) => l.startsWith("> ")).map((l) => l.slice(2)).join("\n").trim();
+      }
+      /**
+       * Generates a unique ID for a merged callout.
+       */
+      static generateMergeId() {
+        return generateMergeId();
+      }
+      /**
+       * Merges multiple annotation callouts into a single combined callout.
+       *
+       * @param id - The ID for the merged callout (e.g., "合并-AX123456")
+       * @param nodes - Array of MarkingNode objects with their callout contents
+       * @returns The formatted callout string ready to append
+       */
+      static mergeCallouts(id, nodes) {
+        const sections = [];
+        for (const { node, content } of nodes) {
+          const tagLabel = node.tagId ? ` [${node.tagId}]` : "";
+          const textPreview = node.text.length > 40 ? node.text.slice(0, 40) + "..." : node.text;
+          const header = `## \u{1F4CC} ${textPreview}${tagLabel}`;
+          sections.push(header);
+          sections.push("");
+          sections.push(`> \u{1F4DD} **\u539F\u6587**: ${node.text}`);
+          sections.push("");
+          if (content) {
+            sections.push(content);
+          } else if (node.summary) {
+            sections.push(node.summary);
+          }
+          sections.push("");
+          sections.push("---");
+          sections.push("");
+        }
+        const mergedContent = sections.join("\n").trim();
+        return `
 
 > [!${_StorageEngine.MERGED_CALLOUT}]- ${id}
-${mergedContent
-	.split("\n")
-	.map((line) => `> ${line}`)
-	.join("\n")}
+${mergedContent.split("\n").map((line) => `> ${line}`).join("\n")}
 `;
-			}
-		};
-		StorageEngine = _StorageEngine;
-		StorageEngine.FOOTNOTE_CALLOUT = "ai-footnote";
-		StorageEngine.MERGED_CALLOUT = "ai-merged";
-		/** Separator line before the AI Data Vault */
-		StorageEngine.VAULT_SEPARATOR =
-			"\n\n---\n%%  AI Data Vault \u2014 \u4EE5\u4E0B\u4E3A AI \u6CE8\u5165\u7684\u6570\u636E\u627F\u8F7D\u533A\uFF0C\u8BF7\u52FF\u624B\u52A8\u4FEE\u6539\u7ED3\u6784  %%\n";
-	},
+      }
+    };
+    StorageEngine = _StorageEngine;
+    StorageEngine.FOOTNOTE_CALLOUT = "ai-footnote";
+    StorageEngine.MERGED_CALLOUT = "ai-merged";
+    /** Separator line before the AI Data Vault */
+    StorageEngine.VAULT_SEPARATOR = "\n\n---\n%%  AI Data Vault \u2014 \u4EE5\u4E0B\u4E3A AI \u6CE8\u5165\u7684\u6570\u636E\u627F\u8F7D\u533A\uFF0C\u8BF7\u52FF\u624B\u52A8\u4FEE\u6539\u7ED3\u6784  %%\n";
+  }
 });
 
 // src/repository/annotation-repository.ts
 var STATE_NAME_BY_VALUE, MarkdownAnnotationRepository, annotationRepository;
 var init_annotation_repository = __esm({
-	"src/repository/annotation-repository.ts"() {
-		init_annotation_format();
-		init_state();
-		init_storage();
-		STATE_NAME_BY_VALUE = {
-			[MarkState.Unprocessed]: "unprocessed",
-			[MarkState.AIAnnotated]: "annotated",
-			[MarkState.HumanReview]: "reviewed",
-			[MarkState.Archived]: "mastered",
-		};
-		MarkdownAnnotationRepository = class {
-			parseMarkingNodes(text) {
-				return parseMarkingNodes(text);
-			}
-			parseMergedNoteNodes(text) {
-				return parseMergedNoteNodes(text);
-			}
-			findCalloutRange(text, id) {
-				const resultBlock = parseResultBlocks(text).find(
-					(block) => block.id === id,
-				);
-				if (resultBlock) return { from: resultBlock.from, to: resultBlock.to };
-				return StorageEngine.findCalloutRange(text, id);
-			}
-			getCalloutContent(text, id) {
-				const resultBlock = parseResultBlocks(text).find(
-					(block) => block.id === id,
-				);
-				if (resultBlock) return resultBlock.content;
-				return StorageEngine.getCalloutContent(text, id);
-			}
-			ensureVaultSeparator(text) {
-				if (text.includes("AI Data Vault")) return text;
-				return `${text}${StorageEngine.VAULT_SEPARATOR}`;
-			}
-			appendCallout(text, id, richText) {
-				const nextText = appendResultBlock(text, {
-					id,
-					state: "annotated",
-					tagId: "",
-					summary: "",
-					content: richText,
-				});
-				return { text: nextText };
-			}
-			appendMergedCallout(text, input) {
-				const nextText = `${this.ensureVaultSeparator(text)}${this.formatMergedCallout(input)}`;
-				return { text: nextText };
-			}
-			createPendingAnnotation(input) {
-				var _a;
-				const state = (_a = input.state) != null ? _a : MarkState.Unprocessed;
-				const marker = `==${input.selection}==<!-- marking-note:id=${input.id} -->`;
-				const markedText = this.replaceRange(
-					input.text,
-					input.selectionFrom,
-					input.selectionTo,
-					marker,
-				);
-				const nextText = appendResultBlock(markedText, {
-					id: input.id,
-					state: STATE_NAME_BY_VALUE[state],
-					tagId: input.tagId || "",
-					summary: input.summary || "",
-					content: "",
-				});
-				return {
-					text: nextText,
-					range: {
-						from: input.selectionFrom,
-						to: input.selectionFrom + marker.length,
-					},
-				};
-			}
-			applyAnnotationResult(input) {
-				const contentResult = this.updateCalloutContent({
-					text: input.text,
-					id: input.id,
-					richText: input.richText,
-				});
-				const summaryResult = this.updateAnnotationSummary({
-					text: contentResult.text,
-					id: input.id,
-					summary: input.summary,
-				});
-				return this.updateAnnotationState({
-					text: summaryResult.text,
-					id: input.id,
-					state: input.state,
-				});
-			}
-			updateAnnotationTag(input) {
-				return this.updateMetadata(input.text, input.id, {
-					tagId: input.tagId || "",
-				});
-			}
-			updateAnnotationState(input) {
-				return this.updateMetadata(input.text, input.id, {
-					state: STATE_NAME_BY_VALUE[input.state],
-				});
-			}
-			updateAnnotationSummary(input) {
-				return this.updateMetadata(input.text, input.id, {
-					summary: input.summary,
-				});
-			}
-			updateCalloutContent(input) {
-				const existing = parseResultBlocks(input.text).find(
-					(block) => block.id === input.id,
-				);
-				if (!existing)
-					return this.appendCallout(input.text, input.id, input.richText);
-				const nextText = updateResultBlock(
-					input.text,
-					input.id,
-					input.richText,
-				);
-				return {
-					text: nextText,
-					range: {
-						from: existing.from,
-						to:
-							existing.from +
-							(nextText.length - input.text.length) +
-							existing.to -
-							existing.from,
-					},
-				};
-			}
-			deleteCallout(text, id) {
-				const resultBlock = parseResultBlocks(text).find(
-					(block) => block.id === id,
-				);
-				if (resultBlock) {
-					return {
-						text: deleteResultBlock(text, id),
-						range: { from: resultBlock.from, to: resultBlock.to },
-					};
-				}
-				const range = StorageEngine.findCalloutRange(text, id);
-				if (!range) return { text, range: null };
-				return {
-					text: this.replaceRange(
-						text,
-						range.from,
-						this.calloutEnd(text, range),
-						"",
-					),
-					range,
-				};
-			}
-			deleteAnnotation(text, id) {
-				const node = this.findAnnotation(text, id);
-				if (!node) return { text, range: null };
-				const nextText = this.replaceRange(text, node.from, node.to, node.text);
-				const result = this.deleteCallout(nextText, id);
-				return {
-					text: result.text,
-					range: { from: node.from, to: node.from + node.text.length },
-				};
-			}
-			deleteMergedNote(text, id) {
-				return this.deleteCallout(text, id);
-			}
-			formatMergedCallout(input) {
-				return StorageEngine.mergeCallouts(input.id, input.nodes);
-			}
-			updateMetadata(text, id, patch) {
-				const node = this.findAnnotation(text, id);
-				if (!node) return { text, range: null };
-				const nextText = updateResultBlockMetadata(text, id, patch);
-				if (nextText === text) return { text, range: null };
-				return { text: nextText, range: { from: node.from, to: node.to } };
-			}
-			findAnnotation(text, id) {
-				return this.parseMarkingNodes(text).find(
-					(node) => node.id === id && !node.isPlain,
-				);
-			}
-			replaceRange(text, from, to, insert) {
-				return `${text.slice(0, from)}${insert}${text.slice(to)}`;
-			}
-			calloutEnd(text, range) {
-				return Math.min(range.to + 1, text.length);
-			}
-		};
-		annotationRepository = new MarkdownAnnotationRepository();
-	},
+  "src/repository/annotation-repository.ts"() {
+    init_annotation_format();
+    init_state();
+    init_storage();
+    STATE_NAME_BY_VALUE = {
+      [MarkState.Unprocessed]: "unprocessed",
+      [MarkState.AIAnnotated]: "annotated",
+      [MarkState.HumanReview]: "reviewed",
+      [MarkState.Archived]: "mastered"
+    };
+    MarkdownAnnotationRepository = class {
+      parseMarkingNodes(text) {
+        return parseMarkingNodes(text);
+      }
+      parseMergedNoteNodes(text) {
+        return parseMergedNoteNodes(text);
+      }
+      findCalloutRange(text, id) {
+        const resultBlock = parseResultBlocks(text).find(
+          (block) => block.id === id
+        );
+        if (resultBlock)
+          return { from: resultBlock.from, to: resultBlock.to };
+        return StorageEngine.findCalloutRange(text, id);
+      }
+      getCalloutContent(text, id) {
+        const resultBlock = parseResultBlocks(text).find(
+          (block) => block.id === id
+        );
+        if (resultBlock)
+          return resultBlock.content;
+        return StorageEngine.getCalloutContent(text, id);
+      }
+      ensureVaultSeparator(text) {
+        if (text.includes("AI Data Vault"))
+          return text;
+        return `${text}${StorageEngine.VAULT_SEPARATOR}`;
+      }
+      appendCallout(text, id, richText) {
+        const nextText = appendResultBlock(text, {
+          id,
+          state: "annotated",
+          tagId: "",
+          summary: "",
+          content: richText
+        });
+        return { text: nextText };
+      }
+      appendMergedCallout(text, input) {
+        const nextText = `${this.ensureVaultSeparator(text)}${this.formatMergedCallout(input)}`;
+        return { text: nextText };
+      }
+      createPendingAnnotation(input) {
+        var _a;
+        const state = (_a = input.state) != null ? _a : MarkState.Unprocessed;
+        const marker = `==${input.selection}==<!-- marking-note:id=${input.id} -->`;
+        const markedText = this.replaceRange(
+          input.text,
+          input.selectionFrom,
+          input.selectionTo,
+          marker
+        );
+        const nextText = appendResultBlock(markedText, {
+          id: input.id,
+          state: STATE_NAME_BY_VALUE[state],
+          tagId: input.tagId || "",
+          summary: input.summary || "",
+          content: ""
+        });
+        return {
+          text: nextText,
+          range: {
+            from: input.selectionFrom,
+            to: input.selectionFrom + marker.length
+          }
+        };
+      }
+      applyAnnotationResult(input) {
+        const contentResult = this.updateCalloutContent({
+          text: input.text,
+          id: input.id,
+          richText: input.richText
+        });
+        const summaryResult = this.updateAnnotationSummary({
+          text: contentResult.text,
+          id: input.id,
+          summary: input.summary
+        });
+        return this.updateAnnotationState({
+          text: summaryResult.text,
+          id: input.id,
+          state: input.state
+        });
+      }
+      updateAnnotationTag(input) {
+        return this.updateMetadata(input.text, input.id, {
+          tagId: input.tagId || ""
+        });
+      }
+      updateAnnotationState(input) {
+        return this.updateMetadata(input.text, input.id, {
+          state: STATE_NAME_BY_VALUE[input.state]
+        });
+      }
+      updateAnnotationSummary(input) {
+        return this.updateMetadata(input.text, input.id, {
+          summary: input.summary
+        });
+      }
+      updateCalloutContent(input) {
+        const existing = parseResultBlocks(input.text).find(
+          (block) => block.id === input.id
+        );
+        if (!existing)
+          return this.appendCallout(input.text, input.id, input.richText);
+        const nextText = updateResultBlock(input.text, input.id, input.richText);
+        return {
+          text: nextText,
+          range: {
+            from: existing.from,
+            to: existing.from + (nextText.length - input.text.length) + existing.to - existing.from
+          }
+        };
+      }
+      deleteCallout(text, id) {
+        const resultBlock = parseResultBlocks(text).find(
+          (block) => block.id === id
+        );
+        if (resultBlock) {
+          return {
+            text: deleteResultBlock(text, id),
+            range: { from: resultBlock.from, to: resultBlock.to }
+          };
+        }
+        const range = StorageEngine.findCalloutRange(text, id);
+        if (!range)
+          return { text, range: null };
+        return {
+          text: this.replaceRange(
+            text,
+            range.from,
+            this.calloutEnd(text, range),
+            ""
+          ),
+          range
+        };
+      }
+      deleteAnnotation(text, id) {
+        const node = this.findAnnotation(text, id);
+        if (!node)
+          return { text, range: null };
+        const nextText = this.replaceRange(text, node.from, node.to, node.text);
+        const result = this.deleteCallout(nextText, id);
+        return {
+          text: result.text,
+          range: { from: node.from, to: node.from + node.text.length }
+        };
+      }
+      deleteMergedNote(text, id) {
+        return this.deleteCallout(text, id);
+      }
+      formatMergedCallout(input) {
+        return StorageEngine.mergeCallouts(input.id, input.nodes);
+      }
+      updateMetadata(text, id, patch) {
+        const node = this.findAnnotation(text, id);
+        if (!node)
+          return { text, range: null };
+        const nextText = updateResultBlockMetadata(text, id, patch);
+        if (nextText === text)
+          return { text, range: null };
+        return { text: nextText, range: { from: node.from, to: node.to } };
+      }
+      findAnnotation(text, id) {
+        return this.parseMarkingNodes(text).find(
+          (node) => node.id === id && !node.isPlain
+        );
+      }
+      replaceRange(text, from, to, insert) {
+        return `${text.slice(0, from)}${insert}${text.slice(to)}`;
+      }
+      calloutEnd(text, range) {
+        return Math.min(range.to + 1, text.length);
+      }
+    };
+    annotationRepository = new MarkdownAnnotationRepository();
+  }
 });
 
 // src/ui.ts
 var ui_exports = {};
 __export(ui_exports, {
-	ButlerFloatingPanel: () => ButlerFloatingPanel,
-	FloatingMenu: () => FloatingMenu,
-	PopoverEditor: () => PopoverEditor,
-	PopoverViewer: () => PopoverViewer,
+  ButlerFloatingPanel: () => ButlerFloatingPanel,
+  FloatingMenu: () => FloatingMenu,
+  PopoverEditor: () => PopoverEditor,
+  PopoverViewer: () => PopoverViewer
 });
-var import_obsidian,
-	FloatingMenu,
-	PopoverEditor,
-	PopoverViewer,
-	ButlerFloatingPanel;
+var import_obsidian, FloatingMenu, PopoverEditor, PopoverViewer, ButlerFloatingPanel;
 var init_ui = __esm({
-	"src/ui.ts"() {
-		import_obsidian = require("obsidian");
-		init_annotation_repository();
-		FloatingMenu = class {
-			constructor(onAnalyze, onCommand, onInlineModify, plugin) {
-				this.onAnalyze = onAnalyze;
-				this.onCommand = onCommand;
-				this.onInlineModify = onInlineModify;
-				this.plugin = plugin;
-				this.container = null;
-				this.currentSelection = "";
-			}
-			show(x, y, selection) {
-				var _a, _b, _c, _d, _e;
-				this.close();
-				this.currentSelection = selection;
-				this.container = document.createElement("div");
-				this.container.addClass("ai-floating-menu");
-				const popW = 200;
-				const popH = 45;
-				const vw = window.innerWidth;
-				const vh = window.innerHeight;
-				let posX = x;
-				let posY = y - 45;
-				if (posX + popW > vw - 10) posX = vw - popW - 10;
-				if (posY < 10) posY = y + 25;
-				if (posY + popH > vh - 10) posY = vh - popH - 10;
-				this.container.style.left = `${posX}px`;
-				this.container.style.top = `${posY}px`;
-				const btnAnalyze = document.createElement("button");
-				btnAnalyze.addClass("ai-floating-btn", "ai-floating-btn-primary");
-				btnAnalyze.innerText = "\u{1FA84} \u6807\u6CE8";
-				btnAnalyze.title =
-					"\u4F7F\u7528\u5F53\u524D\u7BA1\u5BB6\u6807\u6CE8\u9009\u4E2D\u6587\u672C";
-				btnAnalyze.onclick = () => {
-					this.onAnalyze(this.currentSelection);
-					this.close();
-				};
-				const btnLightning = document.createElement("button");
-				btnLightning.addClass("ai-floating-btn");
-				btnLightning.innerText = "\u26A1";
-				btnLightning.title = "\u5FEB\u6377\u6307\u4EE4";
-				btnLightning.onclick = (e) => {
-					e.stopPropagation();
-					this.showCommandDropdown(btnLightning);
-				};
-				this.container.appendChild(btnAnalyze);
-				this.container.appendChild(btnLightning);
-				if (
-					(_b = (_a = this.plugin) == null ? void 0 : _a.settings) == null
-						? void 0
-						: _b.enableInlineModification
-				) {
-					const btnModify = document.createElement("button");
-					btnModify.addClass("ai-floating-btn");
-					btnModify.innerText = "\u270F\uFE0F";
-					btnModify.title = "AI \u539F\u6587\u7247\u6BB5\u6539\u5199";
-					btnModify.onclick = (e) => {
-						e.stopPropagation();
-						this.showInlineModifyDropdown(btnModify);
-					};
-					this.container.appendChild(btnModify);
-				}
-				const btnButler = document.createElement("button");
-				btnButler.addClass("ai-floating-btn");
-				const activeSteward =
-					(_e =
-						(_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null
-							? void 0
-							: _d.stewards) == null
-						? void 0
-						: _e.find((s) => {
-								var _a2, _b2;
-								return (
-									s.id ===
-									((_b2 =
-										(_a2 = this.plugin) == null ? void 0 : _a2.settings) == null
-										? void 0
-										: _b2.activeStewardId)
-								);
-							});
-				btnButler.innerText =
-					(activeSteward == null ? void 0 : activeSteward.icon) || "\u{1F3E0}";
-				btnButler.title = "\u5207\u6362\u7BA1\u5BB6";
-				btnButler.onclick = (e) => {
-					e.stopPropagation();
-					this.showStewardDropdown(btnButler);
-				};
-				this.container.appendChild(btnButler);
-				const btnCancel = document.createElement("button");
-				btnCancel.addClass("ai-floating-btn");
-				btnCancel.innerText = "\u2716";
-				btnCancel.title = "\u5173\u95ED";
-				btnCancel.onclick = () => {
-					this.close();
-				};
-				this.container.appendChild(btnCancel);
-				document.body.appendChild(this.container);
-			}
-			showCommandDropdown(anchor) {
-				const existing = document.querySelector(".ai-lightning-dropdown");
-				if (existing) existing.remove();
-				const dropdown = document.createElement("div");
-				dropdown.addClass("ai-lightning-dropdown");
-				const rect = anchor.getBoundingClientRect();
-				dropdown.style.left = `${rect.left}px`;
-				dropdown.style.top = `${rect.bottom + 4}px`;
-				const event = new CustomEvent("marking-note-get-commands", {
-					detail: {
-						callback: (commands) => {
-							if (commands.length === 0) {
-								const emptyItem = document.createElement("div");
-								emptyItem.addClass("ai-lightning-item");
-								emptyItem.innerText = "\u65E0\u5FEB\u6377\u6307\u4EE4";
-								emptyItem.style.color = "var(--text-muted)";
-								dropdown.appendChild(emptyItem);
-							} else {
-								for (const cmd of commands) {
-									const item = document.createElement("div");
-									item.addClass("ai-lightning-item");
-									item.style.display = "flex";
-									item.style.alignItems = "center";
-									item.style.justifyContent = "space-between";
-									const leftPart = document.createElement("span");
-									leftPart.innerText = `${cmd.icon} ${cmd.name}`;
-									const rightPart = document.createElement("span");
-									rightPart.style.display = "flex";
-									rightPart.style.alignItems = "center";
-									rightPart.style.gap = "4px";
-									if (cmd.enableWebSearch) {
-										const searchBadge = document.createElement("span");
-										searchBadge.innerText = "\u{1F50D}";
-										searchBadge.title =
-											"\u7F51\u7EDC\u641C\u7D22\u5DF2\u5F00\u542F";
-										searchBadge.style.fontSize = "0.85em";
-										searchBadge.style.opacity = "0.7";
-										rightPart.appendChild(searchBadge);
-									}
-									item.appendChild(leftPart);
-									item.appendChild(rightPart);
-									item.onclick = () => {
-										this.onCommand(this.currentSelection, cmd);
-										dropdown.remove();
-										this.close();
-									};
-									dropdown.appendChild(item);
-								}
-							}
-						},
-					},
-				});
-				window.dispatchEvent(event);
-				document.body.appendChild(dropdown);
-				const closeHandler = (e) => {
-					if (!dropdown.contains(e.target)) {
-						dropdown.remove();
-						document.removeEventListener("click", closeHandler);
-					}
-				};
-				setTimeout(() => document.addEventListener("click", closeHandler), 10);
-			}
-			showInlineModifyDropdown(anchor) {
-				const existing = document.querySelector(".ai-lightning-dropdown");
-				if (existing) existing.remove();
-				const dropdown = document.createElement("div");
-				dropdown.addClass("ai-lightning-dropdown");
-				const rect = anchor.getBoundingClientRect();
-				dropdown.style.left = `${rect.left}px`;
-				dropdown.style.top = `${rect.bottom + 4}px`;
-				const event = new CustomEvent("marking-note-get-inline-commands", {
-					detail: {
-						callback: (commands) => {
-							if (commands.length === 0) {
-								const emptyItem = document.createElement("div");
-								emptyItem.addClass("ai-lightning-item");
-								emptyItem.innerText = "\u65E0\u6539\u5199\u6307\u4EE4";
-								emptyItem.style.color = "var(--text-muted)";
-								dropdown.appendChild(emptyItem);
-							} else {
-								for (const cmd of commands) {
-									const item = document.createElement("div");
-									item.addClass("ai-lightning-item");
-									item.innerText = `${cmd.icon} ${cmd.name}`;
-									item.onclick = () => {
-										this.onInlineModify(
-											this.currentSelection,
-											cmd.detailPrompt,
-										);
-										dropdown.remove();
-										this.close();
-									};
-									dropdown.appendChild(item);
-								}
-							}
-						},
-					},
-				});
-				window.dispatchEvent(event);
-				document.body.appendChild(dropdown);
-				const closeHandler = (e) => {
-					if (!dropdown.contains(e.target)) {
-						dropdown.remove();
-						document.removeEventListener("click", closeHandler);
-					}
-				};
-				setTimeout(() => document.addEventListener("click", closeHandler), 10);
-			}
-			showStewardDropdown(anchor) {
-				var _a, _b, _c, _d;
-				const existing = document.querySelector(".ai-lightning-dropdown");
-				if (existing) existing.remove();
-				const dropdown = document.createElement("div");
-				dropdown.addClass("ai-lightning-dropdown");
-				dropdown.style.minWidth = "180px";
-				dropdown.style.border = "1px solid var(--background-modifier-border)";
-				dropdown.style.borderRadius = "8px";
-				dropdown.style.padding = "4px 0";
-				const rect = anchor.getBoundingClientRect();
-				dropdown.style.left = `${rect.left}px`;
-				dropdown.style.top = `${rect.bottom + 4}px`;
-				const stewards =
-					((_b = (_a = this.plugin) == null ? void 0 : _a.settings) == null
-						? void 0
-						: _b.stewards) || [];
-				const activeStewardId =
-					(_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null
-						? void 0
-						: _d.activeStewardId;
-				if (stewards.length === 0) {
-					const emptyItem = document.createElement("div");
-					emptyItem.addClass("ai-lightning-item");
-					emptyItem.innerText = "\u65E0\u7BA1\u5BB6\u914D\u7F6E";
-					emptyItem.style.color = "var(--text-muted)";
-					dropdown.appendChild(emptyItem);
-				} else {
-					for (const steward of stewards) {
-						const item = document.createElement("div");
-						item.addClass("ai-lightning-item");
-						item.style.display = "flex";
-						item.style.alignItems = "center";
-						item.style.justifyContent = "space-between";
-						item.style.padding = "8px 12px";
-						item.style.borderRadius = "4px";
-						item.style.margin = "2px 4px";
-						item.style.width = "calc(100% - 8px)";
-						item.style.boxSizing = "border-box";
-						const leftPart = document.createElement("span");
-						leftPart.style.color = "var(--text-normal)";
-						leftPart.style.fontSize = "0.9em";
-						leftPart.innerText = `${steward.icon} ${steward.name}`;
-						item.appendChild(leftPart);
-						if (steward.id === activeStewardId) {
-							item.style.background = "var(--interactive-accent)";
-							leftPart.style.color = "var(--text-on-accent)";
-							leftPart.style.fontWeight = "600";
-						}
-						item.onclick = async () => {
-							this.plugin.settings.activeStewardId = steward.id;
-							await this.plugin.saveSettings();
-							window.dispatchEvent(
-								new CustomEvent("marking-note-steward-changed"),
-							);
-							dropdown.remove();
-							this.close();
-							new import_obsidian.Notice(
-								`\u5DF2\u5207\u6362\u5230: ${steward.icon} ${steward.name}`,
-							);
-						};
-						dropdown.appendChild(item);
-					}
-				}
-				document.body.appendChild(dropdown);
-				const closeHandler = (e) => {
-					if (!dropdown.contains(e.target)) {
-						dropdown.remove();
-						document.removeEventListener("click", closeHandler);
-					}
-				};
-				setTimeout(() => document.addEventListener("click", closeHandler), 10);
-			}
-			close() {
-				if (this.container) {
-					this.container.remove();
-					this.container = null;
-				}
-				const dropdown = document.querySelector(".ai-lightning-dropdown");
-				if (dropdown) dropdown.remove();
-			}
-		};
-		PopoverEditor = class {
-			constructor(node, editorView, ctx) {
-				this.node = node;
-				this.editorView = editorView;
-				this.ctx = ctx;
-				this.container = null;
-				this.viewContainer = null;
-				this.editTextarea = null;
-				this.isEditMode = false;
-				this.isFullscreen = false;
-				this.currentContent = "";
-				this.isPinned = false;
-				this.outsideClickHandler = null;
-				this.webSearchEnabled = false;
-				// Saved non-fullscreen position/size for restoration
-				this.savedLeft = "";
-				this.savedTop = "";
-				this.savedWidth = "";
-				this.savedHeight = "";
-				this.cleanupFns = [];
-				this.renderComponent = new import_obsidian.Component();
-				this.renderComponent.load();
-			}
-			async show(anchorX, anchorY) {
-				const fullDoc = this.editorView.state.doc.toString();
-				this.currentContent =
-					annotationRepository.getCalloutContent(fullDoc, this.node.id) || "";
-				if (this.isPinned && this.container) {
-					this.updateTitleDisplay();
-					if (this.editTextarea) this.editTextarea.value = this.currentContent;
-					await this.renderMarkdownView();
-					return;
-				}
-				this.close();
-				this.container = document.createElement("div");
-				this.container.addClass("ai-footnote-popover-window");
-				const vw = window.innerWidth;
-				const vh = window.innerHeight;
-				const isMobile = vw <= 600;
-				let popW;
-				let posX;
-				let posY;
-				if (isMobile) {
-					popW = Math.floor(vw * 0.94);
-					posX = Math.floor((vw - popW) / 2);
-					posY = Math.max(70, Math.floor(vh / 2 - 180));
-				} else {
-					popW = 460;
-					posX = Math.min(anchorX, vw - popW - 10);
-					posX = Math.max(10, posX);
-					posY = Math.min(anchorY, vh - 380);
-					posY = Math.max(10, posY);
-				}
-				this.container.style.width = `${popW}px`;
-				this.container.style.left = `${posX}px`;
-				this.container.style.top = `${posY}px`;
-				const header = document.createElement("div");
-				header.addClass("ai-footnote-popover-header");
-				const pinBtn = document.createElement("span");
-				pinBtn.addClass("ai-popover-pin-toggle");
-				pinBtn.innerText = this.isPinned ? "\u{1F4CD}" : "\u{1F4CC}";
-				pinBtn.onclick = () => {
-					this.isPinned = !this.isPinned;
-					pinBtn.innerText = this.isPinned ? "\u{1F4CD}" : "\u{1F4CC}";
-					pinBtn.style.opacity = this.isPinned ? "1" : "0.4";
-					pinBtn.title = this.isPinned
-						? "\u53D6\u6D88\u56FA\u5B9A"
-						: "\u56FA\u5B9A\u7A97\u53E3";
-					if (this.isPinned) {
-						this.removeOutsideClickHandler();
-					} else {
-						this.addOutsideClickHandler();
-					}
-				};
-				header.appendChild(pinBtn);
-				const titleArea = document.createElement("div");
-				titleArea.addClass("ai-popover-title-area");
-				titleArea.id = "ai-popover-title-display";
-				header.appendChild(titleArea);
-				const ctrl = document.createElement("div");
-				ctrl.addClass("ai-popover-ctrl-group");
-				const toggleBtn = this.createCtrlBtn(
-					"\u{1F4DD}",
-					"\u7F16\u8F91\u6A21\u5F0F",
-					() => this.toggleMode(),
-				);
-				ctrl.appendChild(toggleBtn);
-				const fullscreenBtn = this.createCtrlBtn(
-					"\u26F6",
-					"\u94FA\u6EE1\u5168\u5C4F / \u8FD8\u539F",
-					() => this.toggleFullscreen(fullscreenBtn),
-				);
-				ctrl.appendChild(fullscreenBtn);
-				const copyBtn = this.createCtrlBtn(
-					"\u{1F4CB}",
-					"\u590D\u5236\u5185\u5BB9",
-					() => {
-						navigator.clipboard.writeText(this.currentContent);
-						copyBtn.innerText = "\u2705";
-						setTimeout(() => {
-							copyBtn.innerText = "\u{1F4CB}";
-						}, 1500);
-					},
-				);
-				ctrl.appendChild(copyBtn);
-				const deleteBtn = this.createCtrlBtn(
-					"\u{1F5D1}\uFE0F",
-					"\u5220\u9664\u6B64\u6807\u6CE8",
-					() => {
-						this.deleteNodeFromEditor();
-						this.close();
-					},
-				);
-				deleteBtn.style.color = "var(--text-error, #e05c5c)";
-				ctrl.appendChild(deleteBtn);
-				const closeBtn = this.createCtrlBtn("\u2716", "\u5173\u95ED", () =>
-					this.close(),
-				);
-				ctrl.appendChild(closeBtn);
-				header.appendChild(ctrl);
-				this.container.appendChild(header);
-				const body = document.createElement("div");
-				body.addClass("ai-footnote-popover-body");
-				this.viewContainer = document.createElement("div");
-				this.viewContainer.addClass("ai-popover-view");
-				body.appendChild(this.viewContainer);
-				this.editTextarea = document.createElement("textarea");
-				this.editTextarea.addClass("ai-popover-edit");
-				this.editTextarea.value = this.currentContent;
-				this.editTextarea.style.display = "none";
-				this.editTextarea.spellcheck = false;
-				this.editTextarea.addEventListener("input", () => {
-					this.currentContent = this.editTextarea.value;
-					this.syncToBottom(this.currentContent);
-				});
-				body.appendChild(this.editTextarea);
-				this.container.appendChild(body);
-				const footer = document.createElement("div");
-				footer.addClass("ai-footnote-popover-footer");
-				const inputRow = document.createElement("div");
-				inputRow.addClass("ai-popover-input-row");
-				const input = document.createElement("input");
-				input.type = "text";
-				input.placeholder =
-					"\u5BF9\u7ED3\u679C\u4E0D\u6EE1\u610F\uFF1F\u7EE7\u7EED\u6307\u6325 AI...";
-				const sendBtn = document.createElement("button");
-				sendBtn.addClass("ai-floating-btn", "ai-floating-btn-primary");
-				sendBtn.innerText = "\u53D1\u9001";
-				sendBtn.style.padding = "4px 12px";
-				sendBtn.style.marginLeft = "6px";
-				sendBtn.style.fontSize = "0.85em";
-				const webSearchBtn = document.createElement("button");
-				webSearchBtn.addClass("ai-floating-btn");
-				webSearchBtn.innerText = "\u{1F50D}";
-				webSearchBtn.title = "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
-				webSearchBtn.style.padding = "4px 8px";
-				webSearchBtn.style.marginLeft = "4px";
-				webSearchBtn.style.fontSize = "0.85em";
-				webSearchBtn.style.opacity = "0.5";
-				webSearchBtn.onclick = () => {
-					this.webSearchEnabled = !this.webSearchEnabled;
-					webSearchBtn.style.opacity = this.webSearchEnabled ? "1" : "0.5";
-					webSearchBtn.style.background = this.webSearchEnabled
-						? "var(--interactive-accent)"
-						: "";
-					webSearchBtn.title = this.webSearchEnabled
-						? "\u5173\u95ED\u7F51\u7EDC\u641C\u7D22"
-						: "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
-				};
-				const undoBtn = document.createElement("button");
-				undoBtn.addClass("ai-floating-btn");
-				undoBtn.innerText = "\u21A9\uFE0F \u56DE\u9000";
-				undoBtn.title =
-					"\u56DE\u9000\u5230\u4E0A\u4E00\u6B21\u7684\u56DE\u7B54";
-				undoBtn.style.padding = "4px 12px";
-				undoBtn.style.marginLeft = "6px";
-				undoBtn.style.fontSize = "0.85em";
-				const updateUndoState = () => {
-					if (this.ctx.canUndo(this.node.id)) {
-						undoBtn.style.opacity = "1";
-						undoBtn.style.cursor = "pointer";
-					} else {
-						undoBtn.style.opacity = "0.5";
-						undoBtn.style.cursor = "not-allowed";
-					}
-				};
-				const doSend = async () => {
-					const instruction = input.value.trim();
-					if (!instruction) return;
-					input.value = "";
-					input.placeholder = "\u23F3 AI \u601D\u8003\u4E2D...";
-					input.disabled = true;
-					sendBtn.disabled = true;
-					const result = await this.ctx.onFollowUp(
-						this.node.id,
-						instruction,
-						this.currentContent,
-						{ enableWebSearch: this.webSearchEnabled },
-					);
-					input.disabled = false;
-					sendBtn.disabled = false;
-					input.placeholder =
-						"\u5BF9\u7ED3\u679C\u4E0D\u6EE1\u610F\uFF1F\u7EE7\u7EED\u6307\u6325 AI...";
-					if (result) {
-						this.currentContent = result.richText;
-						this.syncToBottom(result.richText);
-						this.syncToInline(result.summary);
-						if (this.editTextarea) this.editTextarea.value = result.richText;
-						await this.renderMarkdownView();
-					}
-					updateUndoState();
-				};
-				undoBtn.onclick = async () => {
-					if (!this.ctx.canUndo(this.node.id)) return;
-					const previousText = this.ctx.popUndo(this.node.id);
-					if (previousText !== null) {
-						this.currentContent = previousText;
-						this.syncToBottom(previousText);
-						if (this.editTextarea) this.editTextarea.value = previousText;
-						await this.renderMarkdownView();
-						updateUndoState();
-					}
-				};
-				updateUndoState();
-				input.addEventListener("keydown", (e) => {
-					if (e.key === "Enter") {
-						e.preventDefault();
-						doSend();
-					}
-				});
-				sendBtn.onclick = doSend;
-				inputRow.appendChild(input);
-				inputRow.appendChild(undoBtn);
-				inputRow.appendChild(webSearchBtn);
-				inputRow.appendChild(sendBtn);
-				footer.appendChild(inputRow);
-				this.container.appendChild(footer);
-				document.body.appendChild(this.container);
-				this.updateTitleDisplay();
-				await this.renderMarkdownView();
-				this.makeDraggable(header);
-				const escHandler = (e) => {
-					if (e.key === "Escape") {
-						this.close();
-					}
-				};
-				document.addEventListener("keydown", escHandler);
-				this.registerCleanup(() =>
-					document.removeEventListener("keydown", escHandler),
-				);
-				if (!this.isPinned) {
-					this.addOutsideClickHandler();
-				}
-			}
-			/** Update the title area to show truncated summary (or node id as fallback) */
-			updateTitleDisplay() {
-				if (!this.container) return;
-				const titleArea = this.container.querySelector(
-					"#ai-popover-title-display",
-				);
-				if (!titleArea) return;
-				titleArea.empty();
-				const displayText = this.node.summary
-					? this.node.summary.length > 24
-						? this.node.summary.slice(0, 24) + "\u2026"
-						: this.node.summary
-					: this.node.id || "\u65E0\u6807\u9898";
-				const titleSpan = document.createElement("span");
-				titleSpan.innerText = displayText;
-				titleSpan.title =
-					(this.node.summary || this.node.id) +
-					" (\u53CC\u51FB\u8DF3\u8F6C\u539F\u6587)";
-				titleArea.ondblclick = () => this.jumpToSource();
-				titleArea.style.cursor = "pointer";
-				titleArea.appendChild(titleSpan);
-			}
-			addOutsideClickHandler() {
-				this.removeOutsideClickHandler();
-				this.outsideClickHandler = (e) => {
-					if (!this.container) return;
-					if (!this.container.contains(e.target)) {
-						this.close();
-					}
-				};
-				setTimeout(() => {
-					if (this.outsideClickHandler) {
-						document.addEventListener("click", this.outsideClickHandler);
-					}
-				}, 150);
-			}
-			removeOutsideClickHandler() {
-				if (this.outsideClickHandler) {
-					document.removeEventListener("click", this.outsideClickHandler);
-					this.outsideClickHandler = null;
-				}
-			}
-			registerCleanup(dispose) {
-				this.cleanupFns.push(dispose);
-			}
-			cleanupTransientListeners() {
-				for (const dispose of this.cleanupFns.splice(0)) {
-					dispose();
-				}
-			}
-			resetRenderComponent() {
-				this.renderComponent.unload();
-				this.renderComponent = new import_obsidian.Component();
-				this.renderComponent.load();
-			}
-			createCtrlBtn(text, tooltip, onclick) {
-				const btn = document.createElement("button");
-				btn.addClass("ai-popover-ctrl-btn");
-				btn.innerText = text;
-				btn.title = tooltip;
-				btn.addEventListener("mousedown", (e) => {
-					e.stopPropagation();
-				});
-				btn.addEventListener("click", (e) => {
-					e.stopPropagation();
-					onclick();
-				});
-				return btn;
-			}
-			async renderMarkdownView() {
-				if (!this.viewContainer) return;
-				this.viewContainer.empty();
-				if (!this.currentContent) {
-					this.viewContainer.createEl("p", {
-						text: "\u6682\u65E0 AI \u751F\u6210\u5185\u5BB9",
-						attr: { style: "color: var(--text-muted); font-style: italic;" },
-					});
-					return;
-				}
-				try {
-					await import_obsidian.MarkdownRenderer.render(
-						this.ctx.app,
-						this.currentContent,
-						this.viewContainer,
-						"",
-						this.renderComponent,
-					);
-				} catch (e) {
-					try {
-						await import_obsidian.MarkdownRenderer.renderMarkdown(
-							this.currentContent,
-							this.viewContainer,
-							"",
-							this.renderComponent,
-						);
-					} catch (e2) {
-						const pre = document.createElement("pre");
-						pre.style.whiteSpace = "pre-wrap";
-						pre.textContent = this.currentContent;
-						this.viewContainer.appendChild(pre);
-					}
-				}
-			}
-			async toggleMode() {
-				this.isEditMode = !this.isEditMode;
-				if (this.viewContainer && this.editTextarea) {
-					if (this.isEditMode) {
-						this.viewContainer.style.display = "none";
-						this.editTextarea.style.display = "block";
-						this.editTextarea.value = this.currentContent;
-						this.editTextarea.focus();
-					} else {
-						this.editTextarea.style.display = "none";
-						this.viewContainer.style.display = "block";
-						await this.renderMarkdownView();
-					}
-				}
-			}
-			toggleFullscreen(btn) {
-				if (!this.container) return;
-				this.isFullscreen = !this.isFullscreen;
-				if (this.isFullscreen) {
-					this.savedLeft = this.container.style.left;
-					this.savedTop = this.container.style.top;
-					this.savedWidth = this.container.style.width;
-					this.savedHeight = this.container.style.height;
-					const isMobile = window.innerWidth <= 600;
-					const topOffset = isMobile ? 65 : 40;
-					this.container.style.left = "0px";
-					this.container.style.top = `${topOffset}px`;
-					this.container.style.width = "100vw";
-					this.container.style.height = `calc(100vh - ${topOffset}px)`;
-					this.container.style.maxWidth = "100vw";
-					this.container.style.maxHeight = "100vh";
-					this.container.style.borderRadius = "0";
-					btn.title = "\u8FD8\u539F\u7A97\u53E3\u5927\u5C0F";
-					btn.innerText = "\u22A1";
-				} else {
-					this.container.style.left = this.savedLeft;
-					this.container.style.top = this.savedTop;
-					this.container.style.width = this.savedWidth;
-					this.container.style.height = this.savedHeight;
-					this.container.style.maxWidth = "";
-					this.container.style.maxHeight = "";
-					this.container.style.borderRadius = "";
-					btn.title = "\u94FA\u6EE1\u5168\u5C4F / \u8FD8\u539F";
-					btn.innerText = "\u26F6";
-				}
-			}
-			syncToBottom(newText) {
-				const text = this.editorView.state.doc.toString();
-				const mutation = annotationRepository.updateCalloutContent({
-					text,
-					id: this.node.id,
-					richText: newText,
-				});
-				if (mutation.text !== text) {
-					this.editorView.dispatch({
-						changes: {
-							from: 0,
-							to: text.length,
-							insert: mutation.text,
-						},
-					});
-				}
-			}
-			syncToInline(newSummary) {
-				if (!newSummary) return;
-				const text = this.editorView.state.doc.toString();
-				const mutation = annotationRepository.updateAnnotationSummary({
-					text,
-					id: this.node.id,
-					summary: newSummary,
-				});
-				if (mutation.text !== text) {
-					this.editorView.dispatch({
-						changes: {
-							from: 0,
-							to: text.length,
-							insert: mutation.text,
-						},
-					});
-				}
-			}
-			jumpToSource() {
-				const text = this.editorView.state.doc.toString();
-				const range = annotationRepository.findCalloutRange(text, this.node.id);
-				if (range) {
-					this.editorView.dispatch({
-						selection: { anchor: range.from },
-						scrollIntoView: true,
-					});
-					this.editorView.focus();
-				}
-			}
-			makeDraggable(handle) {
-				let isDragging = false;
-				let offsetX = 0;
-				let offsetY = 0;
-				handle.style.cursor = "grab";
-				const startDrag = (clientX, clientY) => {
-					var _a, _b;
-					if (this.isFullscreen) return;
-					isDragging = true;
-					handle.style.cursor = "grabbing";
-					offsetX =
-						clientX -
-						(((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
-					offsetY =
-						clientY -
-						(((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
-				};
-				const moveDrag = (clientX, clientY) => {
-					if (!isDragging || !this.container) return;
-					this.container.style.left = `${clientX - offsetX}px`;
-					this.container.style.top = `${clientY - offsetY}px`;
-				};
-				const endDrag = () => {
-					isDragging = false;
-					handle.style.cursor = "grab";
-				};
-				const onMouseDown = (e) => {
-					const target = e.target;
-					if (target.tagName === "BUTTON") return;
-					if (target.tagName === "INPUT") return;
-					if (target.closest(".ai-popover-ctrl-group")) return;
-					if (target.closest(".ai-footnote-popover-footer")) return;
-					startDrag(e.clientX, e.clientY);
-					e.preventDefault();
-				};
-				const onMouseMove = (e) => moveDrag(e.clientX, e.clientY);
-				const onMouseUp = () => endDrag();
-				handle.addEventListener("mousedown", onMouseDown);
-				document.addEventListener("mousemove", onMouseMove);
-				document.addEventListener("mouseup", onMouseUp);
-				this.registerCleanup(() => {
-					handle.removeEventListener("mousedown", onMouseDown);
-					document.removeEventListener("mousemove", onMouseMove);
-					document.removeEventListener("mouseup", onMouseUp);
-				});
-				this.registerCleanup(() => {
-					handle.removeEventListener("mousedown", onMouseDown);
-					document.removeEventListener("mousemove", onMouseMove);
-					document.removeEventListener("mouseup", onMouseUp);
-				});
-				const onTouchStart = (e) => {
-					const target = e.target;
-					if (target.tagName === "BUTTON") return;
-					if (target.tagName === "INPUT") return;
-					if (target.closest(".ai-popover-ctrl-group")) return;
-					if (target.closest(".ai-footnote-popover-footer")) return;
-					if (e.touches.length > 0)
-						startDrag(e.touches[0].clientX, e.touches[0].clientY);
-				};
-				const onTouchMove = (e) => {
-					if (!isDragging || e.touches.length === 0) return;
-					moveDrag(e.touches[0].clientX, e.touches[0].clientY);
-				};
-				const onTouchEnd = () => endDrag();
-				handle.addEventListener("touchstart", onTouchStart, { passive: true });
-				document.addEventListener("touchmove", onTouchMove, { passive: false });
-				document.addEventListener("touchend", onTouchEnd);
-				this.registerCleanup(() => {
-					handle.removeEventListener("touchstart", onTouchStart);
-					document.removeEventListener("touchmove", onTouchMove);
-					document.removeEventListener("touchend", onTouchEnd);
-				});
-			}
-			deleteNodeFromEditor() {
-				var _a, _b;
-				const text = this.editorView.state.doc.toString();
-				const mutation = annotationRepository.deleteAnnotation(
-					text,
-					this.node.id,
-				);
-				if (mutation.text === text) return;
-				this.editorView.dispatch({
-					changes: {
-						from: 0,
-						to: text.length,
-						insert: mutation.text,
-					},
-					selection: {
-						anchor:
-							(_b = (_a = mutation.range) == null ? void 0 : _a.from) != null
-								? _b
-								: 0,
-					},
-				});
-			}
-			close() {
-				this.removeOutsideClickHandler();
-				this.cleanupTransientListeners();
-				this.resetRenderComponent();
-				if (this.container) {
-					this.container.remove();
-					this.container = null;
-				}
-				this.viewContainer = null;
-				this.editTextarea = null;
-				this.isFullscreen = false;
-			}
-		};
-		PopoverViewer = class {
-			constructor(ctx) {
-				this.ctx = ctx;
-				this.container = null;
-				this.outsideClickHandler = null;
-				this.cleanupFns = [];
-				// Extracted so title refresh has context
-				this.currentParams = null;
-				this.renderComponent = new import_obsidian.Component();
-				this.renderComponent.load();
-			}
-			async show(
-				nodeId,
-				nodeSummary,
-				nodeState,
-				nodeTagId,
-				richText,
-				anchorX,
-				anchorY,
-			) {
-				this.close();
-				this.currentParams = { nodeId, nodeSummary, nodeState, nodeTagId };
-				this.container = document.createElement("div");
-				this.container.addClass("ai-footnote-popover-window");
-				const vw = window.innerWidth;
-				const vh = window.innerHeight;
-				const isMobile = vw <= 600;
-				let popW;
-				let posX;
-				let posY;
-				if (isMobile) {
-					popW = Math.floor(vw * 0.94);
-					posX = Math.floor((vw - popW) / 2);
-					posY = Math.max(70, Math.floor(vh / 2 - 180));
-				} else {
-					popW = 460;
-					posX = Math.min(anchorX, vw - popW - 10);
-					posX = Math.max(10, posX);
-					posY = Math.min(anchorY, vh - 380);
-					posY = Math.max(10, posY);
-				}
-				this.container.style.width = `${popW}px`;
-				this.container.style.left = `${posX}px`;
-				this.container.style.top = `${posY}px`;
-				const header = document.createElement("div");
-				header.addClass("ai-footnote-popover-header");
-				const titleArea = document.createElement("div");
-				titleArea.addClass("ai-popover-title-area");
-				titleArea.id = "ai-viewer-title-display";
-				titleArea.ondblclick = () => this.jumpToSource(nodeId);
-				titleArea.style.cursor = "pointer";
-				header.appendChild(titleArea);
-				this.updateTitleDisplay();
-				const ctrl = document.createElement("div");
-				ctrl.addClass("ai-popover-ctrl-group");
-				const copyBtn = this.createCtrlBtn(
-					"\u{1F4CB}",
-					"\u590D\u5236\u5185\u5BB9",
-					() => {
-						navigator.clipboard.writeText(richText);
-						copyBtn.innerText = "\u2705";
-						setTimeout(() => {
-							copyBtn.innerText = "\u{1F4CB}";
-						}, 1500);
-					},
-				);
-				ctrl.appendChild(copyBtn);
-				const closeBtn = this.createCtrlBtn("\u2716", "\u5173\u95ED", () =>
-					this.close(),
-				);
-				ctrl.appendChild(closeBtn);
-				header.appendChild(ctrl);
-				this.container.appendChild(header);
-				const body = document.createElement("div");
-				body.addClass("ai-footnote-popover-body");
-				const viewContainer = document.createElement("div");
-				viewContainer.addClass("ai-popover-view");
-				if (richText) {
-					try {
-						await import_obsidian.MarkdownRenderer.render(
-							this.ctx.app,
-							richText,
-							viewContainer,
-							"",
-							this.renderComponent,
-						);
-					} catch (e) {
-						const pre = document.createElement("pre");
-						pre.style.whiteSpace = "pre-wrap";
-						pre.textContent = richText;
-						viewContainer.appendChild(pre);
-					}
-				} else {
-					viewContainer.createEl("p", {
-						text: "\u6682\u65E0 AI \u751F\u6210\u5185\u5BB9",
-						attr: { style: "color: var(--text-muted); font-style: italic;" },
-					});
-				}
-				body.appendChild(viewContainer);
-				this.container.appendChild(body);
-				document.body.appendChild(this.container);
-				this.makeDraggable(header);
-				const escHandler = (e) => {
-					if (e.key === "Escape") {
-						this.close();
-					}
-				};
-				document.addEventListener("keydown", escHandler);
-				this.registerCleanup(() =>
-					document.removeEventListener("keydown", escHandler),
-				);
-				this.outsideClickHandler = (e) => {
-					if (!this.container) return;
-					if (!this.container.contains(e.target)) {
-						this.close();
-					}
-				};
-				setTimeout(() => {
-					if (this.outsideClickHandler) {
-						document.addEventListener("click", this.outsideClickHandler);
-					}
-				}, 150);
-			}
-			updateTitleDisplay() {
-				if (!this.container || !this.currentParams) return;
-				const titleArea = this.container.querySelector(
-					"#ai-viewer-title-display",
-				);
-				if (!titleArea) return;
-				titleArea.empty();
-				const p = this.currentParams;
-				const displayText = p.nodeSummary
-					? p.nodeSummary.length > 24
-						? p.nodeSummary.slice(0, 24) + "\u2026"
-						: p.nodeSummary
-					: p.nodeId || "\u9605\u8BFB\u89C6\u56FE";
-				const titleSpan = document.createElement("span");
-				titleSpan.innerText = displayText;
-				titleSpan.title =
-					(p.nodeSummary || p.nodeId) +
-					" (\u53CC\u51FB\u8DF3\u8F6C\u539F\u6587)";
-				titleArea.appendChild(titleSpan);
-				const readBadge = document.createElement("span");
-				readBadge.innerText = "\u{1F441}\uFE0F \u9605\u8BFB";
-				readBadge.style.cssText =
-					"font-size:0.7em; opacity:0.6; margin-left:6px;";
-				titleArea.appendChild(readBadge);
-			}
-			registerCleanup(dispose) {
-				this.cleanupFns.push(dispose);
-			}
-			cleanupTransientListeners() {
-				for (const dispose of this.cleanupFns.splice(0)) {
-					dispose();
-				}
-			}
-			resetRenderComponent() {
-				this.renderComponent.unload();
-				this.renderComponent = new import_obsidian.Component();
-				this.renderComponent.load();
-			}
-			createCtrlBtn(text, tooltip, onclick) {
-				const btn = document.createElement("button");
-				btn.addClass("ai-popover-ctrl-btn");
-				btn.innerText = text;
-				btn.title = tooltip;
-				btn.addEventListener("mousedown", (e) => {
-					e.stopPropagation();
-				});
-				btn.addEventListener("click", (e) => {
-					e.stopPropagation();
-					onclick();
-				});
-				return btn;
-			}
-			jumpToSource(nodeId) {
-				const els = document.querySelectorAll(
-					`[data-marking-id="${nodeId}"], .mark-state-0, .mark-state-1, .mark-state-2, .mark-state-3`,
-				);
-				for (const el of Array.from(els)) {
-					if (
-						el.dataset.tagId ||
-						el.innerText.includes(nodeId) ||
-						el.dataset.markingId === nodeId
-					) {
-						el.scrollIntoView({ behavior: "smooth", block: "center" });
-						return;
-					}
-				}
-			}
-			makeDraggable(handle) {
-				let isDragging = false;
-				let offsetX = 0;
-				let offsetY = 0;
-				handle.style.cursor = "grab";
-				const onMouseDown = (e) => {
-					var _a, _b;
-					const target = e.target;
-					if (target.tagName === "BUTTON") return;
-					if (target.tagName === "INPUT") return;
-					if (target.closest(".ai-popover-ctrl-group")) return;
-					if (target.closest(".ai-footnote-popover-footer")) return;
-					isDragging = true;
-					handle.style.cursor = "grabbing";
-					offsetX =
-						e.clientX -
-						(((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
-					offsetY =
-						e.clientY -
-						(((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
-					e.preventDefault();
-				};
-				const onMouseMove = (e) => {
-					if (!isDragging || !this.container) return;
-					this.container.style.left = `${e.clientX - offsetX}px`;
-					this.container.style.top = `${e.clientY - offsetY}px`;
-				};
-				const onMouseUp = () => {
-					isDragging = false;
-					handle.style.cursor = "grab";
-				};
-				handle.addEventListener("mousedown", onMouseDown);
-				document.addEventListener("mousemove", onMouseMove);
-				document.addEventListener("mouseup", onMouseUp);
-				const onTouchStart = (e) => {
-					var _a, _b;
-					if (e.target.tagName === "BUTTON") return;
-					if (e.touches.length > 0) {
-						isDragging = true;
-						offsetX =
-							e.touches[0].clientX -
-							(((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
-						offsetY =
-							e.touches[0].clientY -
-							(((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
-					}
-				};
-				const onTouchMove = (e) => {
-					if (!isDragging || !this.container || e.touches.length === 0) return;
-					this.container.style.left = `${e.touches[0].clientX - offsetX}px`;
-					this.container.style.top = `${e.touches[0].clientY - offsetY}px`;
-					if (e.cancelable) e.preventDefault();
-				};
-				const onTouchEnd = () => {
-					isDragging = false;
-				};
-				handle.addEventListener("touchstart", onTouchStart, { passive: true });
-				document.addEventListener("touchmove", onTouchMove, { passive: false });
-				document.addEventListener("touchend", onTouchEnd);
-				this.registerCleanup(() => {
-					handle.removeEventListener("touchstart", onTouchStart);
-					document.removeEventListener("touchmove", onTouchMove);
-					document.removeEventListener("touchend", onTouchEnd);
-				});
-			}
-			close() {
-				if (this.outsideClickHandler) {
-					document.removeEventListener("click", this.outsideClickHandler);
-					this.outsideClickHandler = null;
-				}
-				this.cleanupTransientListeners();
-				this.resetRenderComponent();
-				if (this.container) {
-					this.container.remove();
-					this.container = null;
-				}
-			}
-		};
-		ButlerFloatingPanel = class {
-			constructor(plugin) {
-				this.container = null;
-				this.isDragging = false;
-				this.dragOffsetX = 0;
-				this.dragOffsetY = 0;
-				this.viewportMargin = 8;
-				this.resizeHandler = () => this.constrainToScreen();
-				this.plugin = plugin;
-			}
-			show() {
-				var _a;
-				if (this.container) {
-					this.container.style.display = "";
-					this.refresh();
-					this.constrainToScreen();
-					return;
-				}
-				this.container = document.createElement("div");
-				this.container.addClass("mn-butler-panel");
-				this.container.style.display = "flex";
-				const header = this.container.createEl("div", {
-					cls: "mn-butler-header",
-				});
-				header.createEl("span", {
-					text: "\u{1F3E0} \u7BA1\u5BB6\u9762\u677F",
-					cls: "mn-butler-title",
-				});
-				const closeBtn = header.createEl("button", {
-					text: "\u2716",
-					cls: "mn-butler-close",
-				});
-				closeBtn.onclick = () => this.hide();
-				this.refresh();
-				document.body.appendChild(this.container);
-				if (this.plugin.settings.enableDebugMode) {
-					console.log(
-						"[Marking Note] Butler panel shown, stewards:",
-						(_a = this.plugin.settings.stewards) == null ? void 0 : _a.length,
-					);
-				}
-				const savedPos = localStorage.getItem("mn-butler-pos");
-				if (savedPos) {
-					try {
-						const pos = JSON.parse(savedPos);
-						this.container.style.left = pos.left;
-						this.container.style.top = pos.top;
-					} catch (e) {
-						this.setDefaultPosition();
-					}
-				} else {
-					this.setDefaultPosition();
-				}
-				this.constrainToScreen();
-				window.addEventListener("resize", this.resizeHandler);
-				this.setupDrag(header);
-			}
-			hide() {
-				if (this.container) {
-					this.container.style.display = "none";
-				}
-			}
-			toggle() {
-				if (this.container && this.container.style.display !== "none") {
-					this.hide();
-				} else {
-					this.show();
-				}
-			}
-			close() {
-				if (this.container) {
-					this.container.remove();
-					this.container = null;
-				}
-				window.removeEventListener("resize", this.resizeHandler);
-			}
-			setDefaultPosition() {
-				if (!this.container) return;
-				const vw = window.innerWidth;
-				const maxWidth = Math.floor(vw * 0.67);
-				const preferredWidth = Math.min(260, maxWidth);
-				const left = Math.max(this.viewportMargin, vw - preferredWidth - 16);
-				this.container.style.left = `${left}px`;
-				this.container.style.top = `${Math.max(this.viewportMargin, 80)}px`;
-				this.container.style.right = "auto";
-				this.container.style.bottom = "auto";
-			}
-			/** Constrain panel size to 2/3 viewport and clamp position to stay on-screen */
-			constrainToScreen() {
-				if (!this.container) return;
-				const vw = window.innerWidth;
-				const vh = window.innerHeight;
-				const margin = this.viewportMargin;
-				const maxW = Math.floor(vw * 0.67);
-				const maxH = Math.floor(vh * 0.67);
-				this.container.style.maxWidth = `${maxW}px`;
-				this.container.style.maxHeight = `${maxH}px`;
-				const rect = this.container.getBoundingClientRect();
-				const parsedLeft = Number.parseFloat(this.container.style.left || "");
-				const parsedTop = Number.parseFloat(this.container.style.top || "");
-				let left = Number.isFinite(parsedLeft) ? parsedLeft : rect.left;
-				let top = Number.isFinite(parsedTop) ? parsedTop : rect.top;
-				left = Math.max(
-					margin,
-					Math.min(left, Math.max(margin, vw - rect.width - margin)),
-				);
-				top = Math.max(
-					margin,
-					Math.min(top, Math.max(margin, vh - rect.height - margin)),
-				);
-				this.container.style.left = `${left}px`;
-				this.container.style.top = `${top}px`;
-				this.container.style.right = "auto";
-				this.container.style.bottom = "auto";
-			}
-			refresh() {
-				if (!this.container) return;
-				const body = this.container.querySelector(".mn-butler-body");
-				if (body) body.remove();
-				const settings = this.plugin.settings;
-				const stewards = settings.stewards || [];
-				const steward =
-					stewards.find((s) => s.id === settings.activeStewardId) ||
-					stewards[0];
-				const contentDiv = this.container.createEl("div", {
-					cls: "mn-butler-body",
-				});
-				contentDiv.style.minHeight = "150px";
-				contentDiv.style.background = "var(--background-secondary)";
-				if (steward) {
-					const currentDiv = contentDiv.createEl("div", {
-						cls: "mn-butler-section",
-					});
-					currentDiv.createEl("div", {
-						text: "\u5F53\u524D\u7BA1\u5BB6",
-						cls: "mn-butler-label",
-					});
-					const activeDiv = currentDiv.createEl("div", {
-						cls: "mn-butler-active",
-					});
-					activeDiv.createEl("span", {
-						text: `${steward.icon} ${steward.name}`,
-						cls: "mn-butler-active-name",
-					});
-				}
-				if (stewards.length > 0) {
-					const switcherDiv = contentDiv.createEl("div", {
-						cls: "mn-butler-section",
-					});
-					switcherDiv.createEl("div", {
-						text: "\u5207\u6362\u7BA1\u5BB6",
-						cls: "mn-butler-label",
-					});
-					const stewardList = switcherDiv.createEl("div", {
-						cls: "mn-butler-steward-list",
-					});
-					for (const s of stewards) {
-						const btn = stewardList.createEl("button", {
-							text: `${s.icon} ${s.name}`,
-							cls:
-								s.id === settings.activeStewardId
-									? "mn-butler-steward-btn mn-butler-steward-active"
-									: "mn-butler-steward-btn",
-						});
-						btn.style.display = "flex";
-						btn.style.width = "100%";
-						btn.onclick = async () => {
-							settings.activeStewardId = s.id;
-							await this.plugin.saveSettings();
-							this.refresh();
-							this.constrainToScreen();
-							window.dispatchEvent(
-								new CustomEvent("marking-note-steward-changed"),
-							);
-						};
-					}
-				} else {
-					contentDiv.createEl("div", {
-						text: "\u26A0\uFE0F \u672A\u914D\u7F6E\u7BA1\u5BB6",
-						attr: { style: "color: var(--text-error); padding: 10px;" },
-					});
-				}
-				if (this.container.isConnected) {
-					this.constrainToScreen();
-				}
-			}
-			setupDrag(handle) {
-				if (!this.container) return;
-				const startDrag = (clientX, clientY) => {
-					var _a, _b;
-					this.isDragging = true;
-					this.dragOffsetX =
-						clientX -
-						(((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
-					this.dragOffsetY =
-						clientY -
-						(((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
-				};
-				const moveDrag = (clientX, clientY) => {
-					if (!this.isDragging || !this.container) return;
-					const vw = window.innerWidth;
-					const vh = window.innerHeight;
-					const margin = this.viewportMargin;
-					const rect = this.container.getBoundingClientRect();
-					let left = clientX - this.dragOffsetX;
-					let top = clientY - this.dragOffsetY;
-					left = Math.max(
-						margin,
-						Math.min(left, Math.max(margin, vw - rect.width - margin)),
-					);
-					top = Math.max(
-						margin,
-						Math.min(top, Math.max(margin, vh - rect.height - margin)),
-					);
-					this.container.style.left = `${left}px`;
-					this.container.style.top = `${top}px`;
-					this.container.style.right = "auto";
-				};
-				const endDrag = () => {
-					this.isDragging = false;
-					if (this.container) {
-						this.constrainToScreen();
-						localStorage.setItem(
-							"mn-butler-pos",
-							JSON.stringify({
-								left: this.container.style.left,
-								top: this.container.style.top,
-							}),
-						);
-					}
-				};
-				handle.addEventListener("mousedown", (e) => {
-					if (e.target.tagName === "BUTTON") return;
-					startDrag(e.clientX, e.clientY);
-					e.preventDefault();
-				});
-				document.addEventListener("mousemove", (e) =>
-					moveDrag(e.clientX, e.clientY),
-				);
-				document.addEventListener("mouseup", () => endDrag());
-				handle.addEventListener(
-					"touchstart",
-					(e) => {
-						if (e.target.tagName === "BUTTON") return;
-						if (e.touches.length > 0)
-							startDrag(e.touches[0].clientX, e.touches[0].clientY);
-					},
-					{ passive: true },
-				);
-				document.addEventListener(
-					"touchmove",
-					(e) => {
-						if (!this.isDragging || !this.container || e.touches.length === 0)
-							return;
-						moveDrag(e.touches[0].clientX, e.touches[0].clientY);
-						if (e.cancelable) e.preventDefault();
-					},
-					{ passive: false },
-				);
-				document.addEventListener("touchend", () => endDrag());
-			}
-		};
-	},
+  "src/ui.ts"() {
+    import_obsidian = require("obsidian");
+    init_annotation_repository();
+    FloatingMenu = class {
+      constructor(onAnalyze, onCommand, onInlineModify, plugin) {
+        this.onAnalyze = onAnalyze;
+        this.onCommand = onCommand;
+        this.onInlineModify = onInlineModify;
+        this.plugin = plugin;
+        this.container = null;
+        this.currentSelection = "";
+      }
+      show(x, y, selection) {
+        var _a, _b, _c, _d, _e;
+        this.close();
+        this.currentSelection = selection;
+        this.container = document.createElement("div");
+        this.container.addClass("ai-floating-menu");
+        const popW = 200;
+        const popH = 45;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let posX = x;
+        let posY = y - 45;
+        if (posX + popW > vw - 10)
+          posX = vw - popW - 10;
+        if (posY < 10)
+          posY = y + 25;
+        if (posY + popH > vh - 10)
+          posY = vh - popH - 10;
+        this.container.style.left = `${posX}px`;
+        this.container.style.top = `${posY}px`;
+        const btnAnalyze = document.createElement("button");
+        btnAnalyze.addClass("ai-floating-btn", "ai-floating-btn-primary");
+        btnAnalyze.innerText = "\u{1FA84} \u6807\u6CE8";
+        btnAnalyze.title = "\u4F7F\u7528\u5F53\u524D\u7BA1\u5BB6\u6807\u6CE8\u9009\u4E2D\u6587\u672C";
+        btnAnalyze.onclick = () => {
+          this.onAnalyze(this.currentSelection);
+          this.close();
+        };
+        const btnLightning = document.createElement("button");
+        btnLightning.addClass("ai-floating-btn");
+        btnLightning.innerText = "\u26A1";
+        btnLightning.title = "\u5FEB\u6377\u6307\u4EE4";
+        btnLightning.onclick = (e) => {
+          e.stopPropagation();
+          this.showCommandDropdown(btnLightning);
+        };
+        this.container.appendChild(btnAnalyze);
+        this.container.appendChild(btnLightning);
+        if ((_b = (_a = this.plugin) == null ? void 0 : _a.settings) == null ? void 0 : _b.enableInlineModification) {
+          const btnModify = document.createElement("button");
+          btnModify.addClass("ai-floating-btn");
+          btnModify.innerText = "\u270F\uFE0F";
+          btnModify.title = "AI \u539F\u6587\u7247\u6BB5\u6539\u5199";
+          btnModify.onclick = (e) => {
+            e.stopPropagation();
+            this.showInlineModifyDropdown(btnModify);
+          };
+          this.container.appendChild(btnModify);
+        }
+        const btnButler = document.createElement("button");
+        btnButler.addClass("ai-floating-btn");
+        const activeSteward = (_e = (_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null ? void 0 : _d.stewards) == null ? void 0 : _e.find((s) => {
+          var _a2, _b2;
+          return s.id === ((_b2 = (_a2 = this.plugin) == null ? void 0 : _a2.settings) == null ? void 0 : _b2.activeStewardId);
+        });
+        btnButler.innerText = (activeSteward == null ? void 0 : activeSteward.icon) || "\u{1F3E0}";
+        btnButler.title = "\u5207\u6362\u7BA1\u5BB6";
+        btnButler.onclick = (e) => {
+          e.stopPropagation();
+          this.showStewardDropdown(btnButler);
+        };
+        this.container.appendChild(btnButler);
+        const btnCancel = document.createElement("button");
+        btnCancel.addClass("ai-floating-btn");
+        btnCancel.innerText = "\u2716";
+        btnCancel.title = "\u5173\u95ED";
+        btnCancel.onclick = () => {
+          this.close();
+        };
+        this.container.appendChild(btnCancel);
+        document.body.appendChild(this.container);
+      }
+      showCommandDropdown(anchor) {
+        const existing = document.querySelector(".ai-lightning-dropdown");
+        if (existing)
+          existing.remove();
+        const dropdown = document.createElement("div");
+        dropdown.addClass("ai-lightning-dropdown");
+        const rect = anchor.getBoundingClientRect();
+        dropdown.style.left = `${rect.left}px`;
+        dropdown.style.top = `${rect.bottom + 4}px`;
+        const event = new CustomEvent("marking-note-get-commands", {
+          detail: { callback: (commands) => {
+            if (commands.length === 0) {
+              const emptyItem = document.createElement("div");
+              emptyItem.addClass("ai-lightning-item");
+              emptyItem.innerText = "\u65E0\u5FEB\u6377\u6307\u4EE4";
+              emptyItem.style.color = "var(--text-muted)";
+              dropdown.appendChild(emptyItem);
+            } else {
+              for (const cmd of commands) {
+                const item = document.createElement("div");
+                item.addClass("ai-lightning-item");
+                item.style.display = "flex";
+                item.style.alignItems = "center";
+                item.style.justifyContent = "space-between";
+                const leftPart = document.createElement("span");
+                leftPart.innerText = `${cmd.icon} ${cmd.name}`;
+                const rightPart = document.createElement("span");
+                rightPart.style.display = "flex";
+                rightPart.style.alignItems = "center";
+                rightPart.style.gap = "4px";
+                if (cmd.enableWebSearch) {
+                  const searchBadge = document.createElement("span");
+                  searchBadge.innerText = "\u{1F50D}";
+                  searchBadge.title = "\u7F51\u7EDC\u641C\u7D22\u5DF2\u5F00\u542F";
+                  searchBadge.style.fontSize = "0.85em";
+                  searchBadge.style.opacity = "0.7";
+                  rightPart.appendChild(searchBadge);
+                }
+                item.appendChild(leftPart);
+                item.appendChild(rightPart);
+                item.onclick = () => {
+                  this.onCommand(this.currentSelection, cmd);
+                  dropdown.remove();
+                  this.close();
+                };
+                dropdown.appendChild(item);
+              }
+            }
+          } }
+        });
+        window.dispatchEvent(event);
+        document.body.appendChild(dropdown);
+        const closeHandler = (e) => {
+          if (!dropdown.contains(e.target)) {
+            dropdown.remove();
+            document.removeEventListener("click", closeHandler);
+          }
+        };
+        setTimeout(() => document.addEventListener("click", closeHandler), 10);
+      }
+      showInlineModifyDropdown(anchor) {
+        const existing = document.querySelector(".ai-lightning-dropdown");
+        if (existing)
+          existing.remove();
+        const dropdown = document.createElement("div");
+        dropdown.addClass("ai-lightning-dropdown");
+        const rect = anchor.getBoundingClientRect();
+        dropdown.style.left = `${rect.left}px`;
+        dropdown.style.top = `${rect.bottom + 4}px`;
+        const event = new CustomEvent("marking-note-get-inline-commands", {
+          detail: { callback: (commands) => {
+            if (commands.length === 0) {
+              const emptyItem = document.createElement("div");
+              emptyItem.addClass("ai-lightning-item");
+              emptyItem.innerText = "\u65E0\u6539\u5199\u6307\u4EE4";
+              emptyItem.style.color = "var(--text-muted)";
+              dropdown.appendChild(emptyItem);
+            } else {
+              for (const cmd of commands) {
+                const item = document.createElement("div");
+                item.addClass("ai-lightning-item");
+                item.innerText = `${cmd.icon} ${cmd.name}`;
+                item.onclick = () => {
+                  this.onInlineModify(this.currentSelection, cmd.detailPrompt);
+                  dropdown.remove();
+                  this.close();
+                };
+                dropdown.appendChild(item);
+              }
+            }
+          } }
+        });
+        window.dispatchEvent(event);
+        document.body.appendChild(dropdown);
+        const closeHandler = (e) => {
+          if (!dropdown.contains(e.target)) {
+            dropdown.remove();
+            document.removeEventListener("click", closeHandler);
+          }
+        };
+        setTimeout(() => document.addEventListener("click", closeHandler), 10);
+      }
+      showStewardDropdown(anchor) {
+        var _a, _b, _c, _d;
+        const existing = document.querySelector(".ai-lightning-dropdown");
+        if (existing)
+          existing.remove();
+        const dropdown = document.createElement("div");
+        dropdown.addClass("ai-lightning-dropdown");
+        dropdown.style.minWidth = "180px";
+        dropdown.style.border = "1px solid var(--background-modifier-border)";
+        dropdown.style.borderRadius = "8px";
+        dropdown.style.padding = "4px 0";
+        const rect = anchor.getBoundingClientRect();
+        dropdown.style.left = `${rect.left}px`;
+        dropdown.style.top = `${rect.bottom + 4}px`;
+        const stewards = ((_b = (_a = this.plugin) == null ? void 0 : _a.settings) == null ? void 0 : _b.stewards) || [];
+        const activeStewardId = (_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null ? void 0 : _d.activeStewardId;
+        if (stewards.length === 0) {
+          const emptyItem = document.createElement("div");
+          emptyItem.addClass("ai-lightning-item");
+          emptyItem.innerText = "\u65E0\u7BA1\u5BB6\u914D\u7F6E";
+          emptyItem.style.color = "var(--text-muted)";
+          dropdown.appendChild(emptyItem);
+        } else {
+          for (const steward of stewards) {
+            const item = document.createElement("div");
+            item.addClass("ai-lightning-item");
+            item.style.display = "flex";
+            item.style.alignItems = "center";
+            item.style.justifyContent = "space-between";
+            item.style.padding = "8px 12px";
+            item.style.borderRadius = "4px";
+            item.style.margin = "2px 4px";
+            item.style.width = "calc(100% - 8px)";
+            item.style.boxSizing = "border-box";
+            const leftPart = document.createElement("span");
+            leftPart.style.color = "var(--text-normal)";
+            leftPart.style.fontSize = "0.9em";
+            leftPart.innerText = `${steward.icon} ${steward.name}`;
+            item.appendChild(leftPart);
+            if (steward.id === activeStewardId) {
+              item.style.background = "var(--interactive-accent)";
+              leftPart.style.color = "var(--text-on-accent)";
+              leftPart.style.fontWeight = "600";
+            }
+            item.onclick = async () => {
+              this.plugin.settings.activeStewardId = steward.id;
+              await this.plugin.saveSettings();
+              window.dispatchEvent(new CustomEvent("marking-note-steward-changed"));
+              dropdown.remove();
+              this.close();
+              new import_obsidian.Notice(`\u5DF2\u5207\u6362\u5230: ${steward.icon} ${steward.name}`);
+            };
+            dropdown.appendChild(item);
+          }
+        }
+        document.body.appendChild(dropdown);
+        const closeHandler = (e) => {
+          if (!dropdown.contains(e.target)) {
+            dropdown.remove();
+            document.removeEventListener("click", closeHandler);
+          }
+        };
+        setTimeout(() => document.addEventListener("click", closeHandler), 10);
+      }
+      close() {
+        if (this.container) {
+          this.container.remove();
+          this.container = null;
+        }
+        const dropdown = document.querySelector(".ai-lightning-dropdown");
+        if (dropdown)
+          dropdown.remove();
+      }
+    };
+    PopoverEditor = class {
+      constructor(node, editorView, ctx) {
+        this.node = node;
+        this.editorView = editorView;
+        this.ctx = ctx;
+        this.container = null;
+        this.viewContainer = null;
+        this.editTextarea = null;
+        this.isEditMode = false;
+        this.isFullscreen = false;
+        this.currentContent = "";
+        this.isPinned = false;
+        this.outsideClickHandler = null;
+        this.webSearchEnabled = false;
+        // Saved non-fullscreen position/size for restoration
+        this.savedLeft = "";
+        this.savedTop = "";
+        this.savedWidth = "";
+        this.savedHeight = "";
+        this.cleanupFns = [];
+        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent.load();
+      }
+      async show(anchorX, anchorY) {
+        const fullDoc = this.editorView.state.doc.toString();
+        this.currentContent = annotationRepository.getCalloutContent(fullDoc, this.node.id) || "";
+        if (this.isPinned && this.container) {
+          this.updateTitleDisplay();
+          if (this.editTextarea)
+            this.editTextarea.value = this.currentContent;
+          await this.renderMarkdownView();
+          return;
+        }
+        this.close();
+        this.container = document.createElement("div");
+        this.container.addClass("ai-footnote-popover-window");
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const isMobile = vw <= 600;
+        let popW;
+        let posX;
+        let posY;
+        if (isMobile) {
+          popW = Math.floor(vw * 0.94);
+          posX = Math.floor((vw - popW) / 2);
+          posY = Math.max(70, Math.floor(vh / 2 - 180));
+        } else {
+          popW = 460;
+          posX = Math.min(anchorX, vw - popW - 10);
+          posX = Math.max(10, posX);
+          posY = Math.min(anchorY, vh - 380);
+          posY = Math.max(10, posY);
+        }
+        this.container.style.width = `${popW}px`;
+        this.container.style.left = `${posX}px`;
+        this.container.style.top = `${posY}px`;
+        const header = document.createElement("div");
+        header.addClass("ai-footnote-popover-header");
+        const pinBtn = document.createElement("span");
+        pinBtn.addClass("ai-popover-pin-toggle");
+        pinBtn.innerText = this.isPinned ? "\u{1F4CD}" : "\u{1F4CC}";
+        pinBtn.onclick = () => {
+          this.isPinned = !this.isPinned;
+          pinBtn.innerText = this.isPinned ? "\u{1F4CD}" : "\u{1F4CC}";
+          pinBtn.style.opacity = this.isPinned ? "1" : "0.4";
+          pinBtn.title = this.isPinned ? "\u53D6\u6D88\u56FA\u5B9A" : "\u56FA\u5B9A\u7A97\u53E3";
+          if (this.isPinned) {
+            this.removeOutsideClickHandler();
+          } else {
+            this.addOutsideClickHandler();
+          }
+        };
+        header.appendChild(pinBtn);
+        const titleArea = document.createElement("div");
+        titleArea.addClass("ai-popover-title-area");
+        titleArea.id = "ai-popover-title-display";
+        header.appendChild(titleArea);
+        const ctrl = document.createElement("div");
+        ctrl.addClass("ai-popover-ctrl-group");
+        const toggleBtn = this.createCtrlBtn("\u{1F4DD}", "\u7F16\u8F91\u6A21\u5F0F", () => this.toggleMode());
+        ctrl.appendChild(toggleBtn);
+        const fullscreenBtn = this.createCtrlBtn("\u26F6", "\u94FA\u6EE1\u5168\u5C4F / \u8FD8\u539F", () => this.toggleFullscreen(fullscreenBtn));
+        ctrl.appendChild(fullscreenBtn);
+        const copyBtn = this.createCtrlBtn("\u{1F4CB}", "\u590D\u5236\u5185\u5BB9", () => {
+          navigator.clipboard.writeText(this.currentContent);
+          copyBtn.innerText = "\u2705";
+          setTimeout(() => {
+            copyBtn.innerText = "\u{1F4CB}";
+          }, 1500);
+        });
+        ctrl.appendChild(copyBtn);
+        const deleteBtn = this.createCtrlBtn("\u{1F5D1}\uFE0F", "\u5220\u9664\u6B64\u6807\u6CE8", () => {
+          this.deleteNodeFromEditor();
+          this.close();
+        });
+        deleteBtn.style.color = "var(--text-error, #e05c5c)";
+        ctrl.appendChild(deleteBtn);
+        const closeBtn = this.createCtrlBtn("\u2716", "\u5173\u95ED", () => this.close());
+        ctrl.appendChild(closeBtn);
+        header.appendChild(ctrl);
+        this.container.appendChild(header);
+        const body = document.createElement("div");
+        body.addClass("ai-footnote-popover-body");
+        this.viewContainer = document.createElement("div");
+        this.viewContainer.addClass("ai-popover-view");
+        body.appendChild(this.viewContainer);
+        this.editTextarea = document.createElement("textarea");
+        this.editTextarea.addClass("ai-popover-edit");
+        this.editTextarea.value = this.currentContent;
+        this.editTextarea.style.display = "none";
+        this.editTextarea.spellcheck = false;
+        this.editTextarea.addEventListener("input", () => {
+          this.currentContent = this.editTextarea.value;
+          this.syncToBottom(this.currentContent);
+        });
+        body.appendChild(this.editTextarea);
+        this.container.appendChild(body);
+        const footer = document.createElement("div");
+        footer.addClass("ai-footnote-popover-footer");
+        const inputRow = document.createElement("div");
+        inputRow.addClass("ai-popover-input-row");
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "\u5BF9\u7ED3\u679C\u4E0D\u6EE1\u610F\uFF1F\u7EE7\u7EED\u6307\u6325 AI...";
+        const sendBtn = document.createElement("button");
+        sendBtn.addClass("ai-floating-btn", "ai-floating-btn-primary");
+        sendBtn.innerText = "\u53D1\u9001";
+        sendBtn.style.padding = "4px 12px";
+        sendBtn.style.marginLeft = "6px";
+        sendBtn.style.fontSize = "0.85em";
+        const webSearchBtn = document.createElement("button");
+        webSearchBtn.addClass("ai-floating-btn");
+        webSearchBtn.innerText = "\u{1F50D}";
+        webSearchBtn.title = "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
+        webSearchBtn.style.padding = "4px 8px";
+        webSearchBtn.style.marginLeft = "4px";
+        webSearchBtn.style.fontSize = "0.85em";
+        webSearchBtn.style.opacity = "0.5";
+        webSearchBtn.onclick = () => {
+          this.webSearchEnabled = !this.webSearchEnabled;
+          webSearchBtn.style.opacity = this.webSearchEnabled ? "1" : "0.5";
+          webSearchBtn.style.background = this.webSearchEnabled ? "var(--interactive-accent)" : "";
+          webSearchBtn.title = this.webSearchEnabled ? "\u5173\u95ED\u7F51\u7EDC\u641C\u7D22" : "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
+        };
+        const undoBtn = document.createElement("button");
+        undoBtn.addClass("ai-floating-btn");
+        undoBtn.innerText = "\u21A9\uFE0F \u56DE\u9000";
+        undoBtn.title = "\u56DE\u9000\u5230\u4E0A\u4E00\u6B21\u7684\u56DE\u7B54";
+        undoBtn.style.padding = "4px 12px";
+        undoBtn.style.marginLeft = "6px";
+        undoBtn.style.fontSize = "0.85em";
+        const updateUndoState = () => {
+          if (this.ctx.canUndo(this.node.id)) {
+            undoBtn.style.opacity = "1";
+            undoBtn.style.cursor = "pointer";
+          } else {
+            undoBtn.style.opacity = "0.5";
+            undoBtn.style.cursor = "not-allowed";
+          }
+        };
+        const doSend = async () => {
+          const instruction = input.value.trim();
+          if (!instruction)
+            return;
+          input.value = "";
+          input.placeholder = "\u23F3 AI \u601D\u8003\u4E2D...";
+          input.disabled = true;
+          sendBtn.disabled = true;
+          const result = await this.ctx.onFollowUp(this.node.id, instruction, this.currentContent, { enableWebSearch: this.webSearchEnabled });
+          input.disabled = false;
+          sendBtn.disabled = false;
+          input.placeholder = "\u5BF9\u7ED3\u679C\u4E0D\u6EE1\u610F\uFF1F\u7EE7\u7EED\u6307\u6325 AI...";
+          if (result) {
+            this.currentContent = result.richText;
+            this.syncToBottom(result.richText);
+            this.syncToInline(result.summary);
+            if (this.editTextarea)
+              this.editTextarea.value = result.richText;
+            await this.renderMarkdownView();
+          }
+          updateUndoState();
+        };
+        undoBtn.onclick = async () => {
+          if (!this.ctx.canUndo(this.node.id))
+            return;
+          const previousText = this.ctx.popUndo(this.node.id);
+          if (previousText !== null) {
+            this.currentContent = previousText;
+            this.syncToBottom(previousText);
+            if (this.editTextarea)
+              this.editTextarea.value = previousText;
+            await this.renderMarkdownView();
+            updateUndoState();
+          }
+        };
+        updateUndoState();
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            doSend();
+          }
+        });
+        sendBtn.onclick = doSend;
+        inputRow.appendChild(input);
+        inputRow.appendChild(undoBtn);
+        inputRow.appendChild(webSearchBtn);
+        inputRow.appendChild(sendBtn);
+        footer.appendChild(inputRow);
+        this.container.appendChild(footer);
+        document.body.appendChild(this.container);
+        this.updateTitleDisplay();
+        await this.renderMarkdownView();
+        this.makeDraggable(header);
+        const escHandler = (e) => {
+          if (e.key === "Escape") {
+            this.close();
+          }
+        };
+        document.addEventListener("keydown", escHandler);
+        this.registerCleanup(() => document.removeEventListener("keydown", escHandler));
+        if (!this.isPinned) {
+          this.addOutsideClickHandler();
+        }
+      }
+      /** Update the title area to show truncated summary (or node id as fallback) */
+      updateTitleDisplay() {
+        if (!this.container)
+          return;
+        const titleArea = this.container.querySelector("#ai-popover-title-display");
+        if (!titleArea)
+          return;
+        titleArea.empty();
+        const displayText = this.node.summary ? this.node.summary.length > 24 ? this.node.summary.slice(0, 24) + "\u2026" : this.node.summary : this.node.id || "\u65E0\u6807\u9898";
+        const titleSpan = document.createElement("span");
+        titleSpan.innerText = displayText;
+        titleSpan.title = (this.node.summary || this.node.id) + " (\u53CC\u51FB\u8DF3\u8F6C\u539F\u6587)";
+        titleArea.ondblclick = () => this.jumpToSource();
+        titleArea.style.cursor = "pointer";
+        titleArea.appendChild(titleSpan);
+      }
+      addOutsideClickHandler() {
+        this.removeOutsideClickHandler();
+        this.outsideClickHandler = (e) => {
+          if (!this.container)
+            return;
+          if (!this.container.contains(e.target)) {
+            this.close();
+          }
+        };
+        setTimeout(() => {
+          if (this.outsideClickHandler) {
+            document.addEventListener("click", this.outsideClickHandler);
+          }
+        }, 150);
+      }
+      removeOutsideClickHandler() {
+        if (this.outsideClickHandler) {
+          document.removeEventListener("click", this.outsideClickHandler);
+          this.outsideClickHandler = null;
+        }
+      }
+      registerCleanup(dispose) {
+        this.cleanupFns.push(dispose);
+      }
+      cleanupTransientListeners() {
+        for (const dispose of this.cleanupFns.splice(0)) {
+          dispose();
+        }
+      }
+      resetRenderComponent() {
+        this.renderComponent.unload();
+        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent.load();
+      }
+      createCtrlBtn(text, tooltip, onclick) {
+        const btn = document.createElement("button");
+        btn.addClass("ai-popover-ctrl-btn");
+        btn.innerText = text;
+        btn.title = tooltip;
+        btn.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+        });
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onclick();
+        });
+        return btn;
+      }
+      async renderMarkdownView() {
+        if (!this.viewContainer)
+          return;
+        this.viewContainer.empty();
+        if (!this.currentContent) {
+          this.viewContainer.createEl("p", { text: "\u6682\u65E0 AI \u751F\u6210\u5185\u5BB9", attr: { style: "color: var(--text-muted); font-style: italic;" } });
+          return;
+        }
+        try {
+          await import_obsidian.MarkdownRenderer.render(
+            this.ctx.app,
+            this.currentContent,
+            this.viewContainer,
+            "",
+            this.renderComponent
+          );
+        } catch (e) {
+          try {
+            await import_obsidian.MarkdownRenderer.renderMarkdown(
+              this.currentContent,
+              this.viewContainer,
+              "",
+              this.renderComponent
+            );
+          } catch (e2) {
+            const pre = document.createElement("pre");
+            pre.style.whiteSpace = "pre-wrap";
+            pre.textContent = this.currentContent;
+            this.viewContainer.appendChild(pre);
+          }
+        }
+      }
+      async toggleMode() {
+        this.isEditMode = !this.isEditMode;
+        if (this.viewContainer && this.editTextarea) {
+          if (this.isEditMode) {
+            this.viewContainer.style.display = "none";
+            this.editTextarea.style.display = "block";
+            this.editTextarea.value = this.currentContent;
+            this.editTextarea.focus();
+          } else {
+            this.editTextarea.style.display = "none";
+            this.viewContainer.style.display = "block";
+            await this.renderMarkdownView();
+          }
+        }
+      }
+      toggleFullscreen(btn) {
+        if (!this.container)
+          return;
+        this.isFullscreen = !this.isFullscreen;
+        if (this.isFullscreen) {
+          this.savedLeft = this.container.style.left;
+          this.savedTop = this.container.style.top;
+          this.savedWidth = this.container.style.width;
+          this.savedHeight = this.container.style.height;
+          const isMobile = window.innerWidth <= 600;
+          const topOffset = isMobile ? 65 : 40;
+          this.container.style.left = "0px";
+          this.container.style.top = `${topOffset}px`;
+          this.container.style.width = "100vw";
+          this.container.style.height = `calc(100vh - ${topOffset}px)`;
+          this.container.style.maxWidth = "100vw";
+          this.container.style.maxHeight = "100vh";
+          this.container.style.borderRadius = "0";
+          btn.title = "\u8FD8\u539F\u7A97\u53E3\u5927\u5C0F";
+          btn.innerText = "\u22A1";
+        } else {
+          this.container.style.left = this.savedLeft;
+          this.container.style.top = this.savedTop;
+          this.container.style.width = this.savedWidth;
+          this.container.style.height = this.savedHeight;
+          this.container.style.maxWidth = "";
+          this.container.style.maxHeight = "";
+          this.container.style.borderRadius = "";
+          btn.title = "\u94FA\u6EE1\u5168\u5C4F / \u8FD8\u539F";
+          btn.innerText = "\u26F6";
+        }
+      }
+      syncToBottom(newText) {
+        const text = this.editorView.state.doc.toString();
+        const mutation = annotationRepository.updateCalloutContent({
+          text,
+          id: this.node.id,
+          richText: newText
+        });
+        if (mutation.text !== text) {
+          this.editorView.dispatch({
+            changes: {
+              from: 0,
+              to: text.length,
+              insert: mutation.text
+            }
+          });
+        }
+      }
+      syncToInline(newSummary) {
+        if (!newSummary)
+          return;
+        const text = this.editorView.state.doc.toString();
+        const mutation = annotationRepository.updateAnnotationSummary({
+          text,
+          id: this.node.id,
+          summary: newSummary
+        });
+        if (mutation.text !== text) {
+          this.editorView.dispatch({
+            changes: {
+              from: 0,
+              to: text.length,
+              insert: mutation.text
+            }
+          });
+        }
+      }
+      jumpToSource() {
+        const text = this.editorView.state.doc.toString();
+        const range = annotationRepository.findCalloutRange(text, this.node.id);
+        if (range) {
+          this.editorView.dispatch({
+            selection: { anchor: range.from },
+            scrollIntoView: true
+          });
+          this.editorView.focus();
+        }
+      }
+      makeDraggable(handle) {
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+        handle.style.cursor = "grab";
+        const startDrag = (clientX, clientY) => {
+          var _a, _b;
+          if (this.isFullscreen)
+            return;
+          isDragging = true;
+          handle.style.cursor = "grabbing";
+          offsetX = clientX - (((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
+          offsetY = clientY - (((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
+        };
+        const moveDrag = (clientX, clientY) => {
+          if (!isDragging || !this.container)
+            return;
+          this.container.style.left = `${clientX - offsetX}px`;
+          this.container.style.top = `${clientY - offsetY}px`;
+        };
+        const endDrag = () => {
+          isDragging = false;
+          handle.style.cursor = "grab";
+        };
+        const onMouseDown = (e) => {
+          const target = e.target;
+          if (target.tagName === "BUTTON")
+            return;
+          if (target.tagName === "INPUT")
+            return;
+          if (target.closest(".ai-popover-ctrl-group"))
+            return;
+          if (target.closest(".ai-footnote-popover-footer"))
+            return;
+          startDrag(e.clientX, e.clientY);
+          e.preventDefault();
+        };
+        const onMouseMove = (e) => moveDrag(e.clientX, e.clientY);
+        const onMouseUp = () => endDrag();
+        handle.addEventListener("mousedown", onMouseDown);
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+        this.registerCleanup(() => {
+          handle.removeEventListener("mousedown", onMouseDown);
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        });
+        this.registerCleanup(() => {
+          handle.removeEventListener("mousedown", onMouseDown);
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        });
+        const onTouchStart = (e) => {
+          const target = e.target;
+          if (target.tagName === "BUTTON")
+            return;
+          if (target.tagName === "INPUT")
+            return;
+          if (target.closest(".ai-popover-ctrl-group"))
+            return;
+          if (target.closest(".ai-footnote-popover-footer"))
+            return;
+          if (e.touches.length > 0)
+            startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        const onTouchMove = (e) => {
+          if (!isDragging || e.touches.length === 0)
+            return;
+          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        const onTouchEnd = () => endDrag();
+        handle.addEventListener("touchstart", onTouchStart, { passive: true });
+        document.addEventListener("touchmove", onTouchMove, { passive: false });
+        document.addEventListener("touchend", onTouchEnd);
+        this.registerCleanup(() => {
+          handle.removeEventListener("touchstart", onTouchStart);
+          document.removeEventListener("touchmove", onTouchMove);
+          document.removeEventListener("touchend", onTouchEnd);
+        });
+      }
+      deleteNodeFromEditor() {
+        var _a, _b;
+        const text = this.editorView.state.doc.toString();
+        const mutation = annotationRepository.deleteAnnotation(text, this.node.id);
+        if (mutation.text === text)
+          return;
+        this.editorView.dispatch({
+          changes: {
+            from: 0,
+            to: text.length,
+            insert: mutation.text
+          },
+          selection: { anchor: (_b = (_a = mutation.range) == null ? void 0 : _a.from) != null ? _b : 0 }
+        });
+      }
+      close() {
+        this.removeOutsideClickHandler();
+        this.cleanupTransientListeners();
+        this.resetRenderComponent();
+        if (this.container) {
+          this.container.remove();
+          this.container = null;
+        }
+        this.viewContainer = null;
+        this.editTextarea = null;
+        this.isFullscreen = false;
+      }
+    };
+    PopoverViewer = class {
+      constructor(ctx) {
+        this.ctx = ctx;
+        this.container = null;
+        this.outsideClickHandler = null;
+        this.cleanupFns = [];
+        // Extracted so title refresh has context
+        this.currentParams = null;
+        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent.load();
+      }
+      async show(nodeId, nodeSummary, nodeState, nodeTagId, richText, anchorX, anchorY) {
+        this.close();
+        this.currentParams = { nodeId, nodeSummary, nodeState, nodeTagId };
+        this.container = document.createElement("div");
+        this.container.addClass("ai-footnote-popover-window");
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const isMobile = vw <= 600;
+        let popW;
+        let posX;
+        let posY;
+        if (isMobile) {
+          popW = Math.floor(vw * 0.94);
+          posX = Math.floor((vw - popW) / 2);
+          posY = Math.max(70, Math.floor(vh / 2 - 180));
+        } else {
+          popW = 460;
+          posX = Math.min(anchorX, vw - popW - 10);
+          posX = Math.max(10, posX);
+          posY = Math.min(anchorY, vh - 380);
+          posY = Math.max(10, posY);
+        }
+        this.container.style.width = `${popW}px`;
+        this.container.style.left = `${posX}px`;
+        this.container.style.top = `${posY}px`;
+        const header = document.createElement("div");
+        header.addClass("ai-footnote-popover-header");
+        const titleArea = document.createElement("div");
+        titleArea.addClass("ai-popover-title-area");
+        titleArea.id = "ai-viewer-title-display";
+        titleArea.ondblclick = () => this.jumpToSource(nodeId);
+        titleArea.style.cursor = "pointer";
+        header.appendChild(titleArea);
+        this.updateTitleDisplay();
+        const ctrl = document.createElement("div");
+        ctrl.addClass("ai-popover-ctrl-group");
+        const copyBtn = this.createCtrlBtn("\u{1F4CB}", "\u590D\u5236\u5185\u5BB9", () => {
+          navigator.clipboard.writeText(richText);
+          copyBtn.innerText = "\u2705";
+          setTimeout(() => {
+            copyBtn.innerText = "\u{1F4CB}";
+          }, 1500);
+        });
+        ctrl.appendChild(copyBtn);
+        const closeBtn = this.createCtrlBtn("\u2716", "\u5173\u95ED", () => this.close());
+        ctrl.appendChild(closeBtn);
+        header.appendChild(ctrl);
+        this.container.appendChild(header);
+        const body = document.createElement("div");
+        body.addClass("ai-footnote-popover-body");
+        const viewContainer = document.createElement("div");
+        viewContainer.addClass("ai-popover-view");
+        if (richText) {
+          try {
+            await import_obsidian.MarkdownRenderer.render(
+              this.ctx.app,
+              richText,
+              viewContainer,
+              "",
+              this.renderComponent
+            );
+          } catch (e) {
+            const pre = document.createElement("pre");
+            pre.style.whiteSpace = "pre-wrap";
+            pre.textContent = richText;
+            viewContainer.appendChild(pre);
+          }
+        } else {
+          viewContainer.createEl("p", {
+            text: "\u6682\u65E0 AI \u751F\u6210\u5185\u5BB9",
+            attr: { style: "color: var(--text-muted); font-style: italic;" }
+          });
+        }
+        body.appendChild(viewContainer);
+        this.container.appendChild(body);
+        document.body.appendChild(this.container);
+        this.makeDraggable(header);
+        const escHandler = (e) => {
+          if (e.key === "Escape") {
+            this.close();
+          }
+        };
+        document.addEventListener("keydown", escHandler);
+        this.registerCleanup(() => document.removeEventListener("keydown", escHandler));
+        this.outsideClickHandler = (e) => {
+          if (!this.container)
+            return;
+          if (!this.container.contains(e.target)) {
+            this.close();
+          }
+        };
+        setTimeout(() => {
+          if (this.outsideClickHandler) {
+            document.addEventListener("click", this.outsideClickHandler);
+          }
+        }, 150);
+      }
+      updateTitleDisplay() {
+        if (!this.container || !this.currentParams)
+          return;
+        const titleArea = this.container.querySelector("#ai-viewer-title-display");
+        if (!titleArea)
+          return;
+        titleArea.empty();
+        const p = this.currentParams;
+        const displayText = p.nodeSummary ? p.nodeSummary.length > 24 ? p.nodeSummary.slice(0, 24) + "\u2026" : p.nodeSummary : p.nodeId || "\u9605\u8BFB\u89C6\u56FE";
+        const titleSpan = document.createElement("span");
+        titleSpan.innerText = displayText;
+        titleSpan.title = (p.nodeSummary || p.nodeId) + " (\u53CC\u51FB\u8DF3\u8F6C\u539F\u6587)";
+        titleArea.appendChild(titleSpan);
+        const readBadge = document.createElement("span");
+        readBadge.innerText = "\u{1F441}\uFE0F \u9605\u8BFB";
+        readBadge.style.cssText = "font-size:0.7em; opacity:0.6; margin-left:6px;";
+        titleArea.appendChild(readBadge);
+      }
+      registerCleanup(dispose) {
+        this.cleanupFns.push(dispose);
+      }
+      cleanupTransientListeners() {
+        for (const dispose of this.cleanupFns.splice(0)) {
+          dispose();
+        }
+      }
+      resetRenderComponent() {
+        this.renderComponent.unload();
+        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent.load();
+      }
+      createCtrlBtn(text, tooltip, onclick) {
+        const btn = document.createElement("button");
+        btn.addClass("ai-popover-ctrl-btn");
+        btn.innerText = text;
+        btn.title = tooltip;
+        btn.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+        });
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onclick();
+        });
+        return btn;
+      }
+      jumpToSource(nodeId) {
+        const els = document.querySelectorAll(`[data-marking-id="${nodeId}"], .mark-state-0, .mark-state-1, .mark-state-2, .mark-state-3`);
+        for (const el of Array.from(els)) {
+          if (el.dataset.tagId || el.innerText.includes(nodeId) || el.dataset.markingId === nodeId) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+          }
+        }
+      }
+      makeDraggable(handle) {
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+        handle.style.cursor = "grab";
+        const onMouseDown = (e) => {
+          var _a, _b;
+          const target = e.target;
+          if (target.tagName === "BUTTON")
+            return;
+          if (target.tagName === "INPUT")
+            return;
+          if (target.closest(".ai-popover-ctrl-group"))
+            return;
+          if (target.closest(".ai-footnote-popover-footer"))
+            return;
+          isDragging = true;
+          handle.style.cursor = "grabbing";
+          offsetX = e.clientX - (((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
+          offsetY = e.clientY - (((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
+          e.preventDefault();
+        };
+        const onMouseMove = (e) => {
+          if (!isDragging || !this.container)
+            return;
+          this.container.style.left = `${e.clientX - offsetX}px`;
+          this.container.style.top = `${e.clientY - offsetY}px`;
+        };
+        const onMouseUp = () => {
+          isDragging = false;
+          handle.style.cursor = "grab";
+        };
+        handle.addEventListener("mousedown", onMouseDown);
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+        const onTouchStart = (e) => {
+          var _a, _b;
+          if (e.target.tagName === "BUTTON")
+            return;
+          if (e.touches.length > 0) {
+            isDragging = true;
+            offsetX = e.touches[0].clientX - (((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
+            offsetY = e.touches[0].clientY - (((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
+          }
+        };
+        const onTouchMove = (e) => {
+          if (!isDragging || !this.container || e.touches.length === 0)
+            return;
+          this.container.style.left = `${e.touches[0].clientX - offsetX}px`;
+          this.container.style.top = `${e.touches[0].clientY - offsetY}px`;
+          if (e.cancelable)
+            e.preventDefault();
+        };
+        const onTouchEnd = () => {
+          isDragging = false;
+        };
+        handle.addEventListener("touchstart", onTouchStart, { passive: true });
+        document.addEventListener("touchmove", onTouchMove, { passive: false });
+        document.addEventListener("touchend", onTouchEnd);
+        this.registerCleanup(() => {
+          handle.removeEventListener("touchstart", onTouchStart);
+          document.removeEventListener("touchmove", onTouchMove);
+          document.removeEventListener("touchend", onTouchEnd);
+        });
+      }
+      close() {
+        if (this.outsideClickHandler) {
+          document.removeEventListener("click", this.outsideClickHandler);
+          this.outsideClickHandler = null;
+        }
+        this.cleanupTransientListeners();
+        this.resetRenderComponent();
+        if (this.container) {
+          this.container.remove();
+          this.container = null;
+        }
+      }
+    };
+    ButlerFloatingPanel = class {
+      constructor(plugin) {
+        this.container = null;
+        this.isDragging = false;
+        this.dragOffsetX = 0;
+        this.dragOffsetY = 0;
+        this.viewportMargin = 8;
+        this.resizeHandler = () => this.constrainToScreen();
+        this.plugin = plugin;
+      }
+      show() {
+        var _a;
+        if (this.container) {
+          this.container.style.display = "";
+          this.refresh();
+          this.constrainToScreen();
+          return;
+        }
+        this.container = document.createElement("div");
+        this.container.addClass("mn-butler-panel");
+        this.container.style.display = "flex";
+        const header = this.container.createEl("div", { cls: "mn-butler-header" });
+        header.createEl("span", { text: "\u{1F3E0} \u7BA1\u5BB6\u9762\u677F", cls: "mn-butler-title" });
+        const closeBtn = header.createEl("button", { text: "\u2716", cls: "mn-butler-close" });
+        closeBtn.onclick = () => this.hide();
+        this.refresh();
+        document.body.appendChild(this.container);
+        if (this.plugin.settings.enableDebugMode) {
+          console.log("[Marking Note] Butler panel shown, stewards:", (_a = this.plugin.settings.stewards) == null ? void 0 : _a.length);
+        }
+        const savedPos = localStorage.getItem("mn-butler-pos");
+        if (savedPos) {
+          try {
+            const pos = JSON.parse(savedPos);
+            this.container.style.left = pos.left;
+            this.container.style.top = pos.top;
+          } catch (e) {
+            this.setDefaultPosition();
+          }
+        } else {
+          this.setDefaultPosition();
+        }
+        this.constrainToScreen();
+        window.addEventListener("resize", this.resizeHandler);
+        this.setupDrag(header);
+      }
+      hide() {
+        if (this.container) {
+          this.container.style.display = "none";
+        }
+      }
+      toggle() {
+        if (this.container && this.container.style.display !== "none") {
+          this.hide();
+        } else {
+          this.show();
+        }
+      }
+      close() {
+        if (this.container) {
+          this.container.remove();
+          this.container = null;
+        }
+        window.removeEventListener("resize", this.resizeHandler);
+      }
+      setDefaultPosition() {
+        if (!this.container)
+          return;
+        const vw = window.innerWidth;
+        const maxWidth = Math.floor(vw * 0.67);
+        const preferredWidth = Math.min(260, maxWidth);
+        const left = Math.max(this.viewportMargin, vw - preferredWidth - 16);
+        this.container.style.left = `${left}px`;
+        this.container.style.top = `${Math.max(this.viewportMargin, 80)}px`;
+        this.container.style.right = "auto";
+        this.container.style.bottom = "auto";
+      }
+      /** Constrain panel size to 2/3 viewport and clamp position to stay on-screen */
+      constrainToScreen() {
+        if (!this.container)
+          return;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const margin = this.viewportMargin;
+        const maxW = Math.floor(vw * 0.67);
+        const maxH = Math.floor(vh * 0.67);
+        this.container.style.maxWidth = `${maxW}px`;
+        this.container.style.maxHeight = `${maxH}px`;
+        const rect = this.container.getBoundingClientRect();
+        const parsedLeft = Number.parseFloat(this.container.style.left || "");
+        const parsedTop = Number.parseFloat(this.container.style.top || "");
+        let left = Number.isFinite(parsedLeft) ? parsedLeft : rect.left;
+        let top = Number.isFinite(parsedTop) ? parsedTop : rect.top;
+        left = Math.max(margin, Math.min(left, Math.max(margin, vw - rect.width - margin)));
+        top = Math.max(margin, Math.min(top, Math.max(margin, vh - rect.height - margin)));
+        this.container.style.left = `${left}px`;
+        this.container.style.top = `${top}px`;
+        this.container.style.right = "auto";
+        this.container.style.bottom = "auto";
+      }
+      refresh() {
+        if (!this.container)
+          return;
+        const body = this.container.querySelector(".mn-butler-body");
+        if (body)
+          body.remove();
+        const settings = this.plugin.settings;
+        const stewards = settings.stewards || [];
+        const steward = stewards.find((s) => s.id === settings.activeStewardId) || stewards[0];
+        const contentDiv = this.container.createEl("div", { cls: "mn-butler-body" });
+        contentDiv.style.minHeight = "150px";
+        contentDiv.style.background = "var(--background-secondary)";
+        if (steward) {
+          const currentDiv = contentDiv.createEl("div", { cls: "mn-butler-section" });
+          currentDiv.createEl("div", { text: "\u5F53\u524D\u7BA1\u5BB6", cls: "mn-butler-label" });
+          const activeDiv = currentDiv.createEl("div", { cls: "mn-butler-active" });
+          activeDiv.createEl("span", { text: `${steward.icon} ${steward.name}`, cls: "mn-butler-active-name" });
+        }
+        if (stewards.length > 0) {
+          const switcherDiv = contentDiv.createEl("div", { cls: "mn-butler-section" });
+          switcherDiv.createEl("div", { text: "\u5207\u6362\u7BA1\u5BB6", cls: "mn-butler-label" });
+          const stewardList = switcherDiv.createEl("div", { cls: "mn-butler-steward-list" });
+          for (const s of stewards) {
+            const btn = stewardList.createEl("button", {
+              text: `${s.icon} ${s.name}`,
+              cls: s.id === settings.activeStewardId ? "mn-butler-steward-btn mn-butler-steward-active" : "mn-butler-steward-btn"
+            });
+            btn.style.display = "flex";
+            btn.style.width = "100%";
+            btn.onclick = async () => {
+              settings.activeStewardId = s.id;
+              await this.plugin.saveSettings();
+              this.refresh();
+              this.constrainToScreen();
+              window.dispatchEvent(new CustomEvent("marking-note-steward-changed"));
+            };
+          }
+        } else {
+          contentDiv.createEl("div", { text: "\u26A0\uFE0F \u672A\u914D\u7F6E\u7BA1\u5BB6", attr: { style: "color: var(--text-error); padding: 10px;" } });
+        }
+        if (this.container.isConnected) {
+          this.constrainToScreen();
+        }
+      }
+      setupDrag(handle) {
+        if (!this.container)
+          return;
+        const startDrag = (clientX, clientY) => {
+          var _a, _b;
+          this.isDragging = true;
+          this.dragOffsetX = clientX - (((_a = this.container) == null ? void 0 : _a.offsetLeft) || 0);
+          this.dragOffsetY = clientY - (((_b = this.container) == null ? void 0 : _b.offsetTop) || 0);
+        };
+        const moveDrag = (clientX, clientY) => {
+          if (!this.isDragging || !this.container)
+            return;
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          const margin = this.viewportMargin;
+          const rect = this.container.getBoundingClientRect();
+          let left = clientX - this.dragOffsetX;
+          let top = clientY - this.dragOffsetY;
+          left = Math.max(margin, Math.min(left, Math.max(margin, vw - rect.width - margin)));
+          top = Math.max(margin, Math.min(top, Math.max(margin, vh - rect.height - margin)));
+          this.container.style.left = `${left}px`;
+          this.container.style.top = `${top}px`;
+          this.container.style.right = "auto";
+        };
+        const endDrag = () => {
+          this.isDragging = false;
+          if (this.container) {
+            this.constrainToScreen();
+            localStorage.setItem("mn-butler-pos", JSON.stringify({
+              left: this.container.style.left,
+              top: this.container.style.top
+            }));
+          }
+        };
+        handle.addEventListener("mousedown", (e) => {
+          if (e.target.tagName === "BUTTON")
+            return;
+          startDrag(e.clientX, e.clientY);
+          e.preventDefault();
+        });
+        document.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
+        document.addEventListener("mouseup", () => endDrag());
+        handle.addEventListener("touchstart", (e) => {
+          if (e.target.tagName === "BUTTON")
+            return;
+          if (e.touches.length > 0)
+            startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        document.addEventListener("touchmove", (e) => {
+          if (!this.isDragging || !this.container || e.touches.length === 0)
+            return;
+          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+          if (e.cancelable)
+            e.preventDefault();
+        }, { passive: false });
+        document.addEventListener("touchend", () => endDrag());
+      }
+    };
+  }
 });
 
 // main.ts
 var main_exports = {};
 __export(main_exports, {
-	default: () => MarkingNotePlugin,
+  default: () => MarkingNotePlugin
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian8 = require("obsidian");
@@ -2124,253 +1922,233 @@ init_state();
 
 // src/tag-styles.ts
 function withOpacity(color, alpha) {
-	return color.replace(/[\d.]+\)$/, `${alpha})`);
+  return color.replace(/[\d.]+\)$/, `${alpha})`);
 }
 function getTagHighlightInlineStyle(tag) {
-	switch (tag.style) {
-		case "highlight":
-			return `background-color: ${tag.color}; color: ${tag.textColor};`;
-		case "underline":
-			return `background-color: transparent; border-bottom: 2px solid ${withOpacity(tag.color, "0.8")}; color: ${tag.textColor};`;
-		case "dashed":
-			return `background-color: transparent; border-bottom: 2px dashed ${withOpacity(tag.color, "0.7")}; color: ${tag.textColor};`;
-		case "semi-transparent":
-			return `background-color: ${tag.color}; color: ${tag.textColor}; opacity: 0.6;`;
-		default:
-			return "";
-	}
+  switch (tag.style) {
+    case "highlight":
+      return `background-color: ${tag.color}; color: ${tag.textColor};`;
+    case "underline":
+      return `background-color: transparent; border-bottom: 2px solid ${withOpacity(tag.color, "0.8")}; color: ${tag.textColor};`;
+    case "dashed":
+      return `background-color: transparent; border-bottom: 2px dashed ${withOpacity(tag.color, "0.7")}; color: ${tag.textColor};`;
+    case "semi-transparent":
+      return `background-color: ${tag.color}; color: ${tag.textColor}; opacity: 0.6;`;
+    default:
+      return "";
+  }
 }
 function applyTagHighlightStyle(element, tag) {
-	switch (tag.style) {
-		case "highlight":
-			element.style.background = tag.color;
-			element.style.color = tag.textColor;
-			element.style.opacity = "";
-			element.style.borderBottom = "";
-			break;
-		case "underline":
-			element.style.background = "transparent";
-			element.style.borderBottom = `2px solid ${withOpacity(tag.color, "0.8")}`;
-			element.style.color = tag.textColor;
-			element.style.opacity = "";
-			break;
-		case "dashed":
-			element.style.background = "transparent";
-			element.style.borderBottom = `2px dashed ${withOpacity(tag.color, "0.7")}`;
-			element.style.color = tag.textColor;
-			element.style.opacity = "";
-			break;
-		case "semi-transparent":
-			element.style.background = tag.color;
-			element.style.color = tag.textColor;
-			element.style.opacity = "0.6";
-			element.style.borderBottom = "";
-			break;
-	}
+  switch (tag.style) {
+    case "highlight":
+      element.style.background = tag.color;
+      element.style.color = tag.textColor;
+      element.style.opacity = "";
+      element.style.borderBottom = "";
+      break;
+    case "underline":
+      element.style.background = "transparent";
+      element.style.borderBottom = `2px solid ${withOpacity(tag.color, "0.8")}`;
+      element.style.color = tag.textColor;
+      element.style.opacity = "";
+      break;
+    case "dashed":
+      element.style.background = "transparent";
+      element.style.borderBottom = `2px dashed ${withOpacity(tag.color, "0.7")}`;
+      element.style.color = tag.textColor;
+      element.style.opacity = "";
+      break;
+    case "semi-transparent":
+      element.style.background = tag.color;
+      element.style.color = tag.textColor;
+      element.style.opacity = "0.6";
+      element.style.borderBottom = "";
+      break;
+  }
 }
 function applyTagButtonStyle(element, tag) {
-	element.style.background = tag.color;
-	element.style.color =
-		tag.textColor !== "inherit" ? tag.textColor : "var(--text-normal)";
-	element.style.borderColor = "transparent";
+  element.style.background = tag.color;
+  element.style.color = tag.textColor !== "inherit" ? tag.textColor : "var(--text-normal)";
+  element.style.borderColor = "transparent";
 }
 function getTagBorderAccent(tag) {
-	return withOpacity(tag.color, "0.8");
+  return withOpacity(tag.color, "0.8");
 }
 
 // src/cm6.ts
 init_ui();
 var CapsuleWidget = class extends import_view.WidgetType {
-	constructor(node, tags) {
-		super();
-		this.node = node;
-		this.tags = tags;
-	}
-	eq(other) {
-		return (
-			this.node.id === other.node.id &&
-			this.node.state === other.node.state &&
-			this.node.summary === other.node.summary &&
-			this.node.tagId === other.node.tagId
-		);
-	}
-	toDOM() {
-		const span = document.createElement("span");
-		span.className = `marking-capsule marking-capsule-${this.node.state}`;
-		let icon = "\u{1F916}";
-		if (this.node.state === "0") icon = "\u23F3";
-		else if (this.node.state === "1") icon = "\u270F\uFE0F";
-		else if (this.node.state === "2") icon = "\u{1F441}\uFE0F";
-		else if (this.node.state === "3") icon = "\u2705";
-		span.innerText = icon;
-		if (this.node.summary) {
-			span.title = `${this.node.id}: ${this.node.summary}`;
-		} else {
-			span.title = this.node.id;
-		}
-		span.setAttribute("data-marking-id", this.node.id);
-		return span;
-	}
-	ignoreEvent(event) {
-		return false;
-	}
+  constructor(node, tags) {
+    super();
+    this.node = node;
+    this.tags = tags;
+  }
+  eq(other) {
+    return this.node.id === other.node.id && this.node.state === other.node.state && this.node.summary === other.node.summary && this.node.tagId === other.node.tagId;
+  }
+  toDOM() {
+    const span = document.createElement("span");
+    span.className = `marking-capsule marking-capsule-${this.node.state}`;
+    let icon = "\u{1F916}";
+    if (this.node.state === "0")
+      icon = "\u23F3";
+    else if (this.node.state === "1")
+      icon = "\u270F\uFE0F";
+    else if (this.node.state === "2")
+      icon = "\u{1F441}\uFE0F";
+    else if (this.node.state === "3")
+      icon = "\u2705";
+    span.innerText = icon;
+    if (this.node.summary) {
+      span.title = `${this.node.id}: ${this.node.summary}`;
+    } else {
+      span.title = this.node.id;
+    }
+    span.setAttribute("data-marking-id", this.node.id);
+    return span;
+  }
+  ignoreEvent(event) {
+    return false;
+  }
 };
 function buildDecorations(text, tags) {
-	const builder = new import_state2.RangeSetBuilder();
-	const nodes = parseMarkingNodes(text);
-	for (const node of nodes) {
-		const tag = node.tagId ? tags.find((t) => t.id === node.tagId) : null;
-		let cssClass = `mark-state-${node.state} marking-highlight-region`;
-		const attrs = { "data-marking-id": node.id };
-		if (tag) {
-			attrs["style"] = getTagHighlightInlineStyle(tag);
-			cssClass = "marking-highlight-region marking-tagged";
-		}
-		const highlightDeco = import_view.Decoration.mark({
-			class: cssClass,
-			attributes: attrs,
-		});
-		const hlStart = node.from;
-		const hlEnd = node.highlightEnd;
-		if (hlStart < hlEnd && hlEnd <= text.length) {
-			builder.add(hlStart, hlEnd, highlightDeco);
-		}
-		if (!node.isPlain && node.highlightEnd < node.to) {
-			const widgetDeco = import_view.Decoration.replace({
-				widget: new CapsuleWidget(node, tags),
-				inclusive: false,
-			});
-			builder.add(node.highlightEnd, node.to, widgetDeco);
-		}
-	}
-	return { decos: builder.finish(), nodes };
+  const builder = new import_state2.RangeSetBuilder();
+  const nodes = parseMarkingNodes(text);
+  for (const node of nodes) {
+    const tag = node.tagId ? tags.find((t) => t.id === node.tagId) : null;
+    let cssClass = `mark-state-${node.state} marking-highlight-region`;
+    const attrs = { "data-marking-id": node.id };
+    if (tag) {
+      attrs["style"] = getTagHighlightInlineStyle(tag);
+      cssClass = "marking-highlight-region marking-tagged";
+    }
+    const highlightDeco = import_view.Decoration.mark({ class: cssClass, attributes: attrs });
+    const hlStart = node.from;
+    const hlEnd = node.highlightEnd;
+    if (hlStart < hlEnd && hlEnd <= text.length) {
+      builder.add(hlStart, hlEnd, highlightDeco);
+    }
+    if (!node.isPlain && node.highlightEnd < node.to) {
+      const widgetDeco = import_view.Decoration.replace({
+        widget: new CapsuleWidget(node, tags),
+        inclusive: false
+      });
+      builder.add(node.highlightEnd, node.to, widgetDeco);
+    }
+  }
+  return { decos: builder.finish(), nodes };
 }
 function createMarkingExtensions(onAnalyze, onCommand, popoverCtx, plugin) {
-	const mainPlugin = import_view.ViewPlugin.fromClass(
-		class {
-			constructor(view) {
-				this.view = view;
-				this.currentNodes = [];
-				this.menu = null;
-				this.menuTimer = null;
-				const result = buildDecorations(
-					view.state.doc.toString(),
-					plugin.settings.tags || [],
-				);
-				this.decorations = result.decos;
-				this.currentNodes = result.nodes;
-			}
-			update(update) {
-				if (update.docChanged || update.viewportChanged) {
-					const result = buildDecorations(
-						update.state.doc.toString(),
-						plugin.settings.tags || [],
-					);
-					this.decorations = result.decos;
-					this.currentNodes = result.nodes;
-				}
-				if (update.selectionSet || update.docChanged) {
-					const sel = update.state.selection.main;
-					if (sel.empty) {
-						if (this.menu) {
-							this.menu.close();
-							this.menu = null;
-						}
-						if (this.menuTimer) {
-							window.clearTimeout(this.menuTimer);
-							this.menuTimer = null;
-						}
-						return;
-					}
-					if (this.menuTimer) window.clearTimeout(this.menuTimer);
-					this.menuTimer = window.setTimeout(() => {
-						if (!plugin.settings.enableFloatingMenu) return;
-						const selection = update.state.sliceDoc(sel.from, sel.to);
-						if (!selection.trim()) return;
-						const coords = update.view.coordsAtPos(sel.from);
-						if (coords) {
-							if (!this.menu) {
-								this.menu = new FloatingMenu(
-									(s) => onAnalyze(update.view, s),
-									(s, cmd) => onCommand(update.view, s, cmd),
-									(s, instruction) => {
-										window.dispatchEvent(
-											new CustomEvent("marking-note-inline-modify", {
-												detail: {
-													view: update.view,
-													selection: s,
-													instruction,
-												},
-											}),
-										);
-									},
-									plugin,
-								);
-							}
-							this.menu.show(coords.left, coords.top, selection);
-						}
-					}, 300);
-				}
-			}
-			destroy() {
-				if (this.menu) this.menu.close();
-			}
-		},
-		{
-			decorations: (v) => v.decorations,
-		},
-	);
-	const clickHandler = import_view.EditorView.domEventHandlers({
-		mousedown(event, view) {
-			const target = event.target;
-			if (
-				target.closest('.callout[data-callout="ai-footnote"]') ||
-				target.closest(".marking-capsule")
-			) {
-				event.preventDefault();
-			}
-		},
-		touchstart(event, view) {
-			const target = event.target;
-			if (
-				target.closest('.callout[data-callout="ai-footnote"]') ||
-				target.closest(".marking-capsule")
-			) {
-				if (document.activeElement === view.contentDOM) {
-					view.contentDOM.blur();
-				}
-			}
-		},
-		click(event, view) {
-			const target = event.target;
-			if (target.closest('.callout[data-callout="ai-footnote"]')) {
-				setTimeout(() => {
-					if (document.activeElement === view.contentDOM) {
-						view.contentDOM.blur();
-					}
-				}, 10);
-				return true;
-			}
-			const capsule = target.closest(".marking-capsule");
-			if (!capsule) return false;
-			view.contentDOM.blur();
-			event.preventDefault();
-			event.stopPropagation();
-			const markId = capsule.getAttribute("data-marking-id");
-			if (!markId) return false;
-			const text = view.state.doc.toString();
-			const nodes = parseMarkingNodes(text);
-			const node = nodes.find((n) => n.id === markId);
-			if (!node) return false;
-			const { PopoverEditor: PopoverEditor2 } =
-				(init_ui(), __toCommonJS(ui_exports));
-			const popover = new PopoverEditor2(node, view, popoverCtx);
-			const rect = capsule.getBoundingClientRect();
-			popover.show(rect.left, rect.bottom + 4);
-			return true;
-		},
-	});
-	return [mainPlugin, clickHandler];
+  const mainPlugin = import_view.ViewPlugin.fromClass(class {
+    constructor(view) {
+      this.view = view;
+      this.currentNodes = [];
+      this.menu = null;
+      this.menuTimer = null;
+      const result = buildDecorations(view.state.doc.toString(), plugin.settings.tags || []);
+      this.decorations = result.decos;
+      this.currentNodes = result.nodes;
+    }
+    update(update) {
+      if (update.docChanged || update.viewportChanged) {
+        const result = buildDecorations(update.state.doc.toString(), plugin.settings.tags || []);
+        this.decorations = result.decos;
+        this.currentNodes = result.nodes;
+      }
+      if (update.selectionSet || update.docChanged) {
+        const sel = update.state.selection.main;
+        if (sel.empty) {
+          if (this.menu) {
+            this.menu.close();
+            this.menu = null;
+          }
+          if (this.menuTimer) {
+            window.clearTimeout(this.menuTimer);
+            this.menuTimer = null;
+          }
+          return;
+        }
+        if (this.menuTimer)
+          window.clearTimeout(this.menuTimer);
+        this.menuTimer = window.setTimeout(() => {
+          if (!plugin.settings.enableFloatingMenu)
+            return;
+          const selection = update.state.sliceDoc(sel.from, sel.to);
+          if (!selection.trim())
+            return;
+          const coords = update.view.coordsAtPos(sel.from);
+          if (coords) {
+            if (!this.menu) {
+              this.menu = new FloatingMenu(
+                (s) => onAnalyze(update.view, s),
+                (s, cmd) => onCommand(update.view, s, cmd),
+                (s, instruction) => {
+                  window.dispatchEvent(new CustomEvent("marking-note-inline-modify", {
+                    detail: { view: update.view, selection: s, instruction }
+                  }));
+                },
+                plugin
+              );
+            }
+            this.menu.show(coords.left, coords.top, selection);
+          }
+        }, 300);
+      }
+    }
+    destroy() {
+      if (this.menu)
+        this.menu.close();
+    }
+  }, {
+    decorations: (v) => v.decorations
+  });
+  const clickHandler = import_view.EditorView.domEventHandlers({
+    mousedown(event, view) {
+      const target = event.target;
+      if (target.closest('.callout[data-callout="ai-footnote"]') || target.closest(".marking-capsule")) {
+        event.preventDefault();
+      }
+    },
+    touchstart(event, view) {
+      const target = event.target;
+      if (target.closest('.callout[data-callout="ai-footnote"]') || target.closest(".marking-capsule")) {
+        if (document.activeElement === view.contentDOM) {
+          view.contentDOM.blur();
+        }
+      }
+    },
+    click(event, view) {
+      const target = event.target;
+      if (target.closest('.callout[data-callout="ai-footnote"]')) {
+        setTimeout(() => {
+          if (document.activeElement === view.contentDOM) {
+            view.contentDOM.blur();
+          }
+        }, 10);
+        return true;
+      }
+      const capsule = target.closest(".marking-capsule");
+      if (!capsule)
+        return false;
+      view.contentDOM.blur();
+      event.preventDefault();
+      event.stopPropagation();
+      const markId = capsule.getAttribute("data-marking-id");
+      if (!markId)
+        return false;
+      const text = view.state.doc.toString();
+      const nodes = parseMarkingNodes(text);
+      const node = nodes.find((n) => n.id === markId);
+      if (!node)
+        return false;
+      const { PopoverEditor: PopoverEditor2 } = (init_ui(), __toCommonJS(ui_exports));
+      const popover = new PopoverEditor2(node, view, popoverCtx);
+      const rect = capsule.getBoundingClientRect();
+      popover.show(rect.left, rect.bottom + 4);
+      return true;
+    }
+  });
+  return [mainPlugin, clickHandler];
 }
 
 // main.ts
@@ -2378,127 +2156,103 @@ init_annotation_repository();
 
 // src/renderers/reading-mode-renderer.ts
 function renderReadingModeAnnotations(input) {
-	const marks = input.container.querySelectorAll("mark");
-	marks.forEach((mark) => {
-		var _a, _b, _c, _d;
-		mark.classList.add("marking-highlight-region");
-		mark.style.cursor = "pointer";
-		let state = "0";
-		let id = "";
-		let tagId = "";
-		let summary = "";
-		let hasFootprint = false;
-		let currentNode = mark.nextSibling;
-		let buffer = "";
-		const nodesToRemove = [];
-		let foundMatch = null;
-		while (currentNode && nodesToRemove.length < 15 && buffer.length < 300) {
-			nodesToRemove.push(currentNode);
-			buffer += currentNode.textContent || "";
-			const match =
-				/^\s*(?:\[\^\[|\[)([0-3])(?:\]\s*\[|\s*\[)\s*(#[a-zA-Z0-9_-]+)\s*\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]([\s\S]*)/.exec(
-					buffer,
-				);
-			if (match) {
-				foundMatch = match;
-				break;
-			}
-			const trimmed = buffer.trimLeft();
-			if (!trimmed.startsWith("[") && !trimmed.startsWith("^")) {
-				break;
-			}
-			currentNode = currentNode.nextSibling;
-		}
-		if (foundMatch) {
-			hasFootprint = true;
-			state = foundMatch[1];
-			id = foundMatch[2];
-			tagId = foundMatch[3] || "";
-			summary = (foundMatch[4] || "").trim();
-			const parent = mark.parentNode;
-			if (parent) {
-				const insertBeforeNode =
-					(_b =
-						(_a = nodesToRemove[nodesToRemove.length - 1]) == null
-							? void 0
-							: _a.nextSibling) != null
-						? _b
-						: null;
-				nodesToRemove.forEach((node) => {
-					parent.removeChild(node);
-				});
-				if (foundMatch[5]) {
-					parent.insertBefore(
-						document.createTextNode(foundMatch[5]),
-						insertBeforeNode,
-					);
-				}
-			}
-		}
-		if (!hasFootprint) {
-			mark.classList.add("mark-state-0");
-			return;
-		}
-		mark.classList.add(`mark-state-${state}`);
-		if (tagId) {
-			const tag = input.tags.find((candidate) => candidate.id === tagId);
-			if (tag) {
-				mark.classList.add("marking-tagged");
-				applyTagHighlightStyle(mark, tag);
-			}
-		}
-		const badge = document.createElement("span");
-		badge.addClass("marking-capsule", `marking-capsule-${state}`);
-		if (tagId) {
-			badge.dataset.tagId = tagId;
-		}
-		const emoji =
-			((_c = input.tags.find((candidate) => candidate.id === tagId)) == null
-				? void 0
-				: _c.emoji) ||
-			(state === "0"
-				? "\u{1FA84}"
-				: state === "1"
-					? "\u26A1"
-					: state === "2"
-						? "\u{1F464}"
-						: "\u{1F4E6}");
-		const iconSpan = document.createElement("span");
-		iconSpan.innerText = emoji;
-		badge.appendChild(iconSpan);
-		if (summary) {
-			const summarySpan = document.createElement("span");
-			summarySpan.innerText = summary;
-			summarySpan.style.marginLeft = "3px";
-			badge.appendChild(summarySpan);
-		}
-		(_d = mark.parentNode) == null
-			? void 0
-			: _d.insertBefore(badge, mark.nextSibling);
-		const openPopover = (target) => {
-			const rect = target.getBoundingClientRect();
-			input.onOpenPopover({
-				nodeId: id,
-				summary,
-				state,
-				tagId,
-				anchorX: rect.left,
-				anchorY: rect.bottom + 6,
-			});
-		};
-		badge.addEventListener("click", (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			openPopover(badge);
-		});
-		mark.addEventListener("click", (event) => {
-			if (state !== "0") {
-				event.preventDefault();
-				event.stopPropagation();
-				openPopover(mark);
-			}
-		});
-	});
+  const marks = input.container.querySelectorAll("mark");
+  marks.forEach((mark) => {
+    var _a, _b, _c, _d;
+    mark.classList.add("marking-highlight-region");
+    mark.style.cursor = "pointer";
+    let state = "0";
+    let id = "";
+    let tagId = "";
+    let summary = "";
+    let hasFootprint = false;
+    let currentNode = mark.nextSibling;
+    let buffer = "";
+    const nodesToRemove = [];
+    let foundMatch = null;
+    while (currentNode && nodesToRemove.length < 15 && buffer.length < 300) {
+      nodesToRemove.push(currentNode);
+      buffer += currentNode.textContent || "";
+      const match = /^\s*(?:\[\^\[|\[)([0-3])(?:\]\s*\[|\s*\[)\s*(#[a-zA-Z0-9_-]+)\s*\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]([\s\S]*)/.exec(buffer);
+      if (match) {
+        foundMatch = match;
+        break;
+      }
+      const trimmed = buffer.trimLeft();
+      if (!trimmed.startsWith("[") && !trimmed.startsWith("^")) {
+        break;
+      }
+      currentNode = currentNode.nextSibling;
+    }
+    if (foundMatch) {
+      hasFootprint = true;
+      state = foundMatch[1];
+      id = foundMatch[2];
+      tagId = foundMatch[3] || "";
+      summary = (foundMatch[4] || "").trim();
+      const parent = mark.parentNode;
+      if (parent) {
+        const insertBeforeNode = (_b = (_a = nodesToRemove[nodesToRemove.length - 1]) == null ? void 0 : _a.nextSibling) != null ? _b : null;
+        nodesToRemove.forEach((node) => {
+          parent.removeChild(node);
+        });
+        if (foundMatch[5]) {
+          parent.insertBefore(document.createTextNode(foundMatch[5]), insertBeforeNode);
+        }
+      }
+    }
+    if (!hasFootprint) {
+      mark.classList.add("mark-state-0");
+      return;
+    }
+    mark.classList.add(`mark-state-${state}`);
+    if (tagId) {
+      const tag = input.tags.find((candidate) => candidate.id === tagId);
+      if (tag) {
+        mark.classList.add("marking-tagged");
+        applyTagHighlightStyle(mark, tag);
+      }
+    }
+    const badge = document.createElement("span");
+    badge.addClass("marking-capsule", `marking-capsule-${state}`);
+    if (tagId) {
+      badge.dataset.tagId = tagId;
+    }
+    const emoji = ((_c = input.tags.find((candidate) => candidate.id === tagId)) == null ? void 0 : _c.emoji) || (state === "0" ? "\u{1FA84}" : state === "1" ? "\u26A1" : state === "2" ? "\u{1F464}" : "\u{1F4E6}");
+    const iconSpan = document.createElement("span");
+    iconSpan.innerText = emoji;
+    badge.appendChild(iconSpan);
+    if (summary) {
+      const summarySpan = document.createElement("span");
+      summarySpan.innerText = summary;
+      summarySpan.style.marginLeft = "3px";
+      badge.appendChild(summarySpan);
+    }
+    (_d = mark.parentNode) == null ? void 0 : _d.insertBefore(badge, mark.nextSibling);
+    const openPopover = (target) => {
+      const rect = target.getBoundingClientRect();
+      input.onOpenPopover({
+        nodeId: id,
+        summary,
+        state,
+        tagId,
+        anchorX: rect.left,
+        anchorY: rect.bottom + 6
+      });
+    };
+    badge.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openPopover(badge);
+    });
+    mark.addEventListener("click", (event) => {
+      if (state !== "0") {
+        event.preventDefault();
+        event.stopPropagation();
+        openPopover(mark);
+      }
+    });
+  });
 }
 
 // src/services/annotation-service.ts
@@ -2509,173 +2263,44 @@ var import_obsidian2 = require("obsidian");
 
 // src/domain/constants.ts
 var COLOR_PALETTE = [
-	{ name: "\u8367\u5149\u9EC4", value: "rgba(255, 255, 100, 0.45)" },
-	{ name: "\u8367\u5149\u7C89", value: "rgba(255, 130, 180, 0.40)" },
-	{ name: "\u8367\u5149\u6A59", value: "rgba(255, 180, 80, 0.45)" },
-	{ name: "\u8367\u5149\u7EFF", value: "rgba(130, 255, 130, 0.40)" },
-	{ name: "\u8367\u5149\u84DD", value: "rgba(100, 200, 255, 0.40)" },
-	{ name: "\u8367\u5149\u7D2B", value: "rgba(200, 140, 255, 0.40)" },
-	{ name: "\u67D4\u548C\u7EA2", value: "rgba(220, 80, 80, 0.25)" },
-	{ name: "\u67D4\u548C\u84DD", value: "rgba(80, 120, 220, 0.25)" },
-	{ name: "\u67D4\u548C\u7EFF", value: "rgba(60, 180, 100, 0.25)" },
-	{ name: "\u67D4\u548C\u7D2B", value: "rgba(160, 80, 200, 0.25)" },
-	{ name: "\u8584\u8377\u7EFF", value: "rgba(100, 220, 200, 0.30)" },
-	{ name: "\u7425\u73C0\u91D1", value: "rgba(220, 180, 60, 0.35)" },
+  { name: "\u8367\u5149\u9EC4", value: "rgba(255, 255, 100, 0.45)" },
+  { name: "\u8367\u5149\u7C89", value: "rgba(255, 130, 180, 0.40)" },
+  { name: "\u8367\u5149\u6A59", value: "rgba(255, 180, 80, 0.45)" },
+  { name: "\u8367\u5149\u7EFF", value: "rgba(130, 255, 130, 0.40)" },
+  { name: "\u8367\u5149\u84DD", value: "rgba(100, 200, 255, 0.40)" },
+  { name: "\u8367\u5149\u7D2B", value: "rgba(200, 140, 255, 0.40)" },
+  { name: "\u67D4\u548C\u7EA2", value: "rgba(220, 80, 80, 0.25)" },
+  { name: "\u67D4\u548C\u84DD", value: "rgba(80, 120, 220, 0.25)" },
+  { name: "\u67D4\u548C\u7EFF", value: "rgba(60, 180, 100, 0.25)" },
+  { name: "\u67D4\u548C\u7D2B", value: "rgba(160, 80, 200, 0.25)" },
+  { name: "\u8584\u8377\u7EFF", value: "rgba(100, 220, 200, 0.30)" },
+  { name: "\u7425\u73C0\u91D1", value: "rgba(220, 180, 60, 0.35)" }
 ];
 var TEXT_COLOR_PALETTE = [
-	{ name: "\u9ED8\u8BA4", value: "inherit" },
-	{ name: "\u6DF1\u7070", value: "#333333" },
-	{ name: "\u7EAF\u9ED1", value: "#000000" },
-	{ name: "\u6697\u7EA2", value: "#9b2226" },
-	{ name: "\u975B\u84DD", value: "#1d3557" },
-	{ name: "\u6DF1\u7EFF", value: "#2d6a4f" },
-	{ name: "\u6697\u7D2B", value: "#5a189a" },
-	{ name: "\u68D5\u8910", value: "#6b4226" },
-	{ name: "\u767D\u8272", value: "#ffffff" },
+  { name: "\u9ED8\u8BA4", value: "inherit" },
+  { name: "\u6DF1\u7070", value: "#333333" },
+  { name: "\u7EAF\u9ED1", value: "#000000" },
+  { name: "\u6697\u7EA2", value: "#9b2226" },
+  { name: "\u975B\u84DD", value: "#1d3557" },
+  { name: "\u6DF1\u7EFF", value: "#2d6a4f" },
+  { name: "\u6697\u7D2B", value: "#5a189a" },
+  { name: "\u68D5\u8910", value: "#6b4226" },
+  { name: "\u767D\u8272", value: "#ffffff" }
 ];
 var EMOJI_CATEGORIES = [
-	{
-		name: "\u5E38\u7528",
-		emojis: [
-			"\u{1FA84}",
-			"\u26A1",
-			"\u{1F916}",
-			"\u{1F4A1}",
-			"\u{1F525}",
-			"\u2753",
-			"\u2705",
-			"\u{1F4CC}",
-			"\u{1F517}",
-			"\u{1F3F7}\uFE0F",
-			"\u{1F3AF}",
-			"\u{1F4AD}",
-		],
-	},
-	{
-		name: "\u5B66\u672F",
-		emojis: [
-			"\u{1F4DA}",
-			"\u{1F4D6}",
-			"\u{1F52C}",
-			"\u{1F9EA}",
-			"\u{1F4D0}",
-			"\u{1F4CA}",
-			"\u{1F50D}",
-			"\u{1F310}",
-			"\u{1F393}",
-			"\u{1F4CB}",
-			"\u{1F4C9}",
-			"\u{1F4C8}",
-		],
-	},
-	{
-		name: "\u5DE5\u5177",
-		emojis: [
-			"\u270F\uFE0F",
-			"\u{1F527}",
-			"\u2699\uFE0F",
-			"\u{1F6E1}\uFE0F",
-			"\u{1F680}",
-			"\u{1F4AC}",
-			"\u{1F4DD}",
-			"\u{1F4E6}",
-			"\u{1F5C2}\uFE0F",
-			"\u{1F5C3}\uFE0F",
-			"\u{1F4BB}",
-			"\u{1F4F1}",
-			"\u{1F4E1}",
-			"\u{1F399}\uFE0F",
-			"\u2702\uFE0F",
-			"\u{1F528}",
-		],
-	},
-	{
-		name: "\u8C61\u5F81",
-		emojis: [
-			"\u{1F9E0}",
-			"\u{1F9E9}",
-			"\u{1F3A8}",
-			"\u{1F48E}",
-			"\u{1F31F}",
-			"\u2764\uFE0F",
-			"\u{1F30D}",
-			"\u23F0",
-			"\u{1F308}",
-			"\u{1F3AD}",
-			"\u2696\uFE0F",
-			"\u{1F3AA}",
-			"\u{1F338}",
-			"\u{1F340}",
-			"\u{1F98B}",
-			"\u{1F3B5}",
-			"\u{1F4B0}",
-			"\u{1F511}",
-			"\u{1F3C6}",
-			"\u{1F9F2}",
-			"\u{1F6A9}",
-			"\u{1F3C1}",
-		],
-	},
-	{
-		name: "\u72B6\u6001",
-		emojis: [
-			"\u{1F7E2}",
-			"\u{1F7E1}",
-			"\u{1F534}",
-			"\u{1F535}",
-			"\u{1F7E3}",
-			"\u{1F7E0}",
-			"\u2705",
-			"\u274C",
-			"\u26A0\uFE0F",
-			"\u26D4",
-			"\u2139\uFE0F",
-			"\u{1F197}",
-		],
-	},
+  { name: "\u5E38\u7528", emojis: ["\u{1FA84}", "\u26A1", "\u{1F916}", "\u{1F4A1}", "\u{1F525}", "\u2753", "\u2705", "\u{1F4CC}", "\u{1F517}", "\u{1F3F7}\uFE0F", "\u{1F3AF}", "\u{1F4AD}"] },
+  { name: "\u5B66\u672F", emojis: ["\u{1F4DA}", "\u{1F4D6}", "\u{1F52C}", "\u{1F9EA}", "\u{1F4D0}", "\u{1F4CA}", "\u{1F50D}", "\u{1F310}", "\u{1F393}", "\u{1F4CB}", "\u{1F4C9}", "\u{1F4C8}"] },
+  { name: "\u5DE5\u5177", emojis: ["\u270F\uFE0F", "\u{1F527}", "\u2699\uFE0F", "\u{1F6E1}\uFE0F", "\u{1F680}", "\u{1F4AC}", "\u{1F4DD}", "\u{1F4E6}", "\u{1F5C2}\uFE0F", "\u{1F5C3}\uFE0F", "\u{1F4BB}", "\u{1F4F1}", "\u{1F4E1}", "\u{1F399}\uFE0F", "\u2702\uFE0F", "\u{1F528}"] },
+  { name: "\u8C61\u5F81", emojis: ["\u{1F9E0}", "\u{1F9E9}", "\u{1F3A8}", "\u{1F48E}", "\u{1F31F}", "\u2764\uFE0F", "\u{1F30D}", "\u23F0", "\u{1F308}", "\u{1F3AD}", "\u2696\uFE0F", "\u{1F3AA}", "\u{1F338}", "\u{1F340}", "\u{1F98B}", "\u{1F3B5}", "\u{1F4B0}", "\u{1F511}", "\u{1F3C6}", "\u{1F9F2}", "\u{1F6A9}", "\u{1F3C1}"] },
+  { name: "\u72B6\u6001", emojis: ["\u{1F7E2}", "\u{1F7E1}", "\u{1F534}", "\u{1F535}", "\u{1F7E3}", "\u{1F7E0}", "\u2705", "\u274C", "\u26A0\uFE0F", "\u26D4", "\u2139\uFE0F", "\u{1F197}"] }
 ];
 var EMOJI_SET = EMOJI_CATEGORIES.flatMap((c) => c.emojis);
 var DEFAULT_TAGS = [
-	{
-		id: "tag-concept",
-		name: "\u6982\u5FF5",
-		emoji: "\u{1F4A1}",
-		color: "rgba(255, 255, 100, 0.45)",
-		textColor: "inherit",
-		style: "highlight",
-	},
-	{
-		id: "tag-important",
-		name: "\u91CD\u70B9",
-		emoji: "\u{1F525}",
-		color: "rgba(255, 180, 80, 0.45)",
-		textColor: "inherit",
-		style: "highlight",
-	},
-	{
-		id: "tag-question",
-		name: "\u7591\u95EE",
-		emoji: "\u2753",
-		color: "rgba(255, 130, 180, 0.40)",
-		textColor: "inherit",
-		style: "dashed",
-	},
-	{
-		id: "tag-reference",
-		name: "\u5F15\u7528",
-		emoji: "\u{1F4CE}",
-		color: "rgba(80, 120, 220, 0.25)",
-		textColor: "inherit",
-		style: "underline",
-	},
-	{
-		id: "tag-todo",
-		name: "\u5F85\u529E",
-		emoji: "\u2705",
-		color: "rgba(130, 255, 130, 0.40)",
-		textColor: "inherit",
-		style: "semi-transparent",
-	},
+  { id: "tag-concept", name: "\u6982\u5FF5", emoji: "\u{1F4A1}", color: "rgba(255, 255, 100, 0.45)", textColor: "inherit", style: "highlight" },
+  { id: "tag-important", name: "\u91CD\u70B9", emoji: "\u{1F525}", color: "rgba(255, 180, 80, 0.45)", textColor: "inherit", style: "highlight" },
+  { id: "tag-question", name: "\u7591\u95EE", emoji: "\u2753", color: "rgba(255, 130, 180, 0.40)", textColor: "inherit", style: "dashed" },
+  { id: "tag-reference", name: "\u5F15\u7528", emoji: "\u{1F4CE}", color: "rgba(80, 120, 220, 0.25)", textColor: "inherit", style: "underline" },
+  { id: "tag-todo", name: "\u5F85\u529E", emoji: "\u2705", color: "rgba(130, 255, 130, 0.40)", textColor: "inherit", style: "semi-transparent" }
 ];
 var DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u6DF1\u5EA6\u7ED1\u5B9A\u7684\u4E2A\u4EBA\u77E5\u8BC6\u7BA1\u7406\uFF08PKM\uFF09\u5206\u6790\u5F15\u64CE\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u5BF9\u7528\u6237\u9009\u4E2D\u7684\u6587\u672C\u751F\u6210\u4E00\u4E2A\u9AD8\u5EA6\u7CBE\u70BC\u7684\u5355\u884C\u6458\u8981\u6807\u9898\u3002
 
@@ -2711,137 +2336,118 @@ var DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u5
 
 // src/ai.ts
 function applyPromptTemplate(template, replacements) {
-	let result = template;
-	for (const [key, value] of Object.entries(replacements)) {
-		result = result.split(`__${key}__`).join(value);
-	}
-	return result;
+  let result = template;
+  for (const [key, value] of Object.entries(replacements)) {
+    result = result.split(`__${key}__`).join(value);
+  }
+  return result;
 }
 var AIClient = class {
-	/**
-	 * Test connection to a model provider
-	 */
-	static async testConnection(provider) {
-		try {
-			const response = await (0, import_obsidian2.requestUrl)({
-				url: `${provider.baseURL}/models`,
-				method: "GET",
-				headers: {
-					Authorization: `Bearer ${provider.apiKey}`,
-				},
-			});
-			return response.status === 200;
-		} catch (e) {
-			try {
-				const response = await (0, import_obsidian2.requestUrl)({
-					url: `${provider.baseURL}/chat/completions`,
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${provider.apiKey}`,
-					},
-					body: JSON.stringify({
-						model: provider.modelId,
-						messages: [{ role: "user", content: "Hi" }],
-						max_tokens: 1,
-					}),
-				});
-				return response.status === 200;
-			} catch (e2) {
-				return false;
-			}
-		}
-	}
-	static async generateAnnotation(options) {
-		var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
-		const {
-			text,
-			contextBefore,
-			contextAfter,
-			steward,
-			provider,
-			footnoteId,
-			defaultSummaryPrompt,
-			command,
-			isFollowUp,
-			previousOutput,
-			followUpText,
-			searchContext,
-			images,
-			promptTemplates,
-		} = options;
-		const effectiveTemp =
-			(_a = command == null ? void 0 : command.temperature) != null
-				? _a
-				: steward.temperature;
-		const effectiveTopP =
-			(_b = command == null ? void 0 : command.topP) != null
-				? _b
-				: steward.topP;
-		const effectiveThinking =
-			(_c = command == null ? void 0 : command.thinkingBudget) != null
-				? _c
-				: steward.thinkingBudget;
-		const effectiveFootnoteLen =
-			(_d = command == null ? void 0 : command.footnoteLength) != null
-				? _d
-				: steward.footnoteLength;
-		const ctxMode = (command == null ? void 0 : command.contextMode) || "full";
-		let dynamicPrompts = "";
-		if (ctxMode === "full") {
-			dynamicPrompts = `
+  /**
+   * Test connection to a model provider
+   */
+  static async testConnection(provider) {
+    try {
+      const response = await (0, import_obsidian2.requestUrl)({
+        url: `${provider.baseURL}/models`,
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${provider.apiKey}`
+        }
+      });
+      return response.status === 200;
+    } catch (e) {
+      try {
+        const response = await (0, import_obsidian2.requestUrl)({
+          url: `${provider.baseURL}/chat/completions`,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${provider.apiKey}`
+          },
+          body: JSON.stringify({
+            model: provider.modelId,
+            messages: [{ role: "user", content: "Hi" }],
+            max_tokens: 1
+          })
+        });
+        return response.status === 200;
+      } catch (e2) {
+        return false;
+      }
+    }
+  }
+  static async generateAnnotation(options) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    const {
+      text,
+      contextBefore,
+      contextAfter,
+      steward,
+      provider,
+      footnoteId,
+      defaultSummaryPrompt,
+      command,
+      isFollowUp,
+      previousOutput,
+      followUpText,
+      searchContext,
+      images,
+      promptTemplates
+    } = options;
+    const effectiveTemp = (_a = command == null ? void 0 : command.temperature) != null ? _a : steward.temperature;
+    const effectiveTopP = (_b = command == null ? void 0 : command.topP) != null ? _b : steward.topP;
+    const effectiveThinking = (_c = command == null ? void 0 : command.thinkingBudget) != null ? _c : steward.thinkingBudget;
+    const effectiveFootnoteLen = (_d = command == null ? void 0 : command.footnoteLength) != null ? _d : steward.footnoteLength;
+    const ctxMode = (command == null ? void 0 : command.contextMode) || "full";
+    let dynamicPrompts = "";
+    if (ctxMode === "full") {
+      dynamicPrompts = `
 \u5BF9\u6587\u672C\u9605\u8BFB\u7684\u63D0\u793A:
 ${steward.systemPrompt}
 
 \u5BF9\u5199\u4F5C\u98CE\u683C\u7684\u63D0\u793A:
 ${steward.writingStyle}`;
-		} else if (ctxMode === "writingOnly") {
-			dynamicPrompts = `
+    } else if (ctxMode === "writingOnly") {
+      dynamicPrompts = `
 \u5BF9\u5199\u4F5C\u98CE\u683C\u7684\u63D0\u793A:
 ${steward.writingStyle}`;
-		}
-		const detailInstruction = (command == null ? void 0 : command.detailPrompt)
-			? `
+    }
+    const detailInstruction = (command == null ? void 0 : command.detailPrompt) ? `
 
 \u3010\u6838\u5FC3\u4EFB\u52A1\u6307\u4EE4\u3011
 \u5BF9\u4E8E\u6211\u4E0B\u9762\u5C06\u8981\u7ED9\u51FA\u7684\u6587\u672C\uFF0C\u5728\u4E0A\u8FF0\u63D0\u793A\u7684\u6307\u5BFC\u4E0B\uFF0C\u6211\u5E0C\u671B\u4F60\u6309\u7167\u4E0B\u9762\u7684\u683C\u5F0F\u6216\u4E3B\u9898\u8981\u6C42\u8FDB\u884C\u5199\u4F5C\uFF1A
-${command.detailPrompt}`
-			: "";
-		const targetLanguage =
-			(command == null ? void 0 : command.language) ||
-			steward.language ||
-			"\u6587\u672C\u7684\u539F\u59CB\u8BED\u8A00";
-		let systemPrompt = "";
-		if ((command == null ? void 0 : command.type) === "default-summary") {
-			systemPrompt = applyPromptTemplate(
-				(promptTemplates == null ? void 0 : promptTemplates.defaultSummary) ||
-					DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
-				{
-					FOOTNOTE_LENGTH: String(effectiveFootnoteLen),
-					TARGET_LANGUAGE: targetLanguage,
-					FOOTNOTE_ID: footnoteId,
-					DEFAULT_SUMMARY_PROMPT: defaultSummaryPrompt,
-					DYNAMIC_PROMPTS: dynamicPrompts,
-					DETAIL_INSTRUCTION: detailInstruction,
-				},
-			);
-		} else {
-			systemPrompt = applyPromptTemplate(
-				(promptTemplates == null ? void 0 : promptTemplates.annotation) ||
-					DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
-				{
-					FOOTNOTE_LENGTH: String(effectiveFootnoteLen),
-					TARGET_LANGUAGE: targetLanguage,
-					FOOTNOTE_ID: footnoteId,
-					DEFAULT_SUMMARY_PROMPT: defaultSummaryPrompt,
-					DYNAMIC_PROMPTS: dynamicPrompts,
-					DETAIL_INSTRUCTION: detailInstruction,
-				},
-			);
-		}
-		let userPrompt = "";
-		if (isFollowUp && previousOutput) {
-			userPrompt = `\u3010\u539F\u6587\u4E0A\u4E0B\u6587\uFF0C\u4EC5\u4F5C\u53C2\u8003\u3011
+${command.detailPrompt}` : "";
+    const targetLanguage = (command == null ? void 0 : command.language) || steward.language || "\u6587\u672C\u7684\u539F\u59CB\u8BED\u8A00";
+    let systemPrompt = "";
+    if ((command == null ? void 0 : command.type) === "default-summary") {
+      systemPrompt = applyPromptTemplate(
+        (promptTemplates == null ? void 0 : promptTemplates.defaultSummary) || DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
+        {
+          FOOTNOTE_LENGTH: String(effectiveFootnoteLen),
+          TARGET_LANGUAGE: targetLanguage,
+          FOOTNOTE_ID: footnoteId,
+          DEFAULT_SUMMARY_PROMPT: defaultSummaryPrompt,
+          DYNAMIC_PROMPTS: dynamicPrompts,
+          DETAIL_INSTRUCTION: detailInstruction
+        }
+      );
+    } else {
+      systemPrompt = applyPromptTemplate(
+        (promptTemplates == null ? void 0 : promptTemplates.annotation) || DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
+        {
+          FOOTNOTE_LENGTH: String(effectiveFootnoteLen),
+          TARGET_LANGUAGE: targetLanguage,
+          FOOTNOTE_ID: footnoteId,
+          DEFAULT_SUMMARY_PROMPT: defaultSummaryPrompt,
+          DYNAMIC_PROMPTS: dynamicPrompts,
+          DETAIL_INSTRUCTION: detailInstruction
+        }
+      );
+    }
+    let userPrompt = "";
+    if (isFollowUp && previousOutput) {
+      userPrompt = `\u3010\u539F\u6587\u4E0A\u4E0B\u6587\uFF0C\u4EC5\u4F5C\u53C2\u8003\u3011
 ...${contextBefore}...
 \u3010\u4EE5\u4E0B\u662F\u9700\u8981\u5206\u6790\u7684\u6838\u5FC3\u5185\u5BB9\u3011
 ${text}
@@ -2855,9 +2461,9 @@ ${previousOutput}
 \u3010\u6700\u65B0\u7684\u4FEE\u6539\u8981\u6C42\u3011
 \u73B0\u5728\u4F60\u5DF2\u7ECF\u7ED9\u51FA\u4E86\u4E0A\u8FF0\u521D\u7A3F\uFF0C\u4F46\u6211\u5E0C\u671B\u4F60\u5BF9\u5176\u8FDB\u884C\u6539\u8FDB\u3002\u8BF7\u4E25\u683C\u5206\u6790\u3010\u9700\u8981\u5206\u6790\u7684\u6838\u5FC3\u5185\u5BB9\u3011\uFF0C\u4E0D\u8981\u5F15\u7528\u6216\u603B\u7ED3\u4E0A\u4E0B\u6587\u4E2D\u5176\u4ED6\u65E0\u5173\u5185\u5BB9\uFF0C\u4E25\u683C\u6309\u7167\u6211\u6700\u65B0\u7684\u8981\u6C42\u8FDB\u884C\u4FEE\u6539\u6216\u91CD\u5199\uFF1A
 ${followUpText}`;
-		} else {
-			if (contextBefore || contextAfter) {
-				userPrompt = `\u3010\u539F\u6587\u4E0A\u4E0B\u6587\uFF0C\u4EC5\u4F5C\u53C2\u8003\u3011
+    } else {
+      if (contextBefore || contextAfter) {
+        userPrompt = `\u3010\u539F\u6587\u4E0A\u4E0B\u6587\uFF0C\u4EC5\u4F5C\u53C2\u8003\u3011
 ...${contextBefore}...
 \u3010\u4EE5\u4E0B\u662F\u9700\u8981\u5206\u6790\u7684\u6838\u5FC3\u5185\u5BB9\u3011
 ${text}
@@ -2866,166 +2472,147 @@ ${text}
 ${contextAfter}...
 
 \u3010\u91CD\u8981\u3011\u8BF7\u4EC5\u5206\u6790\u3010\u9700\u8981\u5206\u6790\u7684\u6838\u5FC3\u5185\u5BB9\u3011\u4E2D\u7684\u6587\u672C\uFF0C\u4E0D\u8981\u5F15\u7528\u6216\u603B\u7ED3\u4E0A\u4E0B\u6587\u4E2D\u5176\u4ED6\u65E0\u5173\u5185\u5BB9\u3002`;
-			} else {
-				userPrompt = `\u3010\u9700\u8981\u5206\u6790\u7684\u5185\u5BB9\u3011
+      } else {
+        userPrompt = `\u3010\u9700\u8981\u5206\u6790\u7684\u5185\u5BB9\u3011
 ${text}
 
 \u3010\u91CD\u8981\u3011\u8BF7\u4EC5\u5206\u6790\u4EE5\u4E0A\u5185\u5BB9\uFF0C\u4E0D\u8981\u6DFB\u52A0\u4EFB\u4F55\u80CC\u666F\u77E5\u8BC6\u6216\u5916\u90E8\u4FE1\u606F\u3002`;
-			}
-		}
-		if (searchContext) {
-			userPrompt += searchContext;
-		}
-		try {
-			const hasImages = images && images.length > 0;
-			console.log(`[Marking Note] AI \u8C03\u7528\u5F00\u59CB`, {
-				model: provider.modelId,
-				textLength: text.length,
-				contextBeforeLength: contextBefore.length,
-				contextAfterLength: contextAfter.length,
-				hasImages: !!hasImages,
-				imagesCount: (images == null ? void 0 : images.length) || 0,
-				steward: steward.id,
-				command: (command == null ? void 0 : command.type) || "default",
-			});
-			console.log(
-				`[Marking Note] \u53D1\u9001\u7684\u63D0\u793A\u8BCD\u957F\u5EA6:`,
-				{
-					systemPromptLength: systemPrompt.length,
-					userPromptLength: userPrompt.length,
-					totalPromptLength: systemPrompt.length + userPrompt.length,
-				},
-			);
-			const body = {
-				model: provider.modelId,
-				temperature: effectiveTemp,
-				top_p: effectiveTopP,
-			};
-			if (effectiveThinking > 0) {
-				body.max_completion_tokens = effectiveThinking;
-			}
-			if (hasImages) {
-				const contentParts = [{ type: "text", text: userPrompt }];
-				for (const img of images) {
-					contentParts.push({
-						type: "image_url",
-						image_url: { url: img.url },
-					});
-					if (img.alt) {
-						contentParts.push({
-							type: "text",
-							text: `[\u56FE\u7247\u8BF4\u660E: ${img.alt}]`,
-						});
-					}
-				}
-				body.messages = [
-					{ role: "system", content: systemPrompt },
-					{ role: "user", content: contentParts },
-				];
-			} else {
-				body.messages = [
-					{ role: "system", content: systemPrompt },
-					{ role: "user", content: userPrompt },
-				];
-			}
-			const response = await (0, import_obsidian2.requestUrl)({
-				url: `${provider.baseURL}/chat/completions`,
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${provider.apiKey}`,
-				},
-				body: JSON.stringify(body),
-			});
-			if (response.status !== 200) {
-				console.error("AI API Error:", response.text);
-				return null;
-			}
-			const data = response.json;
-			const content = data.choices[0].message.content;
-			console.log(`[Marking Note] AI \u751F\u6210\u5B8C\u6210`, {
-				model: provider.modelId,
-				inputTokens:
-					(_f = (_e = data.usage) == null ? void 0 : _e.prompt_tokens) != null
-						? _f
-						: "N/A",
-				outputTokens:
-					(_h = (_g = data.usage) == null ? void 0 : _g.completion_tokens) !=
-					null
-						? _h
-						: "N/A",
-				totalTokens:
-					(_j = (_i = data.usage) == null ? void 0 : _i.total_tokens) != null
-						? _j
-						: "N/A",
-				imagesCount: (images == null ? void 0 : images.length) || 0,
-			});
-			return AIClient.parseResponse(content, footnoteId);
-		} catch (e) {
-			console.error("Failed to connect to AI Provider", e);
-			return null;
-		}
-	}
-	/**
-	 * Robust response parser with multiple fallback strategies
-	 */
-	static parseResponse(content, footnoteId) {
-		let firstPart = "";
-		let secondPart = "";
-		const part2Markers = [
-			"=== PART2 ===",
-			"=== \u7B2C\u4E8C\u90E8\u5206\uFF1A\u8BE6\u7EC6\u5BCC\u6587\u672C\u5185\u5BB9 ===",
-			"=== \u7B2C\u4E8C\u90E8\u5206 ===",
-		];
-		let found = false;
-		for (const marker of part2Markers) {
-			const idx = content.indexOf(marker);
-			if (idx >= 0) {
-				firstPart = content.slice(0, idx);
-				secondPart = content.slice(idx + marker.length).trim();
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			const idMatch = new RegExp(
-				`\\[1\\]\\[${footnoteId.replace("#", "\\#")}\\](.*)`,
-				"m",
-			).exec(content);
-			if (idMatch) {
-				const matchEnd = (idMatch.index || 0) + idMatch[0].length;
-				firstPart = content.slice(0, matchEnd);
-				secondPart = content.slice(matchEnd).trim();
-			} else {
-				const lines = content.split("\n");
-				firstPart = lines[0];
-				secondPart = lines.slice(1).join("\n").trim();
-			}
-		}
-		firstPart = firstPart
-			.replace(/=== PART1 ===/g, "")
-			.replace(/=== 第一部分：结构化脚注 ===/g, "")
-			.trim();
-		const match = /\[([0-3])\]\[(#[a-zA-Z0-9_-]+)\]\s*(.*)/.exec(firstPart);
-		if (match) {
-			return {
-				state: match[1],
-				id: match[2],
-				summary: match[3].trim(),
-				richText: secondPart,
-			};
-		}
-		if (firstPart.length > 0) {
-			return {
-				state: "1",
-				id: footnoteId,
-				summary: firstPart.slice(0, 50),
-				richText: secondPart || content,
-			};
-		}
-		console.warn("AI returned unparseable format. Raw content:", content);
-		return null;
-	}
+      }
+    }
+    if (searchContext) {
+      userPrompt += searchContext;
+    }
+    try {
+      const hasImages = images && images.length > 0;
+      console.log(`[Marking Note] AI \u8C03\u7528\u5F00\u59CB`, {
+        model: provider.modelId,
+        textLength: text.length,
+        contextBeforeLength: contextBefore.length,
+        contextAfterLength: contextAfter.length,
+        hasImages: !!hasImages,
+        imagesCount: (images == null ? void 0 : images.length) || 0,
+        steward: steward.id,
+        command: (command == null ? void 0 : command.type) || "default"
+      });
+      console.log(`[Marking Note] \u53D1\u9001\u7684\u63D0\u793A\u8BCD\u957F\u5EA6:`, {
+        systemPromptLength: systemPrompt.length,
+        userPromptLength: userPrompt.length,
+        totalPromptLength: systemPrompt.length + userPrompt.length
+      });
+      const body = {
+        model: provider.modelId,
+        temperature: effectiveTemp,
+        top_p: effectiveTopP
+      };
+      if (effectiveThinking > 0) {
+        body.max_completion_tokens = effectiveThinking;
+      }
+      if (hasImages) {
+        const contentParts = [{ type: "text", text: userPrompt }];
+        for (const img of images) {
+          contentParts.push({
+            type: "image_url",
+            image_url: { url: img.url }
+          });
+          if (img.alt) {
+            contentParts.push({ type: "text", text: `[\u56FE\u7247\u8BF4\u660E: ${img.alt}]` });
+          }
+        }
+        body.messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: contentParts }
+        ];
+      } else {
+        body.messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ];
+      }
+      const response = await (0, import_obsidian2.requestUrl)({
+        url: `${provider.baseURL}/chat/completions`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${provider.apiKey}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (response.status !== 200) {
+        console.error("AI API Error:", response.text);
+        return null;
+      }
+      const data = response.json;
+      const content = data.choices[0].message.content;
+      console.log(`[Marking Note] AI \u751F\u6210\u5B8C\u6210`, {
+        model: provider.modelId,
+        inputTokens: (_f = (_e = data.usage) == null ? void 0 : _e.prompt_tokens) != null ? _f : "N/A",
+        outputTokens: (_h = (_g = data.usage) == null ? void 0 : _g.completion_tokens) != null ? _h : "N/A",
+        totalTokens: (_j = (_i = data.usage) == null ? void 0 : _i.total_tokens) != null ? _j : "N/A",
+        imagesCount: (images == null ? void 0 : images.length) || 0
+      });
+      return AIClient.parseResponse(content, footnoteId);
+    } catch (e) {
+      console.error("Failed to connect to AI Provider", e);
+      return null;
+    }
+  }
+  /**
+   * Robust response parser with multiple fallback strategies
+   */
+  static parseResponse(content, footnoteId) {
+    let firstPart = "";
+    let secondPart = "";
+    const part2Markers = [
+      "=== PART2 ===",
+      "=== \u7B2C\u4E8C\u90E8\u5206\uFF1A\u8BE6\u7EC6\u5BCC\u6587\u672C\u5185\u5BB9 ===",
+      "=== \u7B2C\u4E8C\u90E8\u5206 ==="
+    ];
+    let found = false;
+    for (const marker of part2Markers) {
+      const idx = content.indexOf(marker);
+      if (idx >= 0) {
+        firstPart = content.slice(0, idx);
+        secondPart = content.slice(idx + marker.length).trim();
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      const idMatch = new RegExp(
+        `\\[1\\]\\[${footnoteId.replace("#", "\\#")}\\](.*)`,
+        "m"
+      ).exec(content);
+      if (idMatch) {
+        const matchEnd = (idMatch.index || 0) + idMatch[0].length;
+        firstPart = content.slice(0, matchEnd);
+        secondPart = content.slice(matchEnd).trim();
+      } else {
+        const lines = content.split("\n");
+        firstPart = lines[0];
+        secondPart = lines.slice(1).join("\n").trim();
+      }
+    }
+    firstPart = firstPart.replace(/=== PART1 ===/g, "").replace(/=== 第一部分：结构化脚注 ===/g, "").trim();
+    const match = /\[([0-3])\]\[(#[a-zA-Z0-9_-]+)\]\s*(.*)/.exec(firstPart);
+    if (match) {
+      return {
+        state: match[1],
+        id: match[2],
+        summary: match[3].trim(),
+        richText: secondPart
+      };
+    }
+    if (firstPart.length > 0) {
+      return {
+        state: "1",
+        id: footnoteId,
+        summary: firstPart.slice(0, 50),
+        richText: secondPart || content
+      };
+    }
+    console.warn("AI returned unparseable format. Raw content:", content);
+    return null;
+  }
 };
 
 // src/services/annotation-service.ts
@@ -3034,307 +2621,247 @@ init_ids();
 // src/tavily.ts
 var import_obsidian3 = require("obsidian");
 var TavilyClient = class {
-	static async search(apiKey, query, maxResults = 3, searchDepth = "basic") {
-		if (!apiKey) return [];
-		try {
-			const response = await (0, import_obsidian3.requestUrl)({
-				url: "https://api.tavily.com/search",
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					api_key: apiKey,
-					query,
-					max_results: maxResults,
-					search_depth: searchDepth,
-					include_answer: false,
-					include_raw_content: false,
-				}),
-			});
-			if (response.status !== 200) {
-				console.error("Tavily API error:", response.status, response.text);
-				return [];
-			}
-			const data = response.json;
-			return data.results || [];
-		} catch (e) {
-			console.error("Tavily search failed:", e);
-			return [];
-		}
-	}
-	static formatSearchResults(results) {
-		if (results.length === 0) return "";
-		let formatted =
-			"\n\n\u3010\u7F51\u7EDC\u641C\u7D22\u7ED3\u679C\u3011\n\u4EE5\u4E0B\u662F\u4ECE\u7F51\u7EDC\u641C\u7D22\u5230\u7684\u76F8\u5173\u4FE1\u606F\uFF0C\u8BF7\u7ED3\u5408\u8FD9\u4E9B\u4FE1\u606F\u4E30\u5BCC\u4F60\u7684\u5206\u6790\uFF1A\n\n";
-		for (let i = 0; i < results.length; i++) {
-			const r = results[i];
-			formatted += `\u6765\u6E90${i + 1}: ${r.title}
+  static async search(apiKey, query, maxResults = 3, searchDepth = "basic") {
+    if (!apiKey)
+      return [];
+    try {
+      const response = await (0, import_obsidian3.requestUrl)({
+        url: "https://api.tavily.com/search",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query,
+          max_results: maxResults,
+          search_depth: searchDepth,
+          include_answer: false,
+          include_raw_content: false
+        })
+      });
+      if (response.status !== 200) {
+        console.error("Tavily API error:", response.status, response.text);
+        return [];
+      }
+      const data = response.json;
+      return data.results || [];
+    } catch (e) {
+      console.error("Tavily search failed:", e);
+      return [];
+    }
+  }
+  static formatSearchResults(results) {
+    if (results.length === 0)
+      return "";
+    let formatted = "\n\n\u3010\u7F51\u7EDC\u641C\u7D22\u7ED3\u679C\u3011\n\u4EE5\u4E0B\u662F\u4ECE\u7F51\u7EDC\u641C\u7D22\u5230\u7684\u76F8\u5173\u4FE1\u606F\uFF0C\u8BF7\u7ED3\u5408\u8FD9\u4E9B\u4FE1\u606F\u4E30\u5BCC\u4F60\u7684\u5206\u6790\uFF1A\n\n";
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      formatted += `\u6765\u6E90${i + 1}: ${r.title}
 `;
-			formatted += `\u94FE\u63A5: ${r.url}
+      formatted += `\u94FE\u63A5: ${r.url}
 `;
-			formatted += `\u6458\u8981: ${r.content}
+      formatted += `\u6458\u8981: ${r.content}
 
 `;
-		}
-		formatted +=
-			"\u8BF7\u5728\u5206\u6790\u4E2D\u9002\u5F53\u53C2\u8003\u4E0A\u8FF0\u641C\u7D22\u7ED3\u679C\uFF0C\u4F46\u4E0D\u8981\u76F4\u63A5\u5927\u6BB5\u590D\u5236\uFF0C\u8981\u6709\u9009\u62E9\u6027\u5730\u878D\u5408\u5230\u4F60\u7684\u5206\u6790\u4E2D\u3002\n";
-		return formatted;
-	}
+    }
+    formatted += "\u8BF7\u5728\u5206\u6790\u4E2D\u9002\u5F53\u53C2\u8003\u4E0A\u8FF0\u641C\u7D22\u7ED3\u679C\uFF0C\u4F46\u4E0D\u8981\u76F4\u63A5\u5927\u6BB5\u590D\u5236\uFF0C\u8981\u6709\u9009\u62E9\u6027\u5730\u878D\u5408\u5230\u4F60\u7684\u5206\u6790\u4E2D\u3002\n";
+    return formatted;
+  }
 };
 
 // src/services/annotation-service.ts
 init_state();
 init_annotation_repository();
 var AnnotationService = class {
-	constructor(app) {
-		this.app = app;
-	}
-	async rewriteSelection(input) {
-		var _a, _b, _c, _d, _e;
-		const notice = new import_obsidian4.Notice(
-			"\u23F3 AI \u6B63\u5728\u6025\u901F\u6539\u5199\u539F\u6587\u4E2D...",
-			0,
-		);
-		const { from, to } = input.view.state.selection.main;
-		const effectiveContextLen = input.inlineSteward.contextLength || 0;
-		const fullText = input.view.state.doc.toString();
-		let contextBefore = "";
-		let contextAfter = "";
-		if (effectiveContextLen > 0) {
-			const halfLen = Math.floor(effectiveContextLen / 2);
-			contextBefore = fullText.slice(Math.max(0, from - halfLen), from);
-			contextAfter = fullText.slice(
-				to,
-				Math.min(fullText.length, to + halfLen),
-			);
-		}
-		let userPrompt = `\u3010\u5904\u7406\u8981\u6C42\u3011\uFF1A
+  constructor(app) {
+    this.app = app;
+  }
+  async rewriteSelection(input) {
+    var _a, _b, _c, _d, _e;
+    const notice = new import_obsidian4.Notice("\u23F3 AI \u6B63\u5728\u6025\u901F\u6539\u5199\u539F\u6587\u4E2D...", 0);
+    const { from, to } = input.view.state.selection.main;
+    const effectiveContextLen = input.inlineSteward.contextLength || 0;
+    const fullText = input.view.state.doc.toString();
+    let contextBefore = "";
+    let contextAfter = "";
+    if (effectiveContextLen > 0) {
+      const halfLen = Math.floor(effectiveContextLen / 2);
+      contextBefore = fullText.slice(Math.max(0, from - halfLen), from);
+      contextAfter = fullText.slice(to, Math.min(fullText.length, to + halfLen));
+    }
+    let userPrompt = `\u3010\u5904\u7406\u8981\u6C42\u3011\uFF1A
 ${input.instruction}
 
 \u3010\u9700\u5904\u7406\u7684\u539F\u6587\u7247\u6BB5\u3011\uFF1A
 ${input.selection}`;
-		if (contextBefore || contextAfter) {
-			userPrompt = `\u3010\u6587\u7AE0\u4E0A\u4E0B\u6587\u53C2\u8003\u3011:
+    if (contextBefore || contextAfter) {
+      userPrompt = `\u3010\u6587\u7AE0\u4E0A\u4E0B\u6587\u53C2\u8003\u3011:
 ...${contextBefore}\u3010\u9AD8\u4EAE\u5F3A\u8C03\uFF1A${input.selection}\u3011${contextAfter}...
 
 \u8BF7\u5C06\u6CE8\u610F\u529B\u96C6\u4E2D\u5728\u3010\u9AD8\u4EAE\u5F3A\u8C03\u3011\u7684\u90E8\u5206\u6267\u884C\u4EE5\u4E0B\u64CD\u4F5C\uFF1A
 \u3010\u5904\u7406\u8981\u6C42\u3011\uFF1A
 ${input.instruction}`;
-		}
-		try {
-			const body = {
-				model: input.provider.modelId,
-				messages: [
-					{ role: "system", content: input.inlineRewritePrompt },
-					{ role: "user", content: userPrompt },
-				],
-				temperature: (_a = input.inlineSteward.temperature) != null ? _a : 0.3,
-			};
-			const response = await fetch(
-				`${input.provider.baseURL}/chat/completions`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${input.provider.apiKey}`,
-					},
-					body: JSON.stringify(body),
-				},
-			);
-			if (!response.ok) {
-				throw new Error("API Request Failed");
-			}
-			const data = await response.json();
-			let newText =
-				((_e =
-					(_d =
-						(_c = (_b = data.choices) == null ? void 0 : _b[0]) == null
-							? void 0
-							: _c.message) == null
-						? void 0
-						: _d.content) == null
-					? void 0
-					: _e.trim()) || input.selection;
-			if (newText.startsWith("```markdown") && newText.endsWith("```")) {
-				newText = newText.slice(11, -3).trim();
-			} else if (newText.startsWith("```") && newText.endsWith("```")) {
-				newText = newText.slice(3, -3).trim();
-			}
-			input.view.dispatch({
-				changes: { from, to, insert: newText },
-			});
-			notice.hide();
-			new import_obsidian4.Notice(
-				"\u2728 \u539F\u6587\u6539\u5199\u5B8C\u6210\uFF01\u53EF\u4EE5\u901A\u8FC7 Ctrl+Z \u64A4\u56DE",
-			);
-			return true;
-		} catch (error) {
-			console.error(error);
-			notice.hide();
-			new import_obsidian4.Notice("\u26A0\uFE0F AI \u6539\u5199\u5931\u8D25");
-			return false;
-		}
-	}
-	async annotateSelection(input) {
-		var _a, _b, _c;
-		const { from, to } = input.view.state.selection.main;
-		const newId = generateAnnotationId();
-		const tagId = ((_a = input.command) == null ? void 0 : _a.tagId) || "";
-		const pending = annotationRepository.createPendingAnnotation({
-			text: input.editor.getValue(),
-			selection: input.selection,
-			selectionFrom: from,
-			selectionTo: to,
-			id: newId,
-			tagId,
-			state: MarkState.Unprocessed,
-		});
-		input.editor.setValue(pending.text);
-		const effectiveContextLen =
-			(_c = (_b = input.command) == null ? void 0 : _b.contextLength) != null
-				? _c
-				: input.steward.contextLength;
-		const halfLen = Math.floor(effectiveContextLen / 2);
-		const fullText = input.view.state.doc.toString();
-		const contextBefore =
-			effectiveContextLen > 0
-				? fullText.slice(Math.max(0, from - halfLen), from)
-				: "";
-		const contextAfter =
-			effectiveContextLen > 0
-				? fullText.slice(to, Math.min(fullText.length, to + halfLen))
-				: "";
-		const defaultSummaryCmd = input.steward.commands.find(
-			(command) => command.type === "default-summary",
-		);
-		const defaultSummaryPrompt =
-			(defaultSummaryCmd == null ? void 0 : defaultSummaryCmd.detailPrompt) ||
-			"\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
-		const result = await AIClient.generateAnnotation({
-			text: input.selection,
-			contextBefore,
-			contextAfter,
-			steward: input.steward,
-			provider: input.provider,
-			footnoteId: newId,
-			defaultSummaryPrompt,
-			command: input.command || defaultSummaryCmd,
-			promptTemplates: this.promptTemplates(input.settings),
-		});
-		if (!result) {
-			return null;
-		}
-		const applied = annotationRepository.applyAnnotationResult({
-			text: input.editor.getValue(),
-			id: newId,
-			state: result.state,
-			summary: result.summary,
-			richText: result.richText,
-		});
-		input.editor.setValue(applied.text);
-		return { id: newId, summary: result.summary };
-	}
-	async followUp(input) {
-		var _a;
-		const fullText = await this.loadDocumentText(input.filePath);
-		if (!fullText) {
-			new import_obsidian4.Notice(
-				"\u274C \u672A\u627E\u5230\u5173\u8054\u6587\u6863\uFF0C\u8BF7\u786E\u4FDD\u76F8\u5173\u6587\u6863\u5728\u6807\u7B7E\u9875\u4E2D\u5DF2\u6253\u5F00",
-			);
-			return null;
-		}
-		const node = annotationRepository
-			.parseMarkingNodes(fullText)
-			.find((candidate) => candidate.id === input.nodeId);
-		if (!node) {
-			new import_obsidian4.Notice(
-				"\u274C \u672A\u80FD\u5728\u6587\u6863\u4E2D\u627E\u5230\u8BE5\u9AD8\u4EAE\u539F\u6587",
-			);
-			return null;
-		}
-		const effectiveContextLen = input.steward.contextLength;
-		const halfLen = Math.floor(effectiveContextLen / 2);
-		const contextBefore =
-			effectiveContextLen > 0
-				? fullText.slice(Math.max(0, node.from - halfLen), node.from)
-				: "";
-		const contextAfter =
-			effectiveContextLen > 0 ? fullText.slice(node.to, node.to + halfLen) : "";
-		const defaultSummaryPrompt =
-			((_a = input.steward.commands.find(
-				(command) => command.type === "default-summary",
-			)) == null
-				? void 0
-				: _a.detailPrompt) ||
-			"\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
-		const searchContext = await this.buildSearchContext(input, node.text);
-		try {
-			const result = await AIClient.generateAnnotation({
-				text: node.text,
-				contextBefore,
-				contextAfter,
-				steward: input.steward,
-				provider: input.provider,
-				footnoteId: input.nodeId,
-				defaultSummaryPrompt,
-				isFollowUp: true,
-				previousOutput: input.currentContent,
-				followUpText: input.instruction,
-				searchContext,
-				promptTemplates: this.promptTemplates(input.settings),
-			});
-			if (result) {
-				return { summary: result.summary, richText: result.richText };
-			}
-		} catch (error) {
-			console.error("Follow-up failed:", error);
-		}
-		return null;
-	}
-	async loadDocumentText(filePath) {
-		const allLeaves = this.app.workspace.getLeavesOfType("markdown");
-		for (const leaf of allLeaves) {
-			const markdownView = leaf.view;
-			if (
-				!filePath ||
-				(markdownView.file && markdownView.file.path === filePath)
-			) {
-				return markdownView.editor.getValue();
-			}
-		}
-		const targetFile = filePath
-			? this.app.vault.getAbstractFileByPath(filePath)
-			: this.app.workspace.getActiveFile();
-		if (!(targetFile instanceof import_obsidian4.TFile)) {
-			return "";
-		}
-		return this.app.vault.read(targetFile);
-	}
-	promptTemplates(settings) {
-		return {
-			defaultSummary: settings.defaultSummarySystemPromptTemplate,
-			annotation: settings.annotationSystemPromptTemplate,
-		};
-	}
-	async buildSearchContext(input, nodeText) {
-		var _a;
-		if (
-			!((_a = input.options) == null ? void 0 : _a.enableWebSearch) ||
-			!input.settings.tavilyApiKey
-		) {
-			return void 0;
-		}
-		const query = `${nodeText}
+    }
+    try {
+      const body = {
+        model: input.provider.modelId,
+        messages: [
+          { role: "system", content: input.inlineRewritePrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: (_a = input.inlineSteward.temperature) != null ? _a : 0.3
+      };
+      const response = await fetch(`${input.provider.baseURL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${input.provider.apiKey}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        throw new Error("API Request Failed");
+      }
+      const data = await response.json();
+      let newText = ((_e = (_d = (_c = (_b = data.choices) == null ? void 0 : _b[0]) == null ? void 0 : _c.message) == null ? void 0 : _d.content) == null ? void 0 : _e.trim()) || input.selection;
+      if (newText.startsWith("```markdown") && newText.endsWith("```")) {
+        newText = newText.slice(11, -3).trim();
+      } else if (newText.startsWith("```") && newText.endsWith("```")) {
+        newText = newText.slice(3, -3).trim();
+      }
+      input.view.dispatch({
+        changes: { from, to, insert: newText }
+      });
+      notice.hide();
+      new import_obsidian4.Notice("\u2728 \u539F\u6587\u6539\u5199\u5B8C\u6210\uFF01\u53EF\u4EE5\u901A\u8FC7 Ctrl+Z \u64A4\u56DE");
+      return true;
+    } catch (error) {
+      console.error(error);
+      notice.hide();
+      new import_obsidian4.Notice("\u26A0\uFE0F AI \u6539\u5199\u5931\u8D25");
+      return false;
+    }
+  }
+  async annotateSelection(input) {
+    var _a, _b, _c;
+    const { from, to } = input.view.state.selection.main;
+    const newId = generateAnnotationId();
+    const tagId = ((_a = input.command) == null ? void 0 : _a.tagId) || "";
+    const pending = annotationRepository.createPendingAnnotation({
+      text: input.editor.getValue(),
+      selection: input.selection,
+      selectionFrom: from,
+      selectionTo: to,
+      id: newId,
+      tagId,
+      state: MarkState.Unprocessed
+    });
+    input.editor.setValue(pending.text);
+    const effectiveContextLen = (_c = (_b = input.command) == null ? void 0 : _b.contextLength) != null ? _c : input.steward.contextLength;
+    const halfLen = Math.floor(effectiveContextLen / 2);
+    const fullText = input.view.state.doc.toString();
+    const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, from - halfLen), from) : "";
+    const contextAfter = effectiveContextLen > 0 ? fullText.slice(to, Math.min(fullText.length, to + halfLen)) : "";
+    const defaultSummaryCmd = input.steward.commands.find((command) => command.type === "default-summary");
+    const defaultSummaryPrompt = (defaultSummaryCmd == null ? void 0 : defaultSummaryCmd.detailPrompt) || "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
+    const result = await AIClient.generateAnnotation({
+      text: input.selection,
+      contextBefore,
+      contextAfter,
+      steward: input.steward,
+      provider: input.provider,
+      footnoteId: newId,
+      defaultSummaryPrompt,
+      command: input.command || defaultSummaryCmd,
+      promptTemplates: this.promptTemplates(input.settings)
+    });
+    if (!result) {
+      return null;
+    }
+    const applied = annotationRepository.applyAnnotationResult({
+      text: input.editor.getValue(),
+      id: newId,
+      state: result.state,
+      summary: result.summary,
+      richText: result.richText
+    });
+    input.editor.setValue(applied.text);
+    return { id: newId, summary: result.summary };
+  }
+  async followUp(input) {
+    var _a;
+    const fullText = await this.loadDocumentText(input.filePath);
+    if (!fullText) {
+      new import_obsidian4.Notice("\u274C \u672A\u627E\u5230\u5173\u8054\u6587\u6863\uFF0C\u8BF7\u786E\u4FDD\u76F8\u5173\u6587\u6863\u5728\u6807\u7B7E\u9875\u4E2D\u5DF2\u6253\u5F00");
+      return null;
+    }
+    const node = annotationRepository.parseMarkingNodes(fullText).find((candidate) => candidate.id === input.nodeId);
+    if (!node) {
+      new import_obsidian4.Notice("\u274C \u672A\u80FD\u5728\u6587\u6863\u4E2D\u627E\u5230\u8BE5\u9AD8\u4EAE\u539F\u6587");
+      return null;
+    }
+    const effectiveContextLen = input.steward.contextLength;
+    const halfLen = Math.floor(effectiveContextLen / 2);
+    const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, node.from - halfLen), node.from) : "";
+    const contextAfter = effectiveContextLen > 0 ? fullText.slice(node.to, node.to + halfLen) : "";
+    const defaultSummaryPrompt = ((_a = input.steward.commands.find((command) => command.type === "default-summary")) == null ? void 0 : _a.detailPrompt) || "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
+    const searchContext = await this.buildSearchContext(input, node.text);
+    try {
+      const result = await AIClient.generateAnnotation({
+        text: node.text,
+        contextBefore,
+        contextAfter,
+        steward: input.steward,
+        provider: input.provider,
+        footnoteId: input.nodeId,
+        defaultSummaryPrompt,
+        isFollowUp: true,
+        previousOutput: input.currentContent,
+        followUpText: input.instruction,
+        searchContext,
+        promptTemplates: this.promptTemplates(input.settings)
+      });
+      if (result) {
+        return { summary: result.summary, richText: result.richText };
+      }
+    } catch (error) {
+      console.error("Follow-up failed:", error);
+    }
+    return null;
+  }
+  async loadDocumentText(filePath) {
+    const allLeaves = this.app.workspace.getLeavesOfType("markdown");
+    for (const leaf of allLeaves) {
+      const markdownView = leaf.view;
+      if (!filePath || markdownView.file && markdownView.file.path === filePath) {
+        return markdownView.editor.getValue();
+      }
+    }
+    const targetFile = filePath ? this.app.vault.getAbstractFileByPath(filePath) : this.app.workspace.getActiveFile();
+    if (!(targetFile instanceof import_obsidian4.TFile)) {
+      return "";
+    }
+    return this.app.vault.read(targetFile);
+  }
+  promptTemplates(settings) {
+    return {
+      defaultSummary: settings.defaultSummarySystemPromptTemplate,
+      annotation: settings.annotationSystemPromptTemplate
+    };
+  }
+  async buildSearchContext(input, nodeText) {
+    var _a;
+    if (!((_a = input.options) == null ? void 0 : _a.enableWebSearch) || !input.settings.tavilyApiKey) {
+      return void 0;
+    }
+    const query = `${nodeText}
 
 \u8FFD\u95EE\u9700\u6C42\uFF1A${input.instruction}`.trim();
-		const results = await TavilyClient.search(
-			input.settings.tavilyApiKey,
-			query,
-		);
-		const formatted = TavilyClient.formatSearchResults(results);
-		return formatted || void 0;
-	}
+    const results = await TavilyClient.search(input.settings.tavilyApiKey, query);
+    const formatted = TavilyClient.formatSearchResults(results);
+    return formatted || void 0;
+  }
 };
 
 // src/settings/setting-tab.ts
@@ -3342,1633 +2869,849 @@ var import_obsidian6 = require("obsidian");
 
 // src/ui/emoji-picker.ts
 function showEmojiGrid(anchor, onSelect) {
-	const existing = document.querySelector(".mn-emoji-picker");
-	if (existing) existing.remove();
-	const picker = document.createElement("div");
-	picker.addClass("mn-emoji-picker");
-	const rect = anchor.getBoundingClientRect();
-	picker.style.position = "fixed";
-	const pickerWidth = 320;
-	let posX = rect.left - pickerWidth - 6;
-	if (posX < 10) posX = rect.right + 6;
-	if (posX + pickerWidth + 10 > window.innerWidth) {
-		posX = window.innerWidth - pickerWidth - 10;
-		if (posX < 10) posX = 10;
-	}
-	let posY = rect.top;
-	if (posY + 400 > window.innerHeight) {
-		posY = window.innerHeight - 410;
-		if (posY < 10) posY = 10;
-	}
-	picker.style.left = `${posX}px`;
-	picker.style.top = `${posY}px`;
-	picker.style.zIndex = "10000";
-	const tabsHeader = picker.createEl("div", { cls: "mn-emoji-tabs" });
-	const gridContainer = picker.createEl("div", { cls: "mn-emoji-grid" });
-	let isFirst = true;
-	for (const cat of EMOJI_CATEGORIES) {
-		const tab = tabsHeader.createEl("div", {
-			cls: "mn-emoji-tab",
-			text: cat.name,
-		});
-		if (isFirst) tab.addClass("mn-emoji-tab-active");
-		const populateGrid = () => {
-			gridContainer.empty();
-			for (const emoji of cat.emojis) {
-				const cell = gridContainer.createEl("span", {
-					text: emoji,
-					cls: "mn-emoji-cell",
-				});
-				cell.onclick = () => {
-					onSelect(emoji);
-					picker.remove();
-				};
-			}
-		};
-		if (isFirst) populateGrid();
-		tab.onclick = () => {
-			tabsHeader.querySelectorAll(".mn-emoji-tab").forEach((node) => {
-				node.removeClass("mn-emoji-tab-active");
-			});
-			tab.addClass("mn-emoji-tab-active");
-			populateGrid();
-		};
-		isFirst = false;
-	}
-	document.body.appendChild(picker);
-	const closeHandler = (e) => {
-		if (!picker.contains(e.target) && e.target !== anchor) {
-			picker.remove();
-			document.removeEventListener("click", closeHandler);
-		}
-	};
-	setTimeout(() => document.addEventListener("click", closeHandler), 10);
+  const existing = document.querySelector(".mn-emoji-picker");
+  if (existing)
+    existing.remove();
+  const picker = document.createElement("div");
+  picker.addClass("mn-emoji-picker");
+  const rect = anchor.getBoundingClientRect();
+  picker.style.position = "fixed";
+  const pickerWidth = 320;
+  let posX = rect.left - pickerWidth - 6;
+  if (posX < 10)
+    posX = rect.right + 6;
+  if (posX + pickerWidth + 10 > window.innerWidth) {
+    posX = window.innerWidth - pickerWidth - 10;
+    if (posX < 10)
+      posX = 10;
+  }
+  let posY = rect.top;
+  if (posY + 400 > window.innerHeight) {
+    posY = window.innerHeight - 410;
+    if (posY < 10)
+      posY = 10;
+  }
+  picker.style.left = `${posX}px`;
+  picker.style.top = `${posY}px`;
+  picker.style.zIndex = "10000";
+  const tabsHeader = picker.createEl("div", { cls: "mn-emoji-tabs" });
+  const gridContainer = picker.createEl("div", { cls: "mn-emoji-grid" });
+  let isFirst = true;
+  for (const cat of EMOJI_CATEGORIES) {
+    const tab = tabsHeader.createEl("div", { cls: "mn-emoji-tab", text: cat.name });
+    if (isFirst)
+      tab.addClass("mn-emoji-tab-active");
+    const populateGrid = () => {
+      gridContainer.empty();
+      for (const emoji of cat.emojis) {
+        const cell = gridContainer.createEl("span", { text: emoji, cls: "mn-emoji-cell" });
+        cell.onclick = () => {
+          onSelect(emoji);
+          picker.remove();
+        };
+      }
+    };
+    if (isFirst)
+      populateGrid();
+    tab.onclick = () => {
+      tabsHeader.querySelectorAll(".mn-emoji-tab").forEach((node) => {
+        node.removeClass("mn-emoji-tab-active");
+      });
+      tab.addClass("mn-emoji-tab-active");
+      populateGrid();
+    };
+    isFirst = false;
+  }
+  document.body.appendChild(picker);
+  const closeHandler = (e) => {
+    if (!picker.contains(e.target) && e.target !== anchor) {
+      picker.remove();
+      document.removeEventListener("click", closeHandler);
+    }
+  };
+  setTimeout(() => document.addEventListener("click", closeHandler), 10);
 }
 
 // src/settings/modals.ts
 var import_obsidian5 = require("obsidian");
 var LightningCommandEditModal = class extends import_obsidian5.Modal {
-	constructor(app, cmd, tags, onSave) {
-		super(app);
-		this.cmd = JSON.parse(JSON.stringify(cmd));
-		this.tags = tags;
-		this.onSave = onSave;
-	}
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.empty();
-		contentEl.createEl("h3", {
-			text: `\u7F16\u8F91\u6307\u4EE4: ${this.cmd.icon} ${this.cmd.name}`,
-		});
-		new import_obsidian5.Setting(contentEl)
-			.setName("\u540D\u79F0")
-			.addText((text) =>
-				text.setValue(this.cmd.name).onChange((value) => {
-					this.cmd.name = value;
-				}),
-			);
-		const iconSetting = new import_obsidian5.Setting(contentEl).setName(
-			"\u56FE\u6807",
-		);
-		const iconBtn = iconSetting.controlEl.createEl("button", {
-			text: this.cmd.icon,
-			attr: {
-				style:
-					"font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;",
-			},
-		});
-		iconBtn.onclick = () => {
-			showEmojiGrid(iconBtn, (emoji) => {
-				this.cmd.icon = emoji;
-				iconBtn.innerText = emoji;
-			});
-		};
-		if (this.cmd.type === "default-summary") {
-			new import_obsidian5.Setting(contentEl)
-				.setName("\u4E00\u53E5\u8BDD\u603B\u7ED3\u7EA6\u675F")
-				.setDesc(
-					"\u9ED8\u8BA4\u5904\u7406\u9AD8\u4EAE\u65F6\u7684\u4E00\u53E5\u8BDD\u7EA6\u675F",
-				)
-				.addTextArea((text) =>
-					text.setValue(this.cmd.detailPrompt).onChange((value) => {
-						this.cmd.detailPrompt = value;
-					}),
-				);
-		} else if (this.cmd.type === "inline-modify") {
-			new import_obsidian5.Setting(contentEl)
-				.setName("\u5904\u7406\u547D\u4EE4")
-				.setDesc(
-					"\u544A\u8BC9\u5927\u6A21\u578B\u4F60\u60F3\u5982\u4F55\u5904\u7406\u6216\u6539\u5199\u8FD9\u6BB5\u539F\u6587\uFF08\u4E0D\u8981\u6709\u4EFB\u4F55\u8FD4\u56DE\u7ED3\u679C\u5916\u7684\u6807\u9898\u5185\u5BB9\uFF09",
-				)
-				.addTextArea((text) =>
-					text.setValue(this.cmd.detailPrompt).onChange((value) => {
-						this.cmd.detailPrompt = value;
-					}),
-				);
-		} else {
-			new import_obsidian5.Setting(contentEl)
-				.setName("\u8BE6\u7EC6\u5185\u5BB9\u6307\u4EE4")
-				.setDesc(
-					"\u5B9A\u4E49 AI \u7B2C\u4E8C\u90E8\u5206\uFF08\u5411\u4E0B\u8FFD\u95EE\u89D2\u6CE8\u6DF1\u5C42\u5185\u5BB9\uFF09\u7684\u8F93\u51FA\u5185\u5BB9",
-				)
-				.addTextArea((text) =>
-					text.setValue(this.cmd.detailPrompt).onChange((value) => {
-						this.cmd.detailPrompt = value;
-					}),
-				);
-			new import_obsidian5.Setting(contentEl)
-				.setName("\u7BA1\u5BB6\u63D0\u793A\u8BCD\u5E94\u7528\u8303\u56F4")
-				.setDesc(
-					"\u51B3\u5B9A\u8BE5\u547D\u4EE4\u6267\u884C\u65F6\uFF0C\u662F\u5426\u6CBF\u7528\u9605\u8BFB\u7BA1\u5BB6\u7684\u8BBE\u5B9A\u3002",
-				)
-				.addDropdown((dropdown) => {
-					dropdown.addOption(
-						"full",
-						"\u5E94\u7528\u9605\u8BFB\u7406\u89E3 + \u5199\u4F5C\u98CE\u683C (\u63A8\u8350)",
-					);
-					dropdown.addOption(
-						"writingOnly",
-						"\u4EC5\u5E94\u7528\u5199\u4F5C\u98CE\u683C",
-					);
-					dropdown.addOption(
-						"none",
-						"\u7EAF\u51C0\u6267\u884C (\u5747\u4E0D\u5E94\u7528)",
-					);
-					dropdown.setValue(this.cmd.contextMode || "full");
-					dropdown.onChange((value) => {
-						this.cmd.contextMode = value;
-					});
-				});
-		}
-		if (this.cmd.type !== "inline-modify") {
-			new import_obsidian5.Setting(contentEl)
-				.setName("\u5173\u8054\u6807\u7B7E (Tag)")
-				.setDesc(
-					"\u6267\u884C\u6B64\u6307\u4EE4\u65F6\u81EA\u52A8\u9644\u52A0\u7684\u6807\u7B7E\u5206\u7C7B",
-				)
-				.addDropdown((dropdown) => {
-					dropdown.addOption("", "\u4E0D\u5173\u8054 (\u65E0\u6807\u7B7E)");
-					const tags = this.tags.length > 0 ? this.tags : DEFAULT_TAGS;
-					for (const tag of tags) {
-						dropdown.addOption(tag.id, `${tag.emoji} ${tag.name}`);
-					}
-					dropdown.setValue(this.cmd.tagId || "");
-					dropdown.onChange((value) => {
-						this.cmd.tagId = value || void 0;
-					});
-				});
-		}
-		contentEl.createEl("h5", { text: "\u9AD8\u7EA7\u8986\u76D6 (Overrides)" });
-		new import_obsidian5.Setting(contentEl)
-			.setName("Temperature \u8986\u5199")
-			.setDesc(
-				"\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u63A8\u8350\u6781\u4F4E\u6E29 0-0.3 \u786E\u4FDD\u4E25\u8C28\u3002",
-			)
-			.addText((text) => {
-				var _a, _b;
-				return text
-					.setPlaceholder("\u7559\u7A7A")
-					.setValue(
-						(_b =
-							(_a = this.cmd.temperature) == null ? void 0 : _a.toString()) !=
-							null
-							? _b
-							: "",
-					)
-					.onChange((value) => {
-						this.cmd.temperature = value ? parseFloat(value) : void 0;
-					});
-			});
-		new import_obsidian5.Setting(contentEl)
-			.setName("\u4E0A\u4E0B\u6587\u957F\u5EA6")
-			.setDesc(
-				"\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u6700\u5927 8192\u3002",
-			)
-			.addText((text) => {
-				var _a, _b;
-				return text
-					.setPlaceholder("\u7559\u7A7A")
-					.setValue(
-						(_b =
-							(_a = this.cmd.contextLength) == null ? void 0 : _a.toString()) !=
-							null
-							? _b
-							: "",
-					)
-					.onChange((value) => {
-						this.cmd.contextLength = value ? parseInt(value) : void 0;
-					});
-			});
-		const btnDiv = contentEl.createEl("div", {
-			attr: {
-				style:
-					"display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;",
-			},
-		});
-		const cancelBtn = btnDiv.createEl("button", { text: "\u53D6\u6D88" });
-		cancelBtn.onclick = () => this.close();
-		const saveBtn = btnDiv.createEl("button", {
-			text: "\u{1F4BE} \u4FDD\u5B58",
-			cls: "mod-cta",
-		});
-		saveBtn.onclick = () => {
-			this.onSave(this.cmd);
-			this.close();
-		};
-	}
-	onClose() {
-		this.contentEl.empty();
-	}
+  constructor(app, cmd, tags, onSave) {
+    super(app);
+    this.cmd = JSON.parse(JSON.stringify(cmd));
+    this.tags = tags;
+    this.onSave = onSave;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h3", { text: `\u7F16\u8F91\u6307\u4EE4: ${this.cmd.icon} ${this.cmd.name}` });
+    new import_obsidian5.Setting(contentEl).setName("\u540D\u79F0").addText((text) => text.setValue(this.cmd.name).onChange((value) => {
+      this.cmd.name = value;
+    }));
+    const iconSetting = new import_obsidian5.Setting(contentEl).setName("\u56FE\u6807");
+    const iconBtn = iconSetting.controlEl.createEl("button", { text: this.cmd.icon, attr: { style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;" } });
+    iconBtn.onclick = () => {
+      showEmojiGrid(iconBtn, (emoji) => {
+        this.cmd.icon = emoji;
+        iconBtn.innerText = emoji;
+      });
+    };
+    if (this.cmd.type === "default-summary") {
+      new import_obsidian5.Setting(contentEl).setName("\u4E00\u53E5\u8BDD\u603B\u7ED3\u7EA6\u675F").setDesc("\u9ED8\u8BA4\u5904\u7406\u9AD8\u4EAE\u65F6\u7684\u4E00\u53E5\u8BDD\u7EA6\u675F").addTextArea((text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+        this.cmd.detailPrompt = value;
+      }));
+    } else if (this.cmd.type === "inline-modify") {
+      new import_obsidian5.Setting(contentEl).setName("\u5904\u7406\u547D\u4EE4").setDesc("\u544A\u8BC9\u5927\u6A21\u578B\u4F60\u60F3\u5982\u4F55\u5904\u7406\u6216\u6539\u5199\u8FD9\u6BB5\u539F\u6587\uFF08\u4E0D\u8981\u6709\u4EFB\u4F55\u8FD4\u56DE\u7ED3\u679C\u5916\u7684\u6807\u9898\u5185\u5BB9\uFF09").addTextArea((text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+        this.cmd.detailPrompt = value;
+      }));
+    } else {
+      new import_obsidian5.Setting(contentEl).setName("\u8BE6\u7EC6\u5185\u5BB9\u6307\u4EE4").setDesc("\u5B9A\u4E49 AI \u7B2C\u4E8C\u90E8\u5206\uFF08\u5411\u4E0B\u8FFD\u95EE\u89D2\u6CE8\u6DF1\u5C42\u5185\u5BB9\uFF09\u7684\u8F93\u51FA\u5185\u5BB9").addTextArea((text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+        this.cmd.detailPrompt = value;
+      }));
+      new import_obsidian5.Setting(contentEl).setName("\u7BA1\u5BB6\u63D0\u793A\u8BCD\u5E94\u7528\u8303\u56F4").setDesc("\u51B3\u5B9A\u8BE5\u547D\u4EE4\u6267\u884C\u65F6\uFF0C\u662F\u5426\u6CBF\u7528\u9605\u8BFB\u7BA1\u5BB6\u7684\u8BBE\u5B9A\u3002").addDropdown((dropdown) => {
+        dropdown.addOption("full", "\u5E94\u7528\u9605\u8BFB\u7406\u89E3 + \u5199\u4F5C\u98CE\u683C (\u63A8\u8350)");
+        dropdown.addOption("writingOnly", "\u4EC5\u5E94\u7528\u5199\u4F5C\u98CE\u683C");
+        dropdown.addOption("none", "\u7EAF\u51C0\u6267\u884C (\u5747\u4E0D\u5E94\u7528)");
+        dropdown.setValue(this.cmd.contextMode || "full");
+        dropdown.onChange((value) => {
+          this.cmd.contextMode = value;
+        });
+      });
+    }
+    if (this.cmd.type !== "inline-modify") {
+      new import_obsidian5.Setting(contentEl).setName("\u5173\u8054\u6807\u7B7E (Tag)").setDesc("\u6267\u884C\u6B64\u6307\u4EE4\u65F6\u81EA\u52A8\u9644\u52A0\u7684\u6807\u7B7E\u5206\u7C7B").addDropdown((dropdown) => {
+        dropdown.addOption("", "\u4E0D\u5173\u8054 (\u65E0\u6807\u7B7E)");
+        const tags = this.tags.length > 0 ? this.tags : DEFAULT_TAGS;
+        for (const tag of tags) {
+          dropdown.addOption(tag.id, `${tag.emoji} ${tag.name}`);
+        }
+        dropdown.setValue(this.cmd.tagId || "");
+        dropdown.onChange((value) => {
+          this.cmd.tagId = value || void 0;
+        });
+      });
+    }
+    contentEl.createEl("h5", { text: "\u9AD8\u7EA7\u8986\u76D6 (Overrides)" });
+    new import_obsidian5.Setting(contentEl).setName("Temperature \u8986\u5199").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u63A8\u8350\u6781\u4F4E\u6E29 0-0.3 \u786E\u4FDD\u4E25\u8C28\u3002").addText((text) => {
+      var _a, _b;
+      return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.temperature) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
+        this.cmd.temperature = value ? parseFloat(value) : void 0;
+      });
+    });
+    new import_obsidian5.Setting(contentEl).setName("\u4E0A\u4E0B\u6587\u957F\u5EA6").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u6700\u5927 8192\u3002").addText((text) => {
+      var _a, _b;
+      return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.contextLength) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
+        this.cmd.contextLength = value ? parseInt(value) : void 0;
+      });
+    });
+    const btnDiv = contentEl.createEl("div", { attr: { style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;" } });
+    const cancelBtn = btnDiv.createEl("button", { text: "\u53D6\u6D88" });
+    cancelBtn.onclick = () => this.close();
+    const saveBtn = btnDiv.createEl("button", { text: "\u{1F4BE} \u4FDD\u5B58", cls: "mod-cta" });
+    saveBtn.onclick = () => {
+      this.onSave(this.cmd);
+      this.close();
+    };
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
 };
 var TagEditModal = class extends import_obsidian5.Modal {
-	constructor(app, tag, onSave) {
-		super(app);
-		this.tag = JSON.parse(JSON.stringify(tag));
-		this.onSave = onSave;
-	}
-	onOpen() {
-		this.renderContent();
-	}
-	renderContent() {
-		const { contentEl } = this;
-		contentEl.empty();
-		contentEl.createEl("h3", {
-			text: `\u7F16\u8F91\u6807\u7B7E: ${this.tag.emoji} ${this.tag.name}`,
-		});
-		const previewRow = contentEl.createEl("div", {
-			attr: {
-				style:
-					"margin-bottom: 16px; padding: 12px; background: var(--background-primary); border-radius: 8px; text-align: center;",
-			},
-		});
-		const previewEl = previewRow.createEl("span", {
-			text: `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`,
-			attr: {
-				style: "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;",
-			},
-		});
-		this.applyPreviewStyle(previewEl);
-		new import_obsidian5.Setting(contentEl)
-			.setName("\u6807\u7B7E\u540D\u79F0")
-			.addText((text) =>
-				text.setValue(this.tag.name).onChange((value) => {
-					this.tag.name = value;
-				}),
-			);
-		const emojiSetting = new import_obsidian5.Setting(contentEl).setName(
-			"\u56FE\u6807",
-		);
-		const emojiBtn = emojiSetting.controlEl.createEl("button", {
-			text: this.tag.emoji,
-			attr: {
-				style:
-					"font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;",
-			},
-		});
-		emojiBtn.onclick = () => {
-			showEmojiGrid(emojiBtn, (emoji) => {
-				this.tag.emoji = emoji;
-				emojiBtn.innerText = emoji;
-				this.applyPreviewStyle(previewEl);
-				previewEl.innerText = `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`;
-			});
-		};
-		contentEl.createEl("h5", {
-			text: "\u5E95\u8272",
-			attr: { style: "margin-bottom: 4px;" },
-		});
-		const bgGrid = contentEl.createEl("div", {
-			cls: "mn-palette-grid",
-			attr: { style: "margin-bottom: 12px;" },
-		});
-		for (const color of COLOR_PALETTE) {
-			const swatch = bgGrid.createEl("div", {
-				cls: `mn-palette-swatch ${color.value === this.tag.color ? "mn-swatch-active" : ""}`,
-				attr: { style: `background: ${color.value};`, title: color.name },
-			});
-			swatch.onclick = () => {
-				this.tag.color = color.value;
-				this.applyPreviewStyle(previewEl);
-				this.renderContent();
-			};
-		}
-		contentEl.createEl("h5", {
-			text: "\u6587\u5B57\u989C\u8272",
-			attr: { style: "margin-bottom: 4px;" },
-		});
-		const txtGrid = contentEl.createEl("div", {
-			cls: "mn-palette-grid",
-			attr: { style: "margin-bottom: 12px;" },
-		});
-		for (const color of TEXT_COLOR_PALETTE) {
-			const swatch = txtGrid.createEl("div", {
-				cls: `mn-palette-swatch ${color.value === this.tag.textColor ? "mn-swatch-active" : ""}`,
-				attr: {
-					style: `background: ${color.value === "inherit" ? "var(--text-normal)" : color.value};`,
-					title: color.name,
-				},
-			});
-			swatch.onclick = () => {
-				this.tag.textColor = color.value;
-				this.applyPreviewStyle(previewEl);
-				this.renderContent();
-			};
-		}
-		new import_obsidian5.Setting(contentEl)
-			.setName("\u6807\u6CE8\u6837\u5F0F")
-			.addDropdown((dropdown) => {
-				dropdown.addOption("highlight", "\u9AD8\u4EAE (Highlight)");
-				dropdown.addOption("underline", "\u4E0B\u5212\u7EBF (Underline)");
-				dropdown.addOption("dashed", "\u865A\u7EBF (Dashed)");
-				dropdown.addOption(
-					"semi-transparent",
-					"\u534A\u900F\u660E (Semi-transparent)",
-				);
-				dropdown.setValue(this.tag.style);
-				dropdown.onChange((value) => {
-					this.tag.style = value;
-					this.applyPreviewStyle(previewEl);
-				});
-			});
-		const btnDiv = contentEl.createEl("div", {
-			attr: {
-				style:
-					"display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;",
-			},
-		});
-		const cancelBtn = btnDiv.createEl("button", { text: "\u53D6\u6D88" });
-		cancelBtn.onclick = () => this.close();
-		const saveBtn = btnDiv.createEl("button", {
-			text: "\u{1F4BE} \u4FDD\u5B58",
-			cls: "mod-cta",
-		});
-		saveBtn.onclick = () => {
-			this.onSave(this.tag);
-			this.close();
-		};
-	}
-	applyPreviewStyle(el) {
-		el.style.cssText =
-			"font-size: 1.1em; padding: 4px 16px; border-radius: 4px;";
-		applyTagHighlightStyle(el, this.tag);
-	}
-	onClose() {
-		this.contentEl.empty();
-	}
+  constructor(app, tag, onSave) {
+    super(app);
+    this.tag = JSON.parse(JSON.stringify(tag));
+    this.onSave = onSave;
+  }
+  onOpen() {
+    this.renderContent();
+  }
+  renderContent() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h3", { text: `\u7F16\u8F91\u6807\u7B7E: ${this.tag.emoji} ${this.tag.name}` });
+    const previewRow = contentEl.createEl("div", { attr: { style: "margin-bottom: 16px; padding: 12px; background: var(--background-primary); border-radius: 8px; text-align: center;" } });
+    const previewEl = previewRow.createEl("span", { text: `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`, attr: { style: "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;" } });
+    this.applyPreviewStyle(previewEl);
+    new import_obsidian5.Setting(contentEl).setName("\u6807\u7B7E\u540D\u79F0").addText((text) => text.setValue(this.tag.name).onChange((value) => {
+      this.tag.name = value;
+    }));
+    const emojiSetting = new import_obsidian5.Setting(contentEl).setName("\u56FE\u6807");
+    const emojiBtn = emojiSetting.controlEl.createEl("button", { text: this.tag.emoji, attr: { style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;" } });
+    emojiBtn.onclick = () => {
+      showEmojiGrid(emojiBtn, (emoji) => {
+        this.tag.emoji = emoji;
+        emojiBtn.innerText = emoji;
+        this.applyPreviewStyle(previewEl);
+        previewEl.innerText = `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`;
+      });
+    };
+    contentEl.createEl("h5", { text: "\u5E95\u8272", attr: { style: "margin-bottom: 4px;" } });
+    const bgGrid = contentEl.createEl("div", { cls: "mn-palette-grid", attr: { style: "margin-bottom: 12px;" } });
+    for (const color of COLOR_PALETTE) {
+      const swatch = bgGrid.createEl("div", { cls: `mn-palette-swatch ${color.value === this.tag.color ? "mn-swatch-active" : ""}`, attr: { style: `background: ${color.value};`, title: color.name } });
+      swatch.onclick = () => {
+        this.tag.color = color.value;
+        this.applyPreviewStyle(previewEl);
+        this.renderContent();
+      };
+    }
+    contentEl.createEl("h5", { text: "\u6587\u5B57\u989C\u8272", attr: { style: "margin-bottom: 4px;" } });
+    const txtGrid = contentEl.createEl("div", { cls: "mn-palette-grid", attr: { style: "margin-bottom: 12px;" } });
+    for (const color of TEXT_COLOR_PALETTE) {
+      const swatch = txtGrid.createEl("div", { cls: `mn-palette-swatch ${color.value === this.tag.textColor ? "mn-swatch-active" : ""}`, attr: { style: `background: ${color.value === "inherit" ? "var(--text-normal)" : color.value};`, title: color.name } });
+      swatch.onclick = () => {
+        this.tag.textColor = color.value;
+        this.applyPreviewStyle(previewEl);
+        this.renderContent();
+      };
+    }
+    new import_obsidian5.Setting(contentEl).setName("\u6807\u6CE8\u6837\u5F0F").addDropdown((dropdown) => {
+      dropdown.addOption("highlight", "\u9AD8\u4EAE (Highlight)");
+      dropdown.addOption("underline", "\u4E0B\u5212\u7EBF (Underline)");
+      dropdown.addOption("dashed", "\u865A\u7EBF (Dashed)");
+      dropdown.addOption("semi-transparent", "\u534A\u900F\u660E (Semi-transparent)");
+      dropdown.setValue(this.tag.style);
+      dropdown.onChange((value) => {
+        this.tag.style = value;
+        this.applyPreviewStyle(previewEl);
+      });
+    });
+    const btnDiv = contentEl.createEl("div", { attr: { style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;" } });
+    const cancelBtn = btnDiv.createEl("button", { text: "\u53D6\u6D88" });
+    cancelBtn.onclick = () => this.close();
+    const saveBtn = btnDiv.createEl("button", { text: "\u{1F4BE} \u4FDD\u5B58", cls: "mod-cta" });
+    saveBtn.onclick = () => {
+      this.onSave(this.tag);
+      this.close();
+    };
+  }
+  applyPreviewStyle(el) {
+    el.style.cssText = "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;";
+    applyTagHighlightStyle(el, this.tag);
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
 };
 
 // src/settings/setting-tab.ts
 var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
-	constructor(app, plugin) {
-		super(app, plugin);
-		this.editingStewardId = null;
-		this.activeTab = "general";
-		this.plugin = plugin;
-	}
-	display() {
-		const { containerEl } = this;
-		containerEl.empty();
-		containerEl.createEl("h2", { text: "Marking Note \u8BBE\u7F6E" });
-		const tabsEl = containerEl.createDiv({ cls: "mn-settings-tabs" });
-		const settingsContentEl = containerEl.createDiv({
-			cls: "mn-settings-content",
-		});
-		const sectionEls = {
-			general: settingsContentEl.createDiv(),
-			tags: settingsContentEl.createDiv(),
-			models: settingsContentEl.createDiv(),
-			stewards: settingsContentEl.createDiv(),
-			advanced: settingsContentEl.createDiv(),
-		};
-		const tabButtons = {};
-		const switchTab = (tab) => {
-			this.activeTab = tab;
-			for (const [key, el] of Object.entries(sectionEls)) {
-				el.style.display = key === tab ? "" : "none";
-			}
-			for (const [key, btn] of Object.entries(tabButtons)) {
-				btn == null
-					? void 0
-					: btn.toggleClass("mn-settings-tab-active", key === tab);
-			}
-		};
-		const createTab = (tab, label) => {
-			const btn = tabsEl.createEl("button", {
-				text: label,
-				cls: "mn-settings-tab",
-			});
-			btn.onclick = () => switchTab(tab);
-			tabButtons[tab] = btn;
-		};
-		createTab("general", "\u2699\uFE0F \u901A\u7528");
-		createTab("tags", "\u{1F3F7}\uFE0F \u6807\u7B7E");
-		createTab("models", "\u{1F50C} \u6A21\u578B");
-		createTab("stewards", "\u{1F916} \u7BA1\u5BB6");
-		createTab("advanced", "\u{1F527} \u9AD8\u7EA7");
-		const generalEl = sectionEls.general;
-		const tagsEl = sectionEls.tags;
-		const modelsEl = sectionEls.models;
-		const stewardsEl = sectionEls.stewards;
-		const advancedEl = sectionEls.advanced;
-		this.renderGeneralSettings(generalEl);
-		this.renderAdvancedSettings(advancedEl);
-		this.renderTagSettings(tagsEl);
-		this.renderModelSettings(modelsEl);
-		this.renderStewardSettings(stewardsEl, switchTab);
-		switchTab(this.activeTab);
-	}
-	renderGeneralSettings(container) {
-		container.createEl("h3", {
-			text: "\u2699\uFE0F \u901A\u7528\u8BBE\u7F6E",
-			cls: "mn-settings-section-title",
-		});
-		new import_obsidian6.Setting(container)
-			.setName("\u542F\u7528 AI \u539F\u6587\u6539\u5199\u9762\u677F")
-			.setDesc(
-				"\u5728\u60AC\u6D6E\u83DC\u5355\u4E2D\u589E\u52A0\u4E00\u4E2A\u6309\u94AE\uFF0C\u7528\u4E8E\u5C31\u5730\u4FEE\u6539\u539F\u6587\uFF08\u65E0\u9700\u751F\u6210\u9AD8\u4EAE\u548C\u811A\u6807\uFF09\u3002",
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.enableInlineModification)
-					.onChange(async (value) => {
-						this.plugin.settings.enableInlineModification = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(container)
-			.setName("\u5F53\u524D\u6FC0\u6D3B\u7684\u9605\u8BFB\u7BA1\u5BB6")
-			.setDesc(
-				"\u5FEB\u901F\u5207\u6362\u60AC\u6D6E\u9762\u677F\u3001\u6807\u6CE8\u548C\u5408\u5E76\u65F6\u9ED8\u8BA4\u4F7F\u7528\u7684\u7BA1\u5BB6\u3002",
-			)
-			.addDropdown((dropdown) => {
-				for (const steward of this.plugin.settings.stewards) {
-					dropdown.addOption(steward.id, `${steward.icon} ${steward.name}`);
-				}
-				dropdown.setValue(this.plugin.settings.activeStewardId);
-				dropdown.onChange(async (value) => {
-					this.plugin.settings.activeStewardId = value;
-					await this.plugin.saveSettings();
-				});
-			});
-		const generalHint = container.createEl("div", { cls: "mn-settings-card" });
-		generalHint.createEl("div", {
-			text: "\u{1FA84} \u60AC\u6D6E\u83DC\u5355\u8BF4\u660E",
-			attr: { style: "font-weight: 600; margin-bottom: 6px;" },
-		});
-		generalHint.createEl("div", {
-			text: "\u6807\u6CE8\u60AC\u6D6E\u83DC\u5355\u5F00\u5173\u5DF2\u4ECE\u8BBE\u7F6E\u9875\u79FB\u9664\uFF0C\u53EF\u901A\u8FC7\u547D\u4EE4\u9762\u677F\u4E2D\u7684\u201C\u6253\u5F00/\u5173\u95ED\u6807\u6CE8\u60AC\u6D6E\u7A97\u201D\u8FDB\u884C\u63A7\u5236\u3002",
-			cls: "setting-item-description",
-		});
-	}
-	renderAdvancedSettings(container) {
-		container.createEl("h3", {
-			text: "\u{1F527} \u5F00\u53D1",
-			cls: "mn-settings-section-title",
-		});
-		new import_obsidian6.Setting(container)
-			.setName("\u8C03\u8BD5\u6A21\u5F0F")
-			.setDesc(
-				"\u5F00\u542F\u540E\u5C06\u5728\u63A7\u5236\u53F0\u8F93\u51FA\u8BE6\u7EC6\u7684\u8C03\u8BD5\u65E5\u5FD7\u4FE1\u606F\u3002",
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.enableDebugMode)
-					.onChange(async (value) => {
-						this.plugin.settings.enableDebugMode = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(container)
-			.setName("Tavily API Key")
-			.setDesc(
-				"\u7528\u4E8E\u8FFD\u95EE\u65F6\u7684\u53EF\u9009\u7F51\u7EDC\u641C\u7D22\u589E\u5F3A\uFF1B\u7559\u7A7A\u5219\u7981\u7528\u7F51\u7EDC\u641C\u7D22\u3002",
-			)
-			.addText((text) => {
-				text
-					.setPlaceholder("tvly-...")
-					.setValue(this.plugin.settings.tavilyApiKey || "")
-					.onChange(async (value) => {
-						this.plugin.settings.tavilyApiKey = value.trim();
-						await this.plugin.saveSettings();
-					});
-				text.inputEl.type = "password";
-			});
-		new import_obsidian6.Setting(container)
-			.setName("\u5F00\u53D1\u8005\u6A21\u5F0F")
-			.setDesc(
-				"\u5F00\u542F\u540E\u53EF\u7F16\u8F91\u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F\uFF08\u542B\u6458\u8981\u3001\u6DF1\u5EA6\u5206\u6790\u4E0E\u539F\u6587\u6539\u5199\u5F15\u64CE\u63D0\u793A\u8BCD\uFF09\u3002",
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.enableDeveloperMode)
-					.onChange(async (value) => {
-						this.plugin.settings.enableDeveloperMode = value;
-						await this.plugin.saveSettings();
-						this.display();
-					}),
-			);
-		if (!this.plugin.settings.enableDeveloperMode) return;
-		const promptCard = container.createEl("div", { cls: "mn-settings-card" });
-		promptCard.createEl("h4", {
-			text: "\u{1F9E0} \u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F",
-			attr: { style: "margin: 0 0 8px 0;" },
-		});
-		promptCard.createEl("p", {
-			text: "\u8FD9\u4E9B\u6A21\u677F\u4F1A\u76F4\u63A5\u5F71\u54CD\u5F15\u64CE\u7EA7\u8F93\u51FA\u683C\u5F0F\u3002\u8BF7\u4FDD\u7559\u5360\u4F4D\u7B26\uFF0C\u4F8B\u5982 __FOOTNOTE_ID__\u3001__DEFAULT_SUMMARY_PROMPT__\u3001__TARGET_LANGUAGE__\u3002",
-			cls: "setting-item-description",
-		});
-		new import_obsidian6.Setting(promptCard)
-			.setName("\u9ED8\u8BA4\u6458\u8981\u7CFB\u7EDF\u63D0\u793A\u8BCD")
-			.setDesc(
-				"\u7528\u4E8E\u751F\u6210\u5355\u884C\u6458\u8981\u6807\u9898\u3002",
-			)
-			.addTextArea((text) =>
-				text
-					.setValue(this.plugin.settings.defaultSummarySystemPromptTemplate)
-					.onChange(async (value) => {
-						this.plugin.settings.defaultSummarySystemPromptTemplate = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(promptCard)
-			.setName("\u8BE6\u7EC6\u5206\u6790\u7CFB\u7EDF\u63D0\u793A\u8BCD")
-			.setDesc(
-				"\u7528\u4E8E\u6807\u51C6\u6807\u6CE8\u3001\u8FFD\u95EE\u548C\u5408\u5E76\u65F6\u7684\u53CC\u6BB5\u5F0F\u8F93\u51FA\u6A21\u677F\u3002",
-			)
-			.addTextArea((text) =>
-				text
-					.setValue(this.plugin.settings.annotationSystemPromptTemplate)
-					.onChange(async (value) => {
-						this.plugin.settings.annotationSystemPromptTemplate = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(promptCard)
-			.setName("\u539F\u6587\u6539\u5199\u7CFB\u7EDF\u63D0\u793A\u8BCD")
-			.setDesc(
-				"\u7528\u4E8E\u76F4\u63A5\u8986\u76D6\u539F\u6587\u7684\u6539\u5199\u5F15\u64CE\u3002",
-			)
-			.addTextArea((text) =>
-				text
-					.setValue(this.plugin.settings.inlineRewriteSystemPromptTemplate)
-					.onChange(async (value) => {
-						this.plugin.settings.inlineRewriteSystemPromptTemplate = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-	}
-	renderTagSettings(container) {
-		container.createEl("h3", {
-			text: "\u{1F3F7}\uFE0F \u6807\u6CE8\u6807\u7B7E (Tags)",
-			cls: "mn-settings-section-title",
-		});
-		container.createEl("p", {
-			text: "\u70B9\u51FB\u6807\u7B7E\u5361\u7247\u8FDB\u5165\u7F16\u8F91\u3002\u6807\u6CE8\u65F6\u53EF\u9009\u62E9\u6216\u81EA\u52A8\u5173\u8054\u6807\u7B7E\u3002",
-			cls: "setting-item-description",
-		});
-		const addButton = container.createEl("button", {
-			text: "\u2795 \u65B0\u5EFA\u6807\u7B7E",
-			cls: "mod-cta",
-		});
-		addButton.onclick = async () => {
-			const newTag = {
-				id: `tag-${Date.now()}`,
-				name: "\u65B0\u6807\u7B7E",
-				emoji: "\u{1F3F7}\uFE0F",
-				color: COLOR_PALETTE[0].value,
-				textColor: "inherit",
-				style: "highlight",
-			};
-			this.plugin.settings.tags.push(newTag);
-			await this.plugin.saveSettings();
-			new TagEditModal(this.app, newTag, async (updated) => {
-				this.plugin.settings.tags[this.plugin.settings.tags.length - 1] =
-					updated;
-				await this.plugin.saveSettings();
-				this.display();
-			}).open();
-		};
-		const tagListDiv = container.createEl("div", {
-			attr: {
-				style:
-					"display: flex; flex-direction: column; gap: 8px; margin-top: 12px;",
-			},
-		});
-		this.plugin.settings.tags.forEach((tag, index) => {
-			const styleLabels = {
-				highlight: "\u9AD8\u4EAE",
-				underline: "\u4E0B\u5212\u7EBF",
-				dashed: "\u865A\u7EBF",
-				"semi-transparent": "\u534A\u900F\u660E",
-			};
-			const tagCard = tagListDiv.createEl("div", {
-				cls: "marking-tag-card",
-				attr: {
-					style:
-						"cursor: pointer; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--background-modifier-border); background: var(--background-secondary); transition: all 0.15s;",
-				},
-			});
-			const cardRow = tagCard.createEl("div", {
-				attr: { style: "display: flex; align-items: center; gap: 10px;" },
-			});
-			cardRow.createEl("span", {
-				text: tag.emoji,
-				attr: { style: "font-size: 1.3em;" },
-			});
-			cardRow.createEl("span", {
-				text: tag.name,
-				attr: { style: "font-weight: 600; flex: 1;" },
-			});
-			const previewEl = cardRow.createEl("span", {
-				text: "\u793A\u4F8B\u6587\u672C",
-				attr: {
-					style: "font-size: 0.85em; padding: 2px 10px; border-radius: 4px;",
-				},
-			});
-			applyTagHighlightStyle(previewEl, tag);
-			cardRow.createEl("span", {
-				text: styleLabels[tag.style] || tag.style,
-				attr: { style: "font-size: 0.75em; color: var(--text-muted);" },
-			});
-			const delBtn = cardRow.createEl("button", {
-				text: "\u2716",
-				attr: {
-					style:
-						"font-size: 0.8em; padding: 2px 8px; background: transparent; border: none; cursor: pointer; color: var(--text-muted);",
-				},
-			});
-			delBtn.onclick = async (event) => {
-				event.stopPropagation();
-				this.plugin.settings.tags.splice(index, 1);
-				await this.plugin.saveSettings();
-				this.display();
-			};
-			tagCard.onclick = () => {
-				new TagEditModal(this.app, tag, async (updated) => {
-					this.plugin.settings.tags[index] = updated;
-					await this.plugin.saveSettings();
-					this.display();
-				}).open();
-			};
-		});
-	}
-	renderModelSettings(container) {
-		container.createEl("h3", {
-			text: "\u{1F50C} \u6A21\u578B\u63D0\u4F9B\u5546 (Model Providers)",
-			cls: "mn-settings-section-title",
-		});
-		container.createEl("p", {
-			text: "\u652F\u6301\u4EFB\u4F55 OpenAI \u517C\u5BB9\u7684 API\uFF08OpenAI / DeepSeek / Ollama / LM Studio \u7B49\uFF09",
-			cls: "setting-item-description",
-		});
-		const addButton = container.createEl("button", {
-			text: "\u2795 \u6DFB\u52A0\u6A21\u578B\u63D0\u4F9B\u5546",
-			cls: "mod-cta",
-		});
-		addButton.onclick = async () => {
-			const newProvider = {
-				id: `provider-${Date.now()}`,
-				name: "\u65B0\u6A21\u578B",
-				baseURL: "https://api.openai.com/v1",
-				apiKey: "",
-				modelId: "gpt-4o",
-			};
-			this.plugin.settings.modelProviders.push(newProvider);
-			await this.plugin.saveSettings();
-			this.display();
-		};
-		for (
-			let index = 0;
-			index < this.plugin.settings.modelProviders.length;
-			index++
-		) {
-			const provider = this.plugin.settings.modelProviders[index];
-			const isDefault = provider.id === this.plugin.settings.defaultProviderId;
-			const providerDiv = container.createEl("div", {
-				cls: "steward-card",
-				attr: {
-					style: `border: 1px solid ${isDefault ? "var(--interactive-accent)" : "var(--background-modifier-border)"}; padding: 15px; margin: 10px 0; border-radius: 8px;`,
-				},
-			});
-			const header = providerDiv.createEl("div", {
-				attr: {
-					style:
-						"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;",
-				},
-			});
-			const titleArea = header.createEl("div", {
-				attr: { style: "display: flex; align-items: center; gap: 8px;" },
-			});
-			titleArea.createEl("h4", {
-				text: provider.name,
-				attr: { style: "margin: 0;" },
-			});
-			if (isDefault) {
-				titleArea.createEl("span", {
-					text: "\u9ED8\u8BA4",
-					attr: {
-						style:
-							"font-size: 0.75em; background: var(--interactive-accent); color: white; padding: 2px 6px; border-radius: 4px;",
-					},
-				});
-			}
-			const btnGroup = header.createEl("div", {
-				attr: { style: "display: flex; gap: 4px;" },
-			});
-			if (!isDefault) {
-				const btnDefault = btnGroup.createEl("button", {
-					text: "\u8BBE\u4E3A\u9ED8\u8BA4",
-				});
-				btnDefault.onclick = async () => {
-					this.plugin.settings.defaultProviderId = provider.id;
-					await this.plugin.saveSettings();
-					this.display();
-				};
-			}
-			const btnTest = btnGroup.createEl("button", {
-				text: "\u{1F517} \u6D4B\u8BD5\u8FDE\u901A",
-			});
-			btnTest.onclick = async () => {
-				btnTest.innerText = "\u23F3 \u6D4B\u8BD5\u4E2D...";
-				try {
-					const ok = await AIClient.testConnection(provider);
-					btnTest.innerText = ok
-						? "\u2705 \u8FDE\u901A"
-						: "\u274C \u5931\u8D25";
-				} catch (e) {
-					btnTest.innerText = "\u274C \u5931\u8D25";
-				}
-				setTimeout(() => {
-					btnTest.innerText = "\u{1F517} \u6D4B\u8BD5\u8FDE\u901A";
-				}, 3e3);
-			};
-			const btnDel = btnGroup.createEl("button", {
-				text: "\u{1F5D1}\uFE0F",
-				cls: "mod-warning",
-			});
-			btnDel.onclick = async () => {
-				this.plugin.settings.modelProviders.splice(index, 1);
-				await this.plugin.saveSettings();
-				this.display();
-			};
-			new import_obsidian6.Setting(providerDiv)
-				.setName("\u540D\u79F0")
-				.addText((text) =>
-					text.setValue(provider.name).onChange(async (value) => {
-						this.plugin.settings.modelProviders[index].name = value;
-						await this.plugin.saveSettings();
-					}),
-				);
-			new import_obsidian6.Setting(providerDiv)
-				.setName("Base URL")
-				.addText((text) =>
-					text
-						.setPlaceholder("https://api.openai.com/v1")
-						.setValue(provider.baseURL)
-						.onChange(async (value) => {
-							this.plugin.settings.modelProviders[index].baseURL = value;
-							await this.plugin.saveSettings();
-						}),
-				);
-			new import_obsidian6.Setting(providerDiv)
-				.setName("API Key")
-				.addText((text) => {
-					text
-						.setPlaceholder("sk-...")
-						.setValue(provider.apiKey)
-						.onChange(async (value) => {
-							this.plugin.settings.modelProviders[index].apiKey = value;
-							await this.plugin.saveSettings();
-						});
-					text.inputEl.type = "password";
-				});
-			new import_obsidian6.Setting(providerDiv)
-				.setName("Model ID")
-				.addText((text) =>
-					text
-						.setPlaceholder("gpt-4o")
-						.setValue(provider.modelId)
-						.onChange(async (value) => {
-							this.plugin.settings.modelProviders[index].modelId = value;
-							await this.plugin.saveSettings();
-						}),
-				);
-		}
-	}
-	renderStewardSettings(container, switchTab) {
-		container.createEl("h3", {
-			text: "\u{1F3F7}\uFE0F \u5207\u6362\u5F53\u524D\u7BA1\u5BB6",
-			cls: "mn-settings-section-title",
-		});
-		container.createEl("p", {
-			text: "\u9009\u62E9\u5728 Marking Note \u4E2D\u60AC\u6D6E\u7A97\u548C\u5FEB\u6377\u6307\u4EE4\u4F7F\u7528\u7684\u7BA1\u5BB6\u3002",
-			cls: "setting-item-description",
-		});
-		new import_obsidian6.Setting(container)
-			.setName("\u5F53\u524D\u6FC0\u6D3B\u7684\u9605\u8BFB\u7BA1\u5BB6")
-			.addDropdown((dropdown) => {
-				for (const steward of this.plugin.settings.stewards) {
-					dropdown.addOption(steward.id, `${steward.icon} ${steward.name}`);
-				}
-				dropdown.setValue(this.plugin.settings.activeStewardId);
-				dropdown.onChange(async (value) => {
-					this.plugin.settings.activeStewardId = value;
-					await this.plugin.saveSettings();
-				});
-			});
-		this.renderInlineStewardSettings(container);
-		this.renderEditableStewardSettings(container, switchTab);
-	}
-	renderInlineStewardSettings(container) {
-		container.createEl("h3", {
-			text: "\u270F\uFE0F \u5168\u5C40\u6539\u5199\u7BA1\u5BB6 (Inline Steward)",
-			cls: "mn-settings-section-title",
-			attr: { style: "margin-top: 30px;" },
-		});
-		container.createEl("p", {
-			text: "\u8FD9\u662F\u4E13\u7528\u4E8E\u5728\u9009\u4E2D\u6587\u672C\u60AC\u6D6E\u83DC\u5355\u5904\u76F4\u63A5\u64E6\u9664\u65E7\u6587\u672C\u5E76\u8986\u76D6\u539F\u6587\u7684\u7BA1\u5BB6\uFF0C\u65E0\u9700\u8BBE\u7F6E\u6807\u9898\u548C\u683C\u5F0F\uFF0C\u76F4\u63A5\u8D77\u6548\u3002",
-			cls: "setting-item-description",
-		});
-		const inlineDiv = container.createEl("div", {
-			cls: "steward-card",
-			attr: {
-				style:
-					"border: 1px solid var(--text-muted); padding: 15px; margin-bottom: 20px; border-radius: 8px;",
-			},
-		});
-		new import_obsidian6.Setting(inlineDiv)
-			.setName("\u6539\u5199\u6240\u7528\u7684\u5927\u6A21\u578B")
-			.addDropdown((dropdown) => {
-				dropdown.addOption("default-provider", "\u4F7F\u7528\u9ED8\u8BA4");
-				for (const provider of this.plugin.settings.modelProviders) {
-					dropdown.addOption(provider.id, provider.name);
-				}
-				dropdown.setValue(
-					this.plugin.settings.inlineSteward.boundModelProviderId ||
-						"default-provider",
-				);
-				dropdown.onChange(async (value) => {
-					this.plugin.settings.inlineSteward.boundModelProviderId = value;
-					await this.plugin.saveSettings();
-				});
-			});
-		new import_obsidian6.Setting(inlineDiv)
-			.setName("Temperature (\u6539\u5199\u6E29\u5EA6)")
-			.setDesc(
-				"\u6539\u5199\u4EFB\u52A1\u63A8\u8350\u8C03\u4F4E\u6E29\u5EA6(\u5982 0.2-0.3)\u4EE5\u4FDD\u6301\u4E25\u8C28\uFF0C\u907F\u514D AI \u53D1\u6563\u521B\u4F5C\u3002",
-			)
-			.addSlider((slider) =>
-				slider
-					.setLimits(0, 1, 0.1)
-					.setValue(this.plugin.settings.inlineSteward.temperature)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.settings.inlineSteward.temperature = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(inlineDiv)
-			.setName("\u8BC6\u522B\u4E0A\u4E0B\u6587\u957F\u5EA6\u754C\u9650")
-			.addSlider((slider) =>
-				slider
-					.setLimits(0, 8192, 128)
-					.setValue(this.plugin.settings.inlineSteward.contextLength)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.settings.inlineSteward.contextLength = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		const inlineCmdSection = inlineDiv.createEl("div", {
-			attr: {
-				style:
-					"margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);",
-			},
-		});
-		inlineCmdSection.createEl("h5", {
-			text: "\u270F\uFE0F \u6539\u5199\u6307\u4EE4 (Inline Commands)",
-		});
-		const btnAddInlineCmd = inlineCmdSection.createEl("button", {
-			text: "\u2795 \u6DFB\u52A0\u6539\u5199\u6307\u4EE4",
-		});
-		btnAddInlineCmd.onclick = async () => {
-			const newCmd = {
-				id: `inline-cmd-${Date.now()}`,
-				name: "\u65B0\u6539\u5199",
-				icon: "\u270F\uFE0F",
-				detailPrompt: "",
-				type: "inline-modify",
-			};
-			this.plugin.settings.inlineSteward.commands.push(newCmd);
-			await this.plugin.saveSettings();
-			this.display();
-		};
-		const inlineListDiv = inlineCmdSection.createEl("div", {
-			attr: {
-				style:
-					"display: flex; flex-direction: column; gap: 8px; margin-top: 8px;",
-			},
-		});
-		this.plugin.settings.inlineSteward.commands.forEach((cmd, index) => {
-			const cmdCard = inlineListDiv.createEl("div", {
-				cls: "marking-cmd-card",
-				attr: {
-					style:
-						"cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;",
-				},
-			});
-			const cardHeader = cmdCard.createEl("div", {
-				attr: {
-					style:
-						"display: flex; justify-content: space-between; align-items: center;",
-				},
-			});
-			cardHeader.createEl("div", {
-				text: `${cmd.icon} ${cmd.name}`,
-				attr: { style: "font-weight: 600;" },
-			});
-			const cmdDel = cardHeader.createEl("button", {
-				text: "\u2716",
-				attr: { style: "font-size: 0.8em; padding: 2px 8px;" },
-			});
-			cmdDel.onclick = async (event) => {
-				event.stopPropagation();
-				this.plugin.settings.inlineSteward.commands.splice(index, 1);
-				await this.plugin.saveSettings();
-				this.display();
-			};
-			const descPreview =
-				cmd.detailPrompt.slice(0, 45) +
-				(cmd.detailPrompt.length > 45 ? "..." : "");
-			cmdCard.createEl("div", {
-				text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD",
-				attr: {
-					style:
-						"font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;",
-				},
-			});
-			cmdCard.onclick = () => {
-				new LightningCommandEditModal(
-					this.app,
-					cmd,
-					this.plugin.settings.tags,
-					async (updatedCmd) => {
-						this.plugin.settings.inlineSteward.commands[index] = updatedCmd;
-						await this.plugin.saveSettings();
-						this.display();
-					},
-				).open();
-			};
-		});
-	}
-	renderEditableStewardSettings(container, switchTab) {
-		container.createEl("h3", {
-			text: "\u{1F916} \u7BA1\u5BB6\u7EF4\u62A4\u4E0E\u914D\u7F6E",
-			cls: "mn-settings-section-title",
-			attr: { style: "margin-top: 30px;" },
-		});
-		container.createEl("p", {
-			text: "\u9009\u62E9\u4E00\u4E2A\u7BA1\u5BB6\u8FDB\u884C\u4FEE\u6539\uFF0C\u6216\u521B\u5EFA\u65B0\u7BA1\u5BB6\u3002",
-			cls: "setting-item-description",
-		});
-		if (!this.editingStewardId && this.plugin.settings.stewards.length > 0) {
-			this.editingStewardId = this.plugin.settings.stewards[0].id;
-		}
-		const editSelectorDiv = container.createEl("div", {
-			attr: {
-				style:
-					"display: flex; gap: 10px; align-items: center; margin-bottom: 20px;",
-			},
-		});
-		switchTab(this.activeTab);
-		const stewardDropdown = editSelectorDiv.createEl("select", {
-			cls: "dropdown",
-		});
-		for (const steward2 of this.plugin.settings.stewards) {
-			const option = stewardDropdown.createEl("option", {
-				value: steward2.id,
-				text: `${steward2.icon} ${steward2.name}`,
-			});
-			if (steward2.id === this.editingStewardId) option.selected = true;
-		}
-		stewardDropdown.onchange = () => {
-			this.editingStewardId = stewardDropdown.value;
-			this.display();
-		};
-		const btnAddSteward = editSelectorDiv.createEl("button", {
-			text: "\u2795 \u65B0\u5EFA\u7BA1\u5BB6",
-		});
-		btnAddSteward.onclick = async () => {
-			const newId = `steward-${Date.now()}`;
-			const newSteward = {
-				id: newId,
-				name: "\u65B0\u7BA1\u5BB6",
-				icon: "\u{1F916}",
-				systemPrompt: "",
-				writingStyle: "",
-				contextLength: 2e3,
-				temperature: 0.7,
-				topP: 0.95,
-				thinkingBudget: 0,
-				footnoteLength: 30,
-				boundModelProviderId: this.plugin.settings.defaultProviderId,
-				commands: [],
-			};
-			this.plugin.settings.stewards.push(newSteward);
-			this.editingStewardId = newId;
-			await this.plugin.saveSettings();
-			this.display();
-		};
-		const index = this.plugin.settings.stewards.findIndex(
-			(steward2) => steward2.id === this.editingStewardId,
-		);
-		if (index === -1) return;
-		const steward = this.plugin.settings.stewards[index];
-		const stewardDiv = container.createEl("div", {
-			cls: "steward-card",
-			attr: {
-				style:
-					"border: 1px solid var(--interactive-accent); padding: 15px; margin-bottom: 20px; border-radius: 8px;",
-			},
-		});
-		const header = stewardDiv.createEl("div", {
-			attr: {
-				style:
-					"display: flex; justify-content: space-between; align-items: center;",
-			},
-		});
-		header.createEl("h4", {
-			text: `\u7F16\u8F91\u4E2D: ${steward.icon} ${steward.name}`,
-			attr: { style: "margin: 0; color: var(--interactive-accent);" },
-		});
-		const btnDelete = header.createEl("button", {
-			text: "\u{1F5D1}\uFE0F \u5220\u9664\u6B64\u7BA1\u5BB6",
-			cls: "mod-warning",
-		});
-		btnDelete.onclick = async () => {
-			if (
-				!confirm(
-					`\u786E\u5B9A\u8981\u5220\u9664\u914D\u7F6E "${steward.name}" \u5417\uFF1F`,
-				)
-			)
-				return;
-			this.plugin.settings.stewards.splice(index, 1);
-			this.editingStewardId = null;
-			await this.plugin.saveSettings();
-			this.display();
-		};
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u540D\u79F0")
-			.addText((text) =>
-				text.setValue(steward.name).onChange(async (value) => {
-					this.plugin.settings.stewards[index].name = value;
-					await this.plugin.saveSettings();
-					stewardDropdown.options[stewardDropdown.selectedIndex].text =
-						`${steward.icon} ${value}`;
-				}),
-			);
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u56FE\u6807 (Emoji)")
-			.addButton((btn) =>
-				btn.setButtonText(steward.icon).onClick(() => {
-					showEmojiGrid(btn.buttonEl, async (emoji) => {
-						this.plugin.settings.stewards[index].icon = emoji;
-						await this.plugin.saveSettings();
-						stewardDropdown.options[stewardDropdown.selectedIndex].text =
-							`${emoji} ${steward.name}`;
-						this.display();
-					});
-				}),
-			);
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u7ED1\u5B9A\u6A21\u578B\u63D0\u4F9B\u5546")
-			.addDropdown((dropdown) => {
-				dropdown.addOption("", "\u4F7F\u7528\u9ED8\u8BA4");
-				for (const provider of this.plugin.settings.modelProviders) {
-					dropdown.addOption(provider.id, provider.name);
-				}
-				dropdown.setValue(steward.boundModelProviderId || "");
-				dropdown.onChange(async (value) => {
-					this.plugin.settings.stewards[index].boundModelProviderId = value;
-					await this.plugin.saveSettings();
-				});
-			});
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u9605\u8BFB\u7406\u89E3\u63D0\u793A\u8BCD")
-			.setDesc(
-				'\u5B9A\u4E49\u8BE5\u7BA1\u5BB6\u5982\u4F55"\u770B"\u5F85\u6587\u672C\u3002\u5982\uFF1A\u603B\u7ED3\u6838\u5FC3\u3001\u5206\u6790\u6280\u672F\u70B9\u3002',
-			)
-			.addTextArea((text) =>
-				text.setValue(steward.systemPrompt).onChange(async (value) => {
-					this.plugin.settings.stewards[index].systemPrompt = value;
-					await this.plugin.saveSettings();
-				}),
-			);
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u5199\u4F5C\u98CE\u683C\u63D0\u793A\u8BCD")
-			.setDesc(
-				"\u5B9A\u4E49\u5927\u6A21\u578B\u8FD4\u56DE\u7ED3\u679C\uFF08\u5BCC\u6587\u672C\u533A\u57DF\uFF09\u7684\u8BED\u6C14\u4E0E\u6392\u7248\u7279\u5F81\u3002",
-			)
-			.addTextArea((text) =>
-				text.setValue(steward.writingStyle).onChange(async (value) => {
-					this.plugin.settings.stewards[index].writingStyle = value;
-					await this.plugin.saveSettings();
-				}),
-			);
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("Temperature (\u6E29\u5EA6)")
-			.addSlider((slider) =>
-				slider
-					.setLimits(0, 1, 0.1)
-					.setValue(steward.temperature)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.settings.stewards[index].temperature = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("TopP")
-			.addSlider((slider) =>
-				slider
-					.setLimits(0, 1, 0.05)
-					.setValue(steward.topP)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.settings.stewards[index].topP = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u4E0A\u4E0B\u6587\u622A\u65AD\u957F\u5EA6 (\u5B57\u7B26)")
-			.addSlider((slider) =>
-				slider
-					.setLimits(0, 8192, 128)
-					.setValue(steward.contextLength)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.settings.stewards[index].contextLength = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u601D\u8003\u9884\u7B97 (Thinking Budget)")
-			.setDesc(
-				"\u9488\u5BF9\u601D\u7EF4\u94FE\u6A21\u578B\uFF08\u5982 DeepSeek R1\uFF09\uFF0C\u8BBE\u5B9A\u601D\u8003\u6DF1\u5EA6\u3002",
-			)
-			.addDropdown((dropdown) => {
-				dropdown.addOption("0", "\u65E0 (\u5173\u95ED\u601D\u7EF4\u94FE)");
-				dropdown.addOption("500", "\u6781\u4F4E (500 Tokens)");
-				dropdown.addOption("1000", "\u4F4E (1000 Tokens)");
-				dropdown.addOption("2000", "\u4E2D (2000 Tokens)");
-				dropdown.addOption("5000", "\u9AD8 (5000 Tokens)");
-				dropdown.setValue(steward.thinkingBudget.toString());
-				dropdown.onChange(async (value) => {
-					this.plugin.settings.stewards[index].thinkingBudget = parseInt(value);
-					await this.plugin.saveSettings();
-				});
-			});
-		new import_obsidian6.Setting(stewardDiv)
-			.setName("\u811A\u6CE8\u6587\u672C\u957F\u5EA6\u9650\u5236")
-			.setDesc(
-				"\u7B2C\u4E00\u90E8\u5206\uFF08\u7B80\u4ECB\uFF09\u7684\u4E25\u82DB\u9650\u5236\u3002",
-			)
-			.addText((text) =>
-				text
-					.setValue(steward.footnoteLength.toString())
-					.onChange(async (value) => {
-						this.plugin.settings.stewards[index].footnoteLength =
-							parseInt(value) || 30;
-						await this.plugin.saveSettings();
-					}),
-			);
-		const cmdSection = stewardDiv.createEl("div", {
-			attr: {
-				style:
-					"margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);",
-			},
-		});
-		cmdSection.createEl("h5", {
-			text: "\u26A1 \u7BA1\u5BB6\u6307\u4EE4 (Steward Commands)",
-		});
-		const btnAddCmd = cmdSection.createEl("button", {
-			text: "\u2795 \u6DFB\u52A0\u5FEB\u6377\u6307\u4EE4",
-		});
-		btnAddCmd.onclick = async () => {
-			const newCmd = {
-				id: `cmd-${Date.now()}`,
-				name: "\u65B0\u6307\u4EE4",
-				icon: "\u26A1",
-				detailPrompt: "",
-				type: "annotated",
-				contextMode: "full",
-			};
-			this.plugin.settings.stewards[index].commands.push(newCmd);
-			await this.plugin.saveSettings();
-			this.display();
-		};
-		const listDiv = cmdSection.createEl("div", {
-			attr: {
-				style:
-					"display: flex; flex-direction: column; gap: 8px; margin-top: 8px;",
-			},
-		});
-		steward.commands.forEach((cmd, cmdIndex) => {
-			const cmdCard = listDiv.createEl("div", {
-				cls: "marking-cmd-card",
-				attr: {
-					style:
-						"cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;",
-				},
-			});
-			const cardHeader = cmdCard.createEl("div", {
-				attr: {
-					style:
-						"display: flex; justify-content: space-between; align-items: center;",
-				},
-			});
-			const typeBadge =
-				cmd.type === "default-summary"
-					? "\u2705 \u9ED8\u8BA4"
-					: "\u26A1 \u6302\u8F7D";
-			cardHeader.createEl("div", {
-				text: `${cmd.icon} ${cmd.name}`,
-				attr: { style: "font-weight: 600;" },
-			});
-			const rightControls = cardHeader.createEl("div", {
-				attr: { style: "display: flex; align-items: center; gap: 8px;" },
-			});
-			rightControls.createEl("span", {
-				text: typeBadge,
-				attr: {
-					style:
-						"font-size: 0.75em; padding: 2px 6px; background: var(--interactive-accent); color: var(--text-on-accent); border-radius: 4px;",
-				},
-			});
-			const cmdDel = rightControls.createEl("button", {
-				text: "\u2716",
-				attr: { style: "font-size: 0.8em; padding: 2px 8px;" },
-			});
-			cmdDel.onclick = async (event) => {
-				event.stopPropagation();
-				this.plugin.settings.stewards[index].commands.splice(cmdIndex, 1);
-				await this.plugin.saveSettings();
-				this.display();
-			};
-			const descPreview =
-				cmd.detailPrompt.slice(0, 45) +
-				(cmd.detailPrompt.length > 45 ? "..." : "");
-			cmdCard.createEl("div", {
-				text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD",
-				attr: {
-					style:
-						"font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;",
-				},
-			});
-			cmdCard.onclick = () => {
-				new LightningCommandEditModal(
-					this.app,
-					cmd,
-					this.plugin.settings.tags,
-					async (updatedCmd) => {
-						this.plugin.settings.stewards[index].commands[cmdIndex] =
-							updatedCmd;
-						await this.plugin.saveSettings();
-						this.display();
-					},
-				).open();
-			};
-		});
-	}
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.editingStewardId = null;
+    this.activeTab = "general";
+    this.plugin = plugin;
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.createEl("h2", { text: "Marking Note \u8BBE\u7F6E" });
+    const tabsEl = containerEl.createDiv({ cls: "mn-settings-tabs" });
+    const settingsContentEl = containerEl.createDiv({ cls: "mn-settings-content" });
+    const sectionEls = {
+      general: settingsContentEl.createDiv(),
+      tags: settingsContentEl.createDiv(),
+      models: settingsContentEl.createDiv(),
+      stewards: settingsContentEl.createDiv(),
+      advanced: settingsContentEl.createDiv()
+    };
+    const tabButtons = {};
+    const switchTab = (tab) => {
+      this.activeTab = tab;
+      for (const [key, el] of Object.entries(sectionEls)) {
+        el.style.display = key === tab ? "" : "none";
+      }
+      for (const [key, btn] of Object.entries(tabButtons)) {
+        btn == null ? void 0 : btn.toggleClass("mn-settings-tab-active", key === tab);
+      }
+    };
+    const createTab = (tab, label) => {
+      const btn = tabsEl.createEl("button", { text: label, cls: "mn-settings-tab" });
+      btn.onclick = () => switchTab(tab);
+      tabButtons[tab] = btn;
+    };
+    createTab("general", "\u2699\uFE0F \u901A\u7528");
+    createTab("tags", "\u{1F3F7}\uFE0F \u6807\u7B7E");
+    createTab("models", "\u{1F50C} \u6A21\u578B");
+    createTab("stewards", "\u{1F916} \u7BA1\u5BB6");
+    createTab("advanced", "\u{1F527} \u9AD8\u7EA7");
+    const generalEl = sectionEls.general;
+    const tagsEl = sectionEls.tags;
+    const modelsEl = sectionEls.models;
+    const stewardsEl = sectionEls.stewards;
+    const advancedEl = sectionEls.advanced;
+    this.renderGeneralSettings(generalEl);
+    this.renderAdvancedSettings(advancedEl);
+    this.renderTagSettings(tagsEl);
+    this.renderModelSettings(modelsEl);
+    this.renderStewardSettings(stewardsEl, switchTab);
+    switchTab(this.activeTab);
+  }
+  renderGeneralSettings(container) {
+    container.createEl("h3", { text: "\u2699\uFE0F \u901A\u7528\u8BBE\u7F6E", cls: "mn-settings-section-title" });
+    new import_obsidian6.Setting(container).setName("\u542F\u7528 AI \u539F\u6587\u6539\u5199\u9762\u677F").setDesc("\u5728\u60AC\u6D6E\u83DC\u5355\u4E2D\u589E\u52A0\u4E00\u4E2A\u6309\u94AE\uFF0C\u7528\u4E8E\u5C31\u5730\u4FEE\u6539\u539F\u6587\uFF08\u65E0\u9700\u751F\u6210\u9AD8\u4EAE\u548C\u811A\u6807\uFF09\u3002").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableInlineModification).onChange(async (value) => {
+      this.plugin.settings.enableInlineModification = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(container).setName("\u5F53\u524D\u6FC0\u6D3B\u7684\u9605\u8BFB\u7BA1\u5BB6").setDesc("\u5FEB\u901F\u5207\u6362\u60AC\u6D6E\u9762\u677F\u3001\u6807\u6CE8\u548C\u5408\u5E76\u65F6\u9ED8\u8BA4\u4F7F\u7528\u7684\u7BA1\u5BB6\u3002").addDropdown((dropdown) => {
+      for (const steward of this.plugin.settings.stewards) {
+        dropdown.addOption(steward.id, `${steward.icon} ${steward.name}`);
+      }
+      dropdown.setValue(this.plugin.settings.activeStewardId);
+      dropdown.onChange(async (value) => {
+        this.plugin.settings.activeStewardId = value;
+        await this.plugin.saveSettings();
+      });
+    });
+    const generalHint = container.createEl("div", { cls: "mn-settings-card" });
+    generalHint.createEl("div", { text: "\u{1FA84} \u60AC\u6D6E\u83DC\u5355\u8BF4\u660E", attr: { style: "font-weight: 600; margin-bottom: 6px;" } });
+    generalHint.createEl("div", { text: "\u6807\u6CE8\u60AC\u6D6E\u83DC\u5355\u5F00\u5173\u5DF2\u4ECE\u8BBE\u7F6E\u9875\u79FB\u9664\uFF0C\u53EF\u901A\u8FC7\u547D\u4EE4\u9762\u677F\u4E2D\u7684\u201C\u6253\u5F00/\u5173\u95ED\u6807\u6CE8\u60AC\u6D6E\u7A97\u201D\u8FDB\u884C\u63A7\u5236\u3002", cls: "setting-item-description" });
+  }
+  renderAdvancedSettings(container) {
+    container.createEl("h3", { text: "\u{1F527} \u5F00\u53D1", cls: "mn-settings-section-title" });
+    new import_obsidian6.Setting(container).setName("\u8C03\u8BD5\u6A21\u5F0F").setDesc("\u5F00\u542F\u540E\u5C06\u5728\u63A7\u5236\u53F0\u8F93\u51FA\u8BE6\u7EC6\u7684\u8C03\u8BD5\u65E5\u5FD7\u4FE1\u606F\u3002").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableDebugMode).onChange(async (value) => {
+      this.plugin.settings.enableDebugMode = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(container).setName("Tavily API Key").setDesc("\u7528\u4E8E\u8FFD\u95EE\u65F6\u7684\u53EF\u9009\u7F51\u7EDC\u641C\u7D22\u589E\u5F3A\uFF1B\u7559\u7A7A\u5219\u7981\u7528\u7F51\u7EDC\u641C\u7D22\u3002").addText((text) => {
+      text.setPlaceholder("tvly-...").setValue(this.plugin.settings.tavilyApiKey || "").onChange(async (value) => {
+        this.plugin.settings.tavilyApiKey = value.trim();
+        await this.plugin.saveSettings();
+      });
+      text.inputEl.type = "password";
+    });
+    new import_obsidian6.Setting(container).setName("\u5F00\u53D1\u8005\u6A21\u5F0F").setDesc("\u5F00\u542F\u540E\u53EF\u7F16\u8F91\u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F\uFF08\u542B\u6458\u8981\u3001\u6DF1\u5EA6\u5206\u6790\u4E0E\u539F\u6587\u6539\u5199\u5F15\u64CE\u63D0\u793A\u8BCD\uFF09\u3002").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableDeveloperMode).onChange(async (value) => {
+      this.plugin.settings.enableDeveloperMode = value;
+      await this.plugin.saveSettings();
+      this.display();
+    }));
+    if (!this.plugin.settings.enableDeveloperMode)
+      return;
+    const promptCard = container.createEl("div", { cls: "mn-settings-card" });
+    promptCard.createEl("h4", { text: "\u{1F9E0} \u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F", attr: { style: "margin: 0 0 8px 0;" } });
+    promptCard.createEl("p", { text: "\u8FD9\u4E9B\u6A21\u677F\u4F1A\u76F4\u63A5\u5F71\u54CD\u5F15\u64CE\u7EA7\u8F93\u51FA\u683C\u5F0F\u3002\u8BF7\u4FDD\u7559\u5360\u4F4D\u7B26\uFF0C\u4F8B\u5982 __FOOTNOTE_ID__\u3001__DEFAULT_SUMMARY_PROMPT__\u3001__TARGET_LANGUAGE__\u3002", cls: "setting-item-description" });
+    new import_obsidian6.Setting(promptCard).setName("\u9ED8\u8BA4\u6458\u8981\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u751F\u6210\u5355\u884C\u6458\u8981\u6807\u9898\u3002").addTextArea((text) => text.setValue(this.plugin.settings.defaultSummarySystemPromptTemplate).onChange(async (value) => {
+      this.plugin.settings.defaultSummarySystemPromptTemplate = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(promptCard).setName("\u8BE6\u7EC6\u5206\u6790\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u6807\u51C6\u6807\u6CE8\u3001\u8FFD\u95EE\u548C\u5408\u5E76\u65F6\u7684\u53CC\u6BB5\u5F0F\u8F93\u51FA\u6A21\u677F\u3002").addTextArea((text) => text.setValue(this.plugin.settings.annotationSystemPromptTemplate).onChange(async (value) => {
+      this.plugin.settings.annotationSystemPromptTemplate = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(promptCard).setName("\u539F\u6587\u6539\u5199\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u76F4\u63A5\u8986\u76D6\u539F\u6587\u7684\u6539\u5199\u5F15\u64CE\u3002").addTextArea((text) => text.setValue(this.plugin.settings.inlineRewriteSystemPromptTemplate).onChange(async (value) => {
+      this.plugin.settings.inlineRewriteSystemPromptTemplate = value;
+      await this.plugin.saveSettings();
+    }));
+  }
+  renderTagSettings(container) {
+    container.createEl("h3", { text: "\u{1F3F7}\uFE0F \u6807\u6CE8\u6807\u7B7E (Tags)", cls: "mn-settings-section-title" });
+    container.createEl("p", { text: "\u70B9\u51FB\u6807\u7B7E\u5361\u7247\u8FDB\u5165\u7F16\u8F91\u3002\u6807\u6CE8\u65F6\u53EF\u9009\u62E9\u6216\u81EA\u52A8\u5173\u8054\u6807\u7B7E\u3002", cls: "setting-item-description" });
+    const addButton = container.createEl("button", { text: "\u2795 \u65B0\u5EFA\u6807\u7B7E", cls: "mod-cta" });
+    addButton.onclick = async () => {
+      const newTag = {
+        id: `tag-${Date.now()}`,
+        name: "\u65B0\u6807\u7B7E",
+        emoji: "\u{1F3F7}\uFE0F",
+        color: COLOR_PALETTE[0].value,
+        textColor: "inherit",
+        style: "highlight"
+      };
+      this.plugin.settings.tags.push(newTag);
+      await this.plugin.saveSettings();
+      new TagEditModal(this.app, newTag, async (updated) => {
+        this.plugin.settings.tags[this.plugin.settings.tags.length - 1] = updated;
+        await this.plugin.saveSettings();
+        this.display();
+      }).open();
+    };
+    const tagListDiv = container.createEl("div", { attr: { style: "display: flex; flex-direction: column; gap: 8px; margin-top: 12px;" } });
+    this.plugin.settings.tags.forEach((tag, index) => {
+      const styleLabels = { highlight: "\u9AD8\u4EAE", underline: "\u4E0B\u5212\u7EBF", dashed: "\u865A\u7EBF", "semi-transparent": "\u534A\u900F\u660E" };
+      const tagCard = tagListDiv.createEl("div", { cls: "marking-tag-card", attr: { style: "cursor: pointer; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--background-modifier-border); background: var(--background-secondary); transition: all 0.15s;" } });
+      const cardRow = tagCard.createEl("div", { attr: { style: "display: flex; align-items: center; gap: 10px;" } });
+      cardRow.createEl("span", { text: tag.emoji, attr: { style: "font-size: 1.3em;" } });
+      cardRow.createEl("span", { text: tag.name, attr: { style: "font-weight: 600; flex: 1;" } });
+      const previewEl = cardRow.createEl("span", { text: "\u793A\u4F8B\u6587\u672C", attr: { style: "font-size: 0.85em; padding: 2px 10px; border-radius: 4px;" } });
+      applyTagHighlightStyle(previewEl, tag);
+      cardRow.createEl("span", { text: styleLabels[tag.style] || tag.style, attr: { style: "font-size: 0.75em; color: var(--text-muted);" } });
+      const delBtn = cardRow.createEl("button", { text: "\u2716", attr: { style: "font-size: 0.8em; padding: 2px 8px; background: transparent; border: none; cursor: pointer; color: var(--text-muted);" } });
+      delBtn.onclick = async (event) => {
+        event.stopPropagation();
+        this.plugin.settings.tags.splice(index, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      };
+      tagCard.onclick = () => {
+        new TagEditModal(this.app, tag, async (updated) => {
+          this.plugin.settings.tags[index] = updated;
+          await this.plugin.saveSettings();
+          this.display();
+        }).open();
+      };
+    });
+  }
+  renderModelSettings(container) {
+    container.createEl("h3", { text: "\u{1F50C} \u6A21\u578B\u63D0\u4F9B\u5546 (Model Providers)", cls: "mn-settings-section-title" });
+    container.createEl("p", { text: "\u652F\u6301\u4EFB\u4F55 OpenAI \u517C\u5BB9\u7684 API\uFF08OpenAI / DeepSeek / Ollama / LM Studio \u7B49\uFF09", cls: "setting-item-description" });
+    const addButton = container.createEl("button", { text: "\u2795 \u6DFB\u52A0\u6A21\u578B\u63D0\u4F9B\u5546", cls: "mod-cta" });
+    addButton.onclick = async () => {
+      const newProvider = {
+        id: `provider-${Date.now()}`,
+        name: "\u65B0\u6A21\u578B",
+        baseURL: "https://api.openai.com/v1",
+        apiKey: "",
+        modelId: "gpt-4o"
+      };
+      this.plugin.settings.modelProviders.push(newProvider);
+      await this.plugin.saveSettings();
+      this.display();
+    };
+    for (let index = 0; index < this.plugin.settings.modelProviders.length; index++) {
+      const provider = this.plugin.settings.modelProviders[index];
+      const isDefault = provider.id === this.plugin.settings.defaultProviderId;
+      const providerDiv = container.createEl("div", { cls: "steward-card", attr: { style: `border: 1px solid ${isDefault ? "var(--interactive-accent)" : "var(--background-modifier-border)"}; padding: 15px; margin: 10px 0; border-radius: 8px;` } });
+      const header = providerDiv.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;" } });
+      const titleArea = header.createEl("div", { attr: { style: "display: flex; align-items: center; gap: 8px;" } });
+      titleArea.createEl("h4", { text: provider.name, attr: { style: "margin: 0;" } });
+      if (isDefault) {
+        titleArea.createEl("span", { text: "\u9ED8\u8BA4", attr: { style: "font-size: 0.75em; background: var(--interactive-accent); color: white; padding: 2px 6px; border-radius: 4px;" } });
+      }
+      const btnGroup = header.createEl("div", { attr: { style: "display: flex; gap: 4px;" } });
+      if (!isDefault) {
+        const btnDefault = btnGroup.createEl("button", { text: "\u8BBE\u4E3A\u9ED8\u8BA4" });
+        btnDefault.onclick = async () => {
+          this.plugin.settings.defaultProviderId = provider.id;
+          await this.plugin.saveSettings();
+          this.display();
+        };
+      }
+      const btnTest = btnGroup.createEl("button", { text: "\u{1F517} \u6D4B\u8BD5\u8FDE\u901A" });
+      btnTest.onclick = async () => {
+        btnTest.innerText = "\u23F3 \u6D4B\u8BD5\u4E2D...";
+        try {
+          const ok = await AIClient.testConnection(provider);
+          btnTest.innerText = ok ? "\u2705 \u8FDE\u901A" : "\u274C \u5931\u8D25";
+        } catch (e) {
+          btnTest.innerText = "\u274C \u5931\u8D25";
+        }
+        setTimeout(() => {
+          btnTest.innerText = "\u{1F517} \u6D4B\u8BD5\u8FDE\u901A";
+        }, 3e3);
+      };
+      const btnDel = btnGroup.createEl("button", { text: "\u{1F5D1}\uFE0F", cls: "mod-warning" });
+      btnDel.onclick = async () => {
+        this.plugin.settings.modelProviders.splice(index, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      };
+      new import_obsidian6.Setting(providerDiv).setName("\u540D\u79F0").addText((text) => text.setValue(provider.name).onChange(async (value) => {
+        this.plugin.settings.modelProviders[index].name = value;
+        await this.plugin.saveSettings();
+      }));
+      new import_obsidian6.Setting(providerDiv).setName("Base URL").addText((text) => text.setPlaceholder("https://api.openai.com/v1").setValue(provider.baseURL).onChange(async (value) => {
+        this.plugin.settings.modelProviders[index].baseURL = value;
+        await this.plugin.saveSettings();
+      }));
+      new import_obsidian6.Setting(providerDiv).setName("API Key").addText((text) => {
+        text.setPlaceholder("sk-...").setValue(provider.apiKey).onChange(async (value) => {
+          this.plugin.settings.modelProviders[index].apiKey = value;
+          await this.plugin.saveSettings();
+        });
+        text.inputEl.type = "password";
+      });
+      new import_obsidian6.Setting(providerDiv).setName("Model ID").addText((text) => text.setPlaceholder("gpt-4o").setValue(provider.modelId).onChange(async (value) => {
+        this.plugin.settings.modelProviders[index].modelId = value;
+        await this.plugin.saveSettings();
+      }));
+    }
+  }
+  renderStewardSettings(container, switchTab) {
+    container.createEl("h3", { text: "\u{1F3F7}\uFE0F \u5207\u6362\u5F53\u524D\u7BA1\u5BB6", cls: "mn-settings-section-title" });
+    container.createEl("p", { text: "\u9009\u62E9\u5728 Marking Note \u4E2D\u60AC\u6D6E\u7A97\u548C\u5FEB\u6377\u6307\u4EE4\u4F7F\u7528\u7684\u7BA1\u5BB6\u3002", cls: "setting-item-description" });
+    new import_obsidian6.Setting(container).setName("\u5F53\u524D\u6FC0\u6D3B\u7684\u9605\u8BFB\u7BA1\u5BB6").addDropdown((dropdown) => {
+      for (const steward of this.plugin.settings.stewards) {
+        dropdown.addOption(steward.id, `${steward.icon} ${steward.name}`);
+      }
+      dropdown.setValue(this.plugin.settings.activeStewardId);
+      dropdown.onChange(async (value) => {
+        this.plugin.settings.activeStewardId = value;
+        await this.plugin.saveSettings();
+      });
+    });
+    this.renderInlineStewardSettings(container);
+    this.renderEditableStewardSettings(container, switchTab);
+  }
+  renderInlineStewardSettings(container) {
+    container.createEl("h3", { text: "\u270F\uFE0F \u5168\u5C40\u6539\u5199\u7BA1\u5BB6 (Inline Steward)", cls: "mn-settings-section-title", attr: { style: "margin-top: 30px;" } });
+    container.createEl("p", { text: "\u8FD9\u662F\u4E13\u7528\u4E8E\u5728\u9009\u4E2D\u6587\u672C\u60AC\u6D6E\u83DC\u5355\u5904\u76F4\u63A5\u64E6\u9664\u65E7\u6587\u672C\u5E76\u8986\u76D6\u539F\u6587\u7684\u7BA1\u5BB6\uFF0C\u65E0\u9700\u8BBE\u7F6E\u6807\u9898\u548C\u683C\u5F0F\uFF0C\u76F4\u63A5\u8D77\u6548\u3002", cls: "setting-item-description" });
+    const inlineDiv = container.createEl("div", { cls: "steward-card", attr: { style: "border: 1px solid var(--text-muted); padding: 15px; margin-bottom: 20px; border-radius: 8px;" } });
+    new import_obsidian6.Setting(inlineDiv).setName("\u6539\u5199\u6240\u7528\u7684\u5927\u6A21\u578B").addDropdown((dropdown) => {
+      dropdown.addOption("default-provider", "\u4F7F\u7528\u9ED8\u8BA4");
+      for (const provider of this.plugin.settings.modelProviders) {
+        dropdown.addOption(provider.id, provider.name);
+      }
+      dropdown.setValue(this.plugin.settings.inlineSteward.boundModelProviderId || "default-provider");
+      dropdown.onChange(async (value) => {
+        this.plugin.settings.inlineSteward.boundModelProviderId = value;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian6.Setting(inlineDiv).setName("Temperature (\u6539\u5199\u6E29\u5EA6)").setDesc("\u6539\u5199\u4EFB\u52A1\u63A8\u8350\u8C03\u4F4E\u6E29\u5EA6(\u5982 0.2-0.3)\u4EE5\u4FDD\u6301\u4E25\u8C28\uFF0C\u907F\u514D AI \u53D1\u6563\u521B\u4F5C\u3002").addSlider((slider) => slider.setLimits(0, 1, 0.1).setValue(this.plugin.settings.inlineSteward.temperature).setDynamicTooltip().onChange(async (value) => {
+      this.plugin.settings.inlineSteward.temperature = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(inlineDiv).setName("\u8BC6\u522B\u4E0A\u4E0B\u6587\u957F\u5EA6\u754C\u9650").addSlider((slider) => slider.setLimits(0, 8192, 128).setValue(this.plugin.settings.inlineSteward.contextLength).setDynamicTooltip().onChange(async (value) => {
+      this.plugin.settings.inlineSteward.contextLength = value;
+      await this.plugin.saveSettings();
+    }));
+    const inlineCmdSection = inlineDiv.createEl("div", { attr: { style: "margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);" } });
+    inlineCmdSection.createEl("h5", { text: "\u270F\uFE0F \u6539\u5199\u6307\u4EE4 (Inline Commands)" });
+    const btnAddInlineCmd = inlineCmdSection.createEl("button", { text: "\u2795 \u6DFB\u52A0\u6539\u5199\u6307\u4EE4" });
+    btnAddInlineCmd.onclick = async () => {
+      const newCmd = {
+        id: `inline-cmd-${Date.now()}`,
+        name: "\u65B0\u6539\u5199",
+        icon: "\u270F\uFE0F",
+        detailPrompt: "",
+        type: "inline-modify"
+      };
+      this.plugin.settings.inlineSteward.commands.push(newCmd);
+      await this.plugin.saveSettings();
+      this.display();
+    };
+    const inlineListDiv = inlineCmdSection.createEl("div", { attr: { style: "display: flex; flex-direction: column; gap: 8px; margin-top: 8px;" } });
+    this.plugin.settings.inlineSteward.commands.forEach((cmd, index) => {
+      const cmdCard = inlineListDiv.createEl("div", { cls: "marking-cmd-card", attr: { style: "cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;" } });
+      const cardHeader = cmdCard.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center;" } });
+      cardHeader.createEl("div", { text: `${cmd.icon} ${cmd.name}`, attr: { style: "font-weight: 600;" } });
+      const cmdDel = cardHeader.createEl("button", { text: "\u2716", attr: { style: "font-size: 0.8em; padding: 2px 8px;" } });
+      cmdDel.onclick = async (event) => {
+        event.stopPropagation();
+        this.plugin.settings.inlineSteward.commands.splice(index, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      };
+      const descPreview = cmd.detailPrompt.slice(0, 45) + (cmd.detailPrompt.length > 45 ? "..." : "");
+      cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", attr: { style: "font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;" } });
+      cmdCard.onclick = () => {
+        new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
+          this.plugin.settings.inlineSteward.commands[index] = updatedCmd;
+          await this.plugin.saveSettings();
+          this.display();
+        }).open();
+      };
+    });
+  }
+  renderEditableStewardSettings(container, switchTab) {
+    container.createEl("h3", { text: "\u{1F916} \u7BA1\u5BB6\u7EF4\u62A4\u4E0E\u914D\u7F6E", cls: "mn-settings-section-title", attr: { style: "margin-top: 30px;" } });
+    container.createEl("p", { text: "\u9009\u62E9\u4E00\u4E2A\u7BA1\u5BB6\u8FDB\u884C\u4FEE\u6539\uFF0C\u6216\u521B\u5EFA\u65B0\u7BA1\u5BB6\u3002", cls: "setting-item-description" });
+    if (!this.editingStewardId && this.plugin.settings.stewards.length > 0) {
+      this.editingStewardId = this.plugin.settings.stewards[0].id;
+    }
+    const editSelectorDiv = container.createEl("div", { attr: { style: "display: flex; gap: 10px; align-items: center; margin-bottom: 20px;" } });
+    switchTab(this.activeTab);
+    const stewardDropdown = editSelectorDiv.createEl("select", { cls: "dropdown" });
+    for (const steward2 of this.plugin.settings.stewards) {
+      const option = stewardDropdown.createEl("option", { value: steward2.id, text: `${steward2.icon} ${steward2.name}` });
+      if (steward2.id === this.editingStewardId)
+        option.selected = true;
+    }
+    stewardDropdown.onchange = () => {
+      this.editingStewardId = stewardDropdown.value;
+      this.display();
+    };
+    const btnAddSteward = editSelectorDiv.createEl("button", { text: "\u2795 \u65B0\u5EFA\u7BA1\u5BB6" });
+    btnAddSteward.onclick = async () => {
+      const newId = `steward-${Date.now()}`;
+      const newSteward = {
+        id: newId,
+        name: "\u65B0\u7BA1\u5BB6",
+        icon: "\u{1F916}",
+        systemPrompt: "",
+        writingStyle: "",
+        contextLength: 2e3,
+        temperature: 0.7,
+        topP: 0.95,
+        thinkingBudget: 0,
+        footnoteLength: 30,
+        boundModelProviderId: this.plugin.settings.defaultProviderId,
+        commands: []
+      };
+      this.plugin.settings.stewards.push(newSteward);
+      this.editingStewardId = newId;
+      await this.plugin.saveSettings();
+      this.display();
+    };
+    const index = this.plugin.settings.stewards.findIndex((steward2) => steward2.id === this.editingStewardId);
+    if (index === -1)
+      return;
+    const steward = this.plugin.settings.stewards[index];
+    const stewardDiv = container.createEl("div", { cls: "steward-card", attr: { style: "border: 1px solid var(--interactive-accent); padding: 15px; margin-bottom: 20px; border-radius: 8px;" } });
+    const header = stewardDiv.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center;" } });
+    header.createEl("h4", { text: `\u7F16\u8F91\u4E2D: ${steward.icon} ${steward.name}`, attr: { style: "margin: 0; color: var(--interactive-accent);" } });
+    const btnDelete = header.createEl("button", { text: "\u{1F5D1}\uFE0F \u5220\u9664\u6B64\u7BA1\u5BB6", cls: "mod-warning" });
+    btnDelete.onclick = async () => {
+      if (!confirm(`\u786E\u5B9A\u8981\u5220\u9664\u914D\u7F6E "${steward.name}" \u5417\uFF1F`))
+        return;
+      this.plugin.settings.stewards.splice(index, 1);
+      this.editingStewardId = null;
+      await this.plugin.saveSettings();
+      this.display();
+    };
+    new import_obsidian6.Setting(stewardDiv).setName("\u540D\u79F0").addText((text) => text.setValue(steward.name).onChange(async (value) => {
+      this.plugin.settings.stewards[index].name = value;
+      await this.plugin.saveSettings();
+      stewardDropdown.options[stewardDropdown.selectedIndex].text = `${steward.icon} ${value}`;
+    }));
+    new import_obsidian6.Setting(stewardDiv).setName("\u56FE\u6807 (Emoji)").addButton((btn) => btn.setButtonText(steward.icon).onClick(() => {
+      showEmojiGrid(btn.buttonEl, async (emoji) => {
+        this.plugin.settings.stewards[index].icon = emoji;
+        await this.plugin.saveSettings();
+        stewardDropdown.options[stewardDropdown.selectedIndex].text = `${emoji} ${steward.name}`;
+        this.display();
+      });
+    }));
+    new import_obsidian6.Setting(stewardDiv).setName("\u7ED1\u5B9A\u6A21\u578B\u63D0\u4F9B\u5546").addDropdown((dropdown) => {
+      dropdown.addOption("", "\u4F7F\u7528\u9ED8\u8BA4");
+      for (const provider of this.plugin.settings.modelProviders) {
+        dropdown.addOption(provider.id, provider.name);
+      }
+      dropdown.setValue(steward.boundModelProviderId || "");
+      dropdown.onChange(async (value) => {
+        this.plugin.settings.stewards[index].boundModelProviderId = value;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian6.Setting(stewardDiv).setName("\u9605\u8BFB\u7406\u89E3\u63D0\u793A\u8BCD").setDesc('\u5B9A\u4E49\u8BE5\u7BA1\u5BB6\u5982\u4F55"\u770B"\u5F85\u6587\u672C\u3002\u5982\uFF1A\u603B\u7ED3\u6838\u5FC3\u3001\u5206\u6790\u6280\u672F\u70B9\u3002').addTextArea((text) => text.setValue(steward.systemPrompt).onChange(async (value) => {
+      this.plugin.settings.stewards[index].systemPrompt = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(stewardDiv).setName("\u5199\u4F5C\u98CE\u683C\u63D0\u793A\u8BCD").setDesc("\u5B9A\u4E49\u5927\u6A21\u578B\u8FD4\u56DE\u7ED3\u679C\uFF08\u5BCC\u6587\u672C\u533A\u57DF\uFF09\u7684\u8BED\u6C14\u4E0E\u6392\u7248\u7279\u5F81\u3002").addTextArea((text) => text.setValue(steward.writingStyle).onChange(async (value) => {
+      this.plugin.settings.stewards[index].writingStyle = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(stewardDiv).setName("Temperature (\u6E29\u5EA6)").addSlider((slider) => slider.setLimits(0, 1, 0.1).setValue(steward.temperature).setDynamicTooltip().onChange(async (value) => {
+      this.plugin.settings.stewards[index].temperature = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(stewardDiv).setName("TopP").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(steward.topP).setDynamicTooltip().onChange(async (value) => {
+      this.plugin.settings.stewards[index].topP = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(stewardDiv).setName("\u4E0A\u4E0B\u6587\u622A\u65AD\u957F\u5EA6 (\u5B57\u7B26)").addSlider((slider) => slider.setLimits(0, 8192, 128).setValue(steward.contextLength).setDynamicTooltip().onChange(async (value) => {
+      this.plugin.settings.stewards[index].contextLength = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian6.Setting(stewardDiv).setName("\u601D\u8003\u9884\u7B97 (Thinking Budget)").setDesc("\u9488\u5BF9\u601D\u7EF4\u94FE\u6A21\u578B\uFF08\u5982 DeepSeek R1\uFF09\uFF0C\u8BBE\u5B9A\u601D\u8003\u6DF1\u5EA6\u3002").addDropdown((dropdown) => {
+      dropdown.addOption("0", "\u65E0 (\u5173\u95ED\u601D\u7EF4\u94FE)");
+      dropdown.addOption("500", "\u6781\u4F4E (500 Tokens)");
+      dropdown.addOption("1000", "\u4F4E (1000 Tokens)");
+      dropdown.addOption("2000", "\u4E2D (2000 Tokens)");
+      dropdown.addOption("5000", "\u9AD8 (5000 Tokens)");
+      dropdown.setValue(steward.thinkingBudget.toString());
+      dropdown.onChange(async (value) => {
+        this.plugin.settings.stewards[index].thinkingBudget = parseInt(value);
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian6.Setting(stewardDiv).setName("\u811A\u6CE8\u6587\u672C\u957F\u5EA6\u9650\u5236").setDesc("\u7B2C\u4E00\u90E8\u5206\uFF08\u7B80\u4ECB\uFF09\u7684\u4E25\u82DB\u9650\u5236\u3002").addText((text) => text.setValue(steward.footnoteLength.toString()).onChange(async (value) => {
+      this.plugin.settings.stewards[index].footnoteLength = parseInt(value) || 30;
+      await this.plugin.saveSettings();
+    }));
+    const cmdSection = stewardDiv.createEl("div", { attr: { style: "margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);" } });
+    cmdSection.createEl("h5", { text: "\u26A1 \u7BA1\u5BB6\u6307\u4EE4 (Steward Commands)" });
+    const btnAddCmd = cmdSection.createEl("button", { text: "\u2795 \u6DFB\u52A0\u5FEB\u6377\u6307\u4EE4" });
+    btnAddCmd.onclick = async () => {
+      const newCmd = {
+        id: `cmd-${Date.now()}`,
+        name: "\u65B0\u6307\u4EE4",
+        icon: "\u26A1",
+        detailPrompt: "",
+        type: "annotated",
+        contextMode: "full"
+      };
+      this.plugin.settings.stewards[index].commands.push(newCmd);
+      await this.plugin.saveSettings();
+      this.display();
+    };
+    const listDiv = cmdSection.createEl("div", { attr: { style: "display: flex; flex-direction: column; gap: 8px; margin-top: 8px;" } });
+    steward.commands.forEach((cmd, cmdIndex) => {
+      const cmdCard = listDiv.createEl("div", { cls: "marking-cmd-card", attr: { style: "cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;" } });
+      const cardHeader = cmdCard.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center;" } });
+      const typeBadge = cmd.type === "default-summary" ? "\u2705 \u9ED8\u8BA4" : "\u26A1 \u6302\u8F7D";
+      cardHeader.createEl("div", { text: `${cmd.icon} ${cmd.name}`, attr: { style: "font-weight: 600;" } });
+      const rightControls = cardHeader.createEl("div", { attr: { style: "display: flex; align-items: center; gap: 8px;" } });
+      rightControls.createEl("span", { text: typeBadge, attr: { style: "font-size: 0.75em; padding: 2px 6px; background: var(--interactive-accent); color: var(--text-on-accent); border-radius: 4px;" } });
+      const cmdDel = rightControls.createEl("button", { text: "\u2716", attr: { style: "font-size: 0.8em; padding: 2px 8px;" } });
+      cmdDel.onclick = async (event) => {
+        event.stopPropagation();
+        this.plugin.settings.stewards[index].commands.splice(cmdIndex, 1);
+        await this.plugin.saveSettings();
+        this.display();
+      };
+      const descPreview = cmd.detailPrompt.slice(0, 45) + (cmd.detailPrompt.length > 45 ? "..." : "");
+      cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", attr: { style: "font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;" } });
+      cmdCard.onclick = () => {
+        new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
+          this.plugin.settings.stewards[index].commands[cmdIndex] = updatedCmd;
+          await this.plugin.saveSettings();
+          this.display();
+        }).open();
+      };
+    });
+  }
 };
 
 // src/settings/default-settings.ts
 function createDefaultSettings() {
-	return {
-		defaultProviderId: "default-provider",
-		tavilyApiKey: "",
-		modelProviders: [
-			{
-				id: "default-provider",
-				name: "OpenAI",
-				baseURL: "https://api.openai.com/v1",
-				apiKey: "",
-				modelId: "gpt-4o",
-			},
-		],
-		activeStewardId: "academic",
-		enableFloatingMenu: true,
-		enableInlineModification: true,
-		enableDebugMode: false,
-		enableDeveloperMode: false,
-		defaultSummarySystemPromptTemplate: DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
-		annotationSystemPromptTemplate: DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
-		inlineRewriteSystemPromptTemplate:
-			DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE,
-		tags: [...DEFAULT_TAGS],
-		inlineSteward: {
-			boundModelProviderId: "default-provider",
-			contextLength: 2e3,
-			temperature: 0.3,
-			commands: [
-				{
-					id: "inline-1",
-					name: "\u7CBE\u70BC\u603B\u7ED3",
-					icon: "\u{1F4DD}",
-					type: "inline-modify",
-					detailPrompt:
-						"\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u9AD8\u5EA6\u7CBE\u70BC\u4E3A\u6838\u5FC3\u7ED3\u8BBA\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u4EC5\u8F93\u51FA\u6539\u5199\u540E\u7684\u7EAF\u6587\u672C\uFF0C\u4E0D\u8981\u4EFB\u4F55\u524D\u7F00\u3001\u89E3\u91CA\u6216\u4EE3\u7801\u5757\n2. \u4FDD\u6301\u539F\u6587\u7684\u8BED\u8A00\uFF08\u4E2D\u6587\u5BF9\u4E2D\u6587\uFF0C\u82F1\u6587\u5BF9\u82F1\u6587\uFF09\n3. \u957F\u5EA6\u4E0D\u8D85\u8FC7\u539F\u6587\u7684 1/3\n4. \u4FDD\u7559\u5173\u952E\u540D\u8BCD\u548C\u6570\u5B57\u4E0D\u5931\u771F",
-				},
-				{
-					id: "inline-2",
-					name: "\u903B\u8F91\u6574\u7406",
-					icon: "\u{1F504}",
-					type: "inline-modify",
-					detailPrompt:
-						"\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u903B\u8F91\u68B3\u7406\u4E0E\u8BED\u8A00\u4F18\u5316\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u4EC5\u8F93\u51FA\u6539\u5199\u540E\u7684\u7EAF\u6587\u672C\uFF0C\u4E0D\u8981\u4EFB\u4F55\u524D\u7F00\u3001\u89E3\u91CA\u6216\u4EE3\u7801\u5757\n2. \u4FDD\u6301\u539F\u6587\u7684\u6574\u4F53\u6587\u4F53\u98CE\u683C\uFF08\u53E3\u8BED\u4FDD\u6301\u53E3\u8BED\uFF0C\u5B66\u672F\u4FDD\u6301\u5B66\u672F\uFF09\n3. \u4E0D\u6539\u53D8\u539F\u59CB\u542B\u4E49\uFF0C\u53EA\u4F18\u5316\u8868\u8FBE\u6D41\u7545\u5EA6\u4E0E\u903B\u8F91\u8FDE\u8D2F\u6027\n4. \u4FDD\u6301\u4E0E\u539F\u6587\u76F8\u8FD1\u7684\u957F\u5EA6",
-				},
-				{
-					id: "inline-3",
-					name: "\u901A\u4FD7\u8F6C\u6362",
-					icon: "\u{1F5E3}\uFE0F",
-					type: "inline-modify",
-					detailPrompt:
-						"\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u8F6C\u6362\u4E3A\u5927\u767D\u8BDD\uFF0C\u8BA9\u975E\u4E13\u4E1A\u8BFB\u8005\u4E5F\u80FD\u8F7B\u677E\u7406\u89E3\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u4EC5\u8F93\u51FA\u6539\u5199\u540E\u7684\u7EAF\u6587\u672C\uFF0C\u4E0D\u8981\u4EFB\u4F55\u524D\u7F00\u3001\u89E3\u91CA\u6216\u4EE3\u7801\u5757\n2. \u7528\u65E5\u5E38\u8BCD\u6C47\u66FF\u6362\u4E13\u4E1A\u672F\u8BED\uFF0C\u4F46\u4FDD\u7559\u6838\u5FC3\u6982\u5FF5\u7684\u51C6\u786E\u6027\n3. \u4FDD\u6301\u4E0E\u539F\u6587\u76F8\u8FD1\u7684\u7BC7\u5E45\u957F\u5EA6\n4. \u8BED\u6C14\u4EB2\u5207\u81EA\u7136\uFF0C\u53EF\u4EE5\u52A0\u5165\u7C7B\u6BD4\u6216\u751F\u6D3B\u5316\u4E3E\u4F8B",
-				},
-				{
-					id: "inline-4",
-					name: "Markdown\u7ED3\u6784\u5316",
-					icon: "\u24C2\uFE0F",
-					type: "inline-modify",
-					detailPrompt:
-						"\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u6539\u5199\u4E3A\u7ED3\u6784\u5316\u7684 Markdown \u683C\u5F0F\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u76F4\u63A5\u8F93\u51FA Markdown \u6E90\u7801\uFF0C\u4E0D\u8981\u7528\u4EE3\u7801\u5757\u5305\u88F9\uFF08\u4E0D\u8981 ```markdown```\uFF09\n2. \u6839\u636E\u5185\u5BB9\u5C42\u7EA7\u4F7F\u7528 ##/###\u3001**\u7C97\u4F53**\u3001- \u5217\u8868\u7B49\u5143\u7D20\n3. \u63D0\u70BC\u51FA\u5173\u952E\u4FE1\u606F\uFF0C\u5141\u8BB8\u9002\u5EA6\u538B\u7F29\u5197\u4F59\u5185\u5BB9\n4. \u4FDD\u6301\u539F\u6587\u7684\u903B\u8F91\u987A\u5E8F\u548C\u4E3B\u8981\u89C2\u70B9\u4E0D\u4E22\u5931",
-				},
-				{
-					id: "inline-5",
-					name: "Mermaid\u601D\u7EF4\u5BFC\u56FE",
-					icon: "\u{1F4CA}",
-					type: "inline-modify",
-					detailPrompt:
-						"\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u8F6C\u6362\u4E3A Mermaid \u601D\u7EF4\u5BFC\u56FE\u4EE3\u7801\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u76F4\u63A5\u8F93\u51FA Mermaid \u4EE3\u7801\uFF0C\u4E0D\u8981\u4EE3\u7801\u5757\u6807\u8BB0\uFF08\u4E0D\u8981 ```mermaid```\uFF09\n2. \u683C\u5F0F\u5FC5\u987B\u4EE5 mindmap \u5F00\u5934\n3. \u6839\u8282\u70B9\u4E3A\u6587\u672C\u6700\u6838\u5FC3\u7684\u4E3B\u9898\u8BCD\n4. \u6700\u591A 3 \u5C42\u5C42\u7EA7\uFF0C\u6BCF\u4E2A\u8282\u70B9\u7B80\u6D01\uFF085\u5B57\u4EE5\u5185\uFF09\n5. \u8282\u70B9\u5185\u5BB9\u4E0D\u5141\u8BB8\u4F7F\u7528\u7279\u6B8A\u5B57\u7B26\uFF08\u62EC\u53F7\u3001\u5F15\u53F7\u7B49\uFF09",
-				},
-			],
-		},
-		stewards: [
-			{
-				id: "academic",
-				name: "\u5B66\u672F\u6587\u732E\u7CBE\u8BFB",
-				icon: "\u{1F52C}",
-				systemPrompt:
-					"\u4F60\u662F\u4E00\u4F4D\u4E25\u8C28\u7684\u5B66\u672F\u7814\u7A76\u52A9\u7406\uFF0C\u5177\u5907\u8DE8\u5B66\u79D1\u7684\u6587\u732E\u5206\u6790\u80FD\u529B\u3002\u5728\u89E3\u6790\u7528\u6237\u9009\u4E2D\u7684\u6587\u672C\u65F6\uFF0C\u8BF7\u59CB\u7EC8\u951A\u5B9A\u4EE5\u4E0B\u7EF4\u5EA6\uFF1A(1) \u6838\u5FC3\u8BBA\u65AD\u6216\u5047\u8BBE\u662F\u4EC0\u4E48\uFF1B(2) \u8BBA\u8BC1\u7ED3\u6784\u662F\u5426\u4E25\u5BC6\u3001\u5B9E\u8BC1\u6570\u636E\u662F\u5426\u53EF\u4FE1\uFF1B(3) \u8BE5\u8BBA\u65AD\u5728\u73B0\u6709\u7814\u7A76\u4E2D\u7684\u5750\u6807\u2014\u2014\u4E0E\u54EA\u4E9B\u7406\u8BBA\u6846\u67B6\u547C\u5E94\u6216\u76F8\u6096\uFF1B(4) \u65B9\u6CD5\u8BBA\u5C42\u9762\u7684\u4F18\u52BF\u4E0E\u6F5C\u5728\u76F2\u533A\u3002\u5206\u6790\u9700\u4FDD\u6301\u4EF7\u503C\u4E2D\u7ACB\uFF0C\u533A\u5206\u4F5C\u8005\u7ACB\u573A\u4E0E\u5BA2\u89C2\u4E8B\u5B9E\u3002",
-				writingStyle:
-					'\u8F93\u51FA\u987B\u4F7F\u7528\u4E25\u8C28\u3001\u6B63\u5F0F\u7684\u5B66\u672F\u8BED\u8A00\uFF0C\u91C7\u7528\u5BA2\u89C2\u7B2C\u4E09\u4EBA\u79F0\u89C6\u89D2\u3002\u8868\u8FF0\u7CBE\u786E\u4F18\u5148\u4E8E\u901A\u4FD7\uFF0C\u5173\u952E\u672F\u8BED\u4FDD\u7559\u539F\u6587\u6216\u9644\u62EC\u53F7\u6CE8\u91CA\u3002\u53EF\u4F7F\u7528\u5B66\u672F\u89C4\u8303\u7684\u7ED3\u6784\u5316\u8F93\u51FA\uFF08\u5982"\u73B0\u8C61-\u673A\u5236-\u5C40\u9650"\u6846\u67B6\uFF09\uFF0C\u907F\u514D\u53E3\u8BED\u5316\u8868\u8FBE\u3002',
-				contextLength: 3e3,
-				temperature: 0.3,
-				topP: 0.9,
-				thinkingBudget: 0,
-				footnoteLength: 50,
-				boundModelProviderId: "default-provider",
-				commands: [
-					{
-						id: "acad-def",
-						name: "\u751F\u6210\u6807\u6CE8\u6807\u9898",
-						icon: "\u{1FA84}",
-						detailPrompt:
-							"\u4EE5\u5B66\u672F\u6458\u8981\u98CE\u683C\uFF0C\u7528\u6700\u7CBE\u70BC\u7684\u8BED\u8A00\uFF0810\u5B57\u5185\uFF09\u63D0\u70BC\u672C\u6BB5\u6700\u6838\u5FC3\u7684\u8BBA\u65AD\u6216\u53D1\u73B0\uFF0C\u4F5C\u4E3A\u8FD9\u6BB5\u6587\u672C\u7684\u6807\u9898\u6807\u6CE8",
-						type: "default-summary",
-					},
-					{
-						id: "acad-1",
-						name: "\u540D\u8BCD\u89E3\u6790",
-						icon: "\u{1F4D6}",
-						detailPrompt:
-							"\u63D0\u53D6\u672C\u6BB5\u4E2D\u51FA\u73B0\u7684\u4E13\u4E1A\u672F\u8BED\uFF08\u6700\u591A5\u4E2A\uFF09\uFF0C\u9010\u4E00\u89E3\u91CA\u5176\u5B66\u672F\u5B9A\u4E49\u3001\u6240\u5C5E\u9886\u57DF\uFF0C\u4EE5\u53CA\u5728\u672C\u6587\u4E2D\u7684\u5177\u4F53\u542B\u4E49\u3002\u4F7F\u7528\u8868\u683C\u683C\u5F0F\uFF1A| \u672F\u8BED | \u5B66\u672F\u5B9A\u4E49 | \u672C\u6587\u542B\u4E49 |",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "acad-2",
-						name: "\u8054\u7CFB\u4E0A\u4E0B\u6587",
-						icon: "\u{1F517}",
-						detailPrompt:
-							"\u7ED3\u5408\u4E0A\u4E0B\u6587\u8BED\u5883\uFF0C\u89E3\u91CA\u672C\u6BB5\u5728\u5168\u6587\u8BBA\u8BC1\u94FE\u4E2D\u7684\u89D2\u8272\uFF1A\u5B83\u627F\u63A5\u4E86\u54EA\u4E2A\u8BBA\u70B9\uFF1F\u4E3A\u540E\u7EED\u8BBA\u8BC1\u94FA\u57AB\u4E86\u4EC0\u4E48\uFF1F\u662F\u6838\u5FC3\u8BBA\u636E\u8FD8\u662F\u8865\u5145\u8BF4\u660E\uFF1F",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "acad-3",
-						name: "\u5B9E\u8BC1\u5206\u6790",
-						icon: "\u{1F4CA}",
-						detailPrompt:
-							"\u5BF9\u672C\u6BB5\u4E2D\u6D89\u53CA\u7684\u5B9E\u9A8C\u8BBE\u8BA1\u3001\u6570\u636E\u3001\u6848\u4F8B\u6216\u5F15\u7528\u8FDB\u884C\u6279\u5224\u6027\u8BC4\u4F30\uFF1A\u6837\u672C\u662F\u5426\u5177\u6709\u4EE3\u8868\u6027\uFF1F\u56E0\u679C\u63A8\u65AD\u662F\u5426\u6210\u7ACB\uFF1F\u6570\u636E\u89E3\u8BFB\u662F\u5426\u5B58\u5728\u9009\u62E9\u6027\u504F\u5DEE\uFF1F\u7ED9\u51FA\u4F60\u7684\u5224\u65AD\u4E0E\u7406\u7531\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "acad-4",
-						name: "\u6A2A\u5411\u5BF9\u6BD4",
-						icon: "\u2696\uFE0F",
-						detailPrompt:
-							"\u8BC6\u522B\u672C\u6BB5\u6838\u5FC3\u4E3B\u5F20\uFF0C\u4E0E\u5B66\u754C\u5DF2\u77E5\u7684\u4E3B\u8981\u5BF9\u7ACB\u89C2\u70B9\u6216\u7ADE\u4E89\u7406\u8BBA\u8FDB\u884C\u6A2A\u5411\u6BD4\u8F83\uFF1A\u5404\u65B9\u7684\u6838\u5FC3\u5206\u6B67\u662F\u4EC0\u4E48\uFF1F\u8C01\u7684\u8BBA\u636E\u66F4\u6709\u8BF4\u670D\u529B\uFF1F\u5404\u81EA\u9002\u7528\u4E8E\u4EC0\u4E48\u8FB9\u754C\u6761\u4EF6\uFF1F",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "acad-5",
-						name: "\u6539\u8FDB\u601D\u8DEF",
-						icon: "\u{1F4A1}",
-						detailPrompt:
-							"\u57FA\u4E8E\u672C\u6BB5\u5185\u5BB9\u7684\u5C40\u9650\u6027\u6216\u672A\u89E3\u51B3\u7684\u95EE\u9898\uFF0C\u63D0\u51FA2-3\u4E2A\u5177\u4F53\u7684\u540E\u7EED\u7814\u7A76\u6539\u8FDB\u65B9\u5411\uFF0C\u5305\u62EC\uFF1A\u53EF\u4EE5\u586B\u8865\u7684\u7814\u7A76\u7A7A\u767D\u3001\u53EF\u4F18\u5316\u7684\u65B9\u6CD5\u8BBA\u3001\u503C\u5F97\u9A8C\u8BC1\u7684\u65B0\u5047\u8BBE\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-				],
-			},
-			{
-				id: "learning",
-				name: "\u5B66\u4E60\u65B0\u77E5\u8BC6",
-				icon: "\u{1F9E0}",
-				systemPrompt:
-					'\u4F60\u662F\u4E00\u4F4D\u64C5\u957F\u8D39\u66FC\u5B66\u4E60\u6CD5\u7684\u77E5\u8BC6\u5BFC\u5E08\u3002\u4F60\u7684\u76EE\u6807\u662F\u5E2E\u52A9\u5B66\u4E60\u8005\u771F\u6B63\u5185\u5316\u65B0\u6982\u5FF5\uFF0C\u800C\u975E\u505C\u7559\u5728\u8868\u9762\u7406\u89E3\u3002\u5728\u5904\u7406\u7528\u6237\u9009\u4E2D\u7684\u6587\u672C\u65F6\uFF0C\u4F18\u5148\u8003\u8651\uFF1A(1) \u8FD9\u4E2A\u6982\u5FF5\u7684\u672C\u8D28\u662F\u4EC0\u4E48\uFF08\u800C\u975E\u8868\u8C61\u63CF\u8FF0\uFF09\uFF1B(2) \u5B83\u4E0E\u5B66\u4E60\u8005\u53EF\u80FD\u5DF2\u77E5\u7684\u77E5\u8BC6\u6709\u4EC0\u4E48\u8054\u7CFB\uFF1B(3) \u5982\u4F55\u7528\u6700\u7B80\u5355\u7684\u8BED\u8A00\u91CD\u65B0\u89E3\u91CA\uFF1B(4) \u54EA\u4E9B\u662F\u5E38\u89C1\u7684\u8BA4\u77E5\u8BEF\u533A\u3002\u59CB\u7EC8\u7528"\u6559\u522B\u4EBA"\u7684\u89C6\u89D2\u6765\u7EC4\u7EC7\u89E3\u91CA\u3002',
-				writingStyle:
-					'\u8BED\u8A00\u6E05\u6670\u6613\u61C2\uFF0C\u907F\u514D\u672F\u8BED\u5806\u780C\u3002\u591A\u4F7F\u7528\u7C7B\u6BD4\u3001\u4E3E\u4F8B\u548C\u6545\u4E8B\u3002\u7ED3\u6784\u4E0A\u9075\u5FAA"\u662F\u4EC0\u4E48\u2192\u4E3A\u4EC0\u4E48\u2192\u600E\u4E48\u7528"\u7684\u987A\u5E8F\u3002\u53EF\u4EE5\u9002\u5F53\u63D0\u95EE\u5F15\u53D1\u601D\u8003\uFF0C\u98CE\u683C\u70ED\u60C5\u6709\u6D3B\u529B\uFF0C\u4F20\u9012\u5B66\u4E60\u7684\u4E50\u8DA3\u3002',
-				contextLength: 2e3,
-				temperature: 0.7,
-				topP: 0.95,
-				thinkingBudget: 0,
-				footnoteLength: 30,
-				boundModelProviderId: "default-provider",
-				commands: [
-					{
-						id: "learn-def",
-						name: "\u751F\u6210\u6807\u6CE8\u6807\u9898",
-						icon: "\u{1FA84}",
-						detailPrompt:
-							"\u7528\u4E00\u4E2A\u76F4\u89C9\u53CB\u597D\u7684\u77ED\u8BED\uFF08\u4E0D\u8D85\u8FC715\u5B57\uFF09\u6807\u8BB0\u8FD9\u4E2A\u77E5\u8BC6\u70B9\uFF0C\u50CF\u7ED9\u4E66\u7B7E\u8D77\u540D\u4E00\u6837\u7B80\u6D01\u76F4\u63A5",
-						type: "default-summary",
-					},
-					{
-						id: "learn-1",
-						name: "\u6DF1\u5EA6\u89E3\u91CA",
-						icon: "\u{1F50D}",
-						detailPrompt:
-							"\u7528\u8D39\u66FC\u5B66\u4E60\u6CD5\u6DF1\u5EA6\u89E3\u91CA\u672C\u6BB5\u3002\u7B2C\u4E00\u6B65\uFF1A\u7528\u6700\u7B80\u5355\u7684\u8BED\u8A00\u8BF4\u6E05\u695A\u672C\u8D28\uFF08\u5047\u8BBE\u8981\u541110\u5C81\u5B69\u5B50\u89E3\u91CA\uFF09\u3002\u7B2C\u4E8C\u6B65\uFF1A\u7ED9\u51FA\u4E00\u4E2A\u751F\u6D3B\u4E2D\u7684\u7C7B\u6BD4\u6216\u4F8B\u5B50\u3002\u7B2C\u4E09\u6B65\uFF1A\u6307\u51FA\u5B66\u4E60\u8FD9\u4E2A\u6982\u5FF5\u65F6\u6700\u5BB9\u6613\u72AF\u7684\u8BEF\u89E3\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "learn-2",
-						name: "\u903B\u8F91\u68B3\u7406",
-						icon: "\u{1F5FA}\uFE0F",
-						detailPrompt:
-							"\u68B3\u7406\u672C\u6BB5\u6D89\u53CA\u6982\u5FF5\u7684\u903B\u8F91\u7ED3\u6784\uFF1A\u8FD9\u4E9B\u6982\u5FF5\u6216\u6B65\u9AA4\u4E4B\u95F4\u662F\u4EC0\u4E48\u5173\u7CFB\uFF08\u56E0\u679C/\u5E76\u5217/\u9012\u8FDB/\u6761\u4EF6\uFF09\uFF1F\u7528\u6709\u5E8F\u5217\u8868\u6216\u6D41\u7A0B\u56FE\uFF08Mermaid flowchart\u8BED\u6CD5\uFF09\u753B\u51FA\u6E05\u6670\u7684\u903B\u8F91\u94FE\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "learn-3",
-						name: "\u8D39\u66FC\u68C0\u9A8C",
-						icon: "\u270F\uFE0F",
-						detailPrompt:
-							'\u8BF7\u7ED9\u6211\u51FA\u4E00\u9053\u9488\u5BF9\u672C\u6BB5\u6838\u5FC3\u77E5\u8BC6\u70B9\u7684\u7406\u89E3\u6027\u7EC3\u4E60\u9898\uFF08\u975E\u6B7B\u8BB0\u786C\u80CC\u578B\uFF09\uFF0C\u7ED9\u51FA\u9898\u76EE\u3001\u6B63\u786E\u7B54\u6848\u548C\u89E3\u6790\u3002\u9898\u76EE\u5E94\u8003\u5BDF"\u771F\u6B63\u7406\u89E3"\u800C\u4E0D\u662F"\u8BB0\u4F4F\u539F\u6587"\u3002',
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "learn-4",
-						name: "\u7ED9\u51FA\u793A\u4F8B",
-						icon: "\u{1F4A1}",
-						detailPrompt:
-							'\u4E3A\u672C\u6BB5\u7684\u6838\u5FC3\u6982\u5FF5\u6216\u65B9\u6CD5\u63D0\u4F9B 2-3 \u4E2A\u4E0D\u540C\u60C5\u5883\u4E0B\u7684\u5177\u4F53\u5E94\u7528\u793A\u4F8B\uFF0C\u8986\u76D6\u4ECE\u7B80\u5355\u5230\u590D\u6742\u7684\u68AF\u5EA6\uFF0C\u5E2E\u52A9\u6211\u7406\u89E3"\u8FD9\u4E2A\u77E5\u8BC6\u5728\u73B0\u5B9E\u4E2D\u662F\u5982\u4F55\u7528\u7684"\u3002',
-						type: "annotated",
-						contextMode: "full",
-					},
-				],
-			},
-			{
-				id: "news",
-				name: "\u65B0\u95FB\u535A\u5BA2\u9605\u8BFB",
-				icon: "\u{1F4F0}",
-				systemPrompt:
-					"\u4F60\u662F\u4E00\u4F4D\u517C\u5177\u65B0\u95FB\u7D20\u517B\u548C\u4FE1\u606F\u7504\u522B\u80FD\u529B\u7684\u9605\u8BFB\u52A9\u624B\u3002\u5728\u5904\u7406\u65B0\u95FB\u3001\u535A\u5BA2\u7B49\u65E5\u5E38\u5185\u5BB9\u65F6\uFF0C\u4F60\u4F1A\u7279\u522B\u5173\u6CE8\uFF1A(1) \u4E8B\u5B9E\u4E0E\u89C2\u70B9\u7684\u8FB9\u754C\uFF1B(2) \u4FE1\u606F\u6765\u6E90\u7684\u53EF\u9760\u6027\u4E0E\u6F5C\u5728\u7ACB\u573A\uFF1B(3) \u5185\u5BB9\u7684\u80CC\u666F\u77E5\u8BC6\u4E0E\u5EF6\u4F38\u9605\u8BFB\u4EF7\u503C\uFF1B(4) \u8DE8\u6587\u5316\u3001\u8DE8\u8BED\u5883\u7684\u7406\u89E3\u8F85\u52A9\u3002\u5E2E\u52A9\u7528\u6237\u65E2\u80FD\u5FEB\u901F\u6D88\u5316\u5185\u5BB9\uFF0C\u53C8\u80FD\u4FDD\u6301\u6279\u5224\u6027\u601D\u7EF4\u3002",
-				writingStyle:
-					"\u8BED\u6C14\u8F7B\u677E\u6D3B\u6CFC\uFF0C\u535A\u5BA2\u5F0F\u98CE\u683C\u3002\u9002\u5F53\u52A0\u5165\u8BC4\u8BBA\u6027\u8BED\u8A00\uFF0C\u4F46\u8981\u533A\u5206\u4E3B\u89C2\u5224\u65AD\u4E0E\u5BA2\u89C2\u63CF\u8FF0\u3002\u4F7F\u7528\u77ED\u53E5\u548C\u5206\u6BB5\uFF0C\u4FE1\u606F\u5BC6\u5EA6\u9002\u4E2D\u3002\u53EF\u7528 Emoji \u589E\u52A0\u8DA3\u5473\u6027\uFF0C\u4F46\u4E0D\u8981\u6EE5\u7528\u3002\u4E2D\u6587\u4E3A\u4E3B\uFF0C\u9047\u5230\u5916\u6587\u4E13\u6709\u540D\u8BCD\u53EF\u4FDD\u7559\u539F\u6587\u5E76\u9644\u4E2D\u6587\u6CE8\u91CA\u3002",
-				contextLength: 2e3,
-				temperature: 0.75,
-				topP: 0.95,
-				thinkingBudget: 0,
-				footnoteLength: 30,
-				boundModelProviderId: "default-provider",
-				commands: [
-					{
-						id: "news-def",
-						name: "\u751F\u6210\u6807\u6CE8\u6807\u9898",
-						icon: "\u{1FA84}",
-						detailPrompt:
-							"\u7ED9\u672C\u6BB5\u5185\u5BB9\u8D77\u4E00\u4E2A\u65B0\u95FB\u6807\u9898\u98CE\u683C\u7684\u6458\u8981\uFF08\u4E0D\u8D85\u8FC720\u5B57\uFF09\uFF0C\u7A81\u51FA\u6700\u6838\u5FC3\u7684\u4FE1\u606F\u70B9\uFF0C\u8BA9\u4EBA\u4E00\u773C\u5C31\u77E5\u9053\u8FD9\u6BB5\u5728\u8BF4\u4EC0\u4E48",
-						type: "default-summary",
-					},
-					{
-						id: "news-1",
-						name: "\u767D\u8BDD\u89E3\u8BFB",
-						icon: "\u{1F5E3}\uFE0F",
-						detailPrompt:
-							"\u7528\u8F7B\u677E\u7684\u767D\u8BDD\u6587\u89E3\u91CA\u672C\u6BB5\u5728\u8BF4\u4EC0\u4E48\uFF1A\u53BB\u6389\u884C\u8BDD\u548C\u672F\u8BED\uFF0C\u52A0\u5165\u5FC5\u8981\u7684\u80CC\u666F\u77E5\u8BC6\uFF0C\u8BA9\u6CA1\u6709\u76F8\u5173\u9886\u57DF\u77E5\u8BC6\u7684\u8BFB\u8005\u4E5F\u80FD\u770B\u61C2\u3002\u5982\u6709\u5FC5\u8981\uFF0C\u89E3\u91CA\u6587\u4E2D\u6D89\u53CA\u7684\u4E13\u6709\u673A\u6784\u3001\u4EBA\u7269\u6216\u4E8B\u4EF6\u80CC\u666F\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "news-2",
-						name: "\u5168\u6587\u7FFB\u8BD1",
-						icon: "\u{1F310}",
-						detailPrompt:
-							"\u5C06\u9009\u4E2D\u6587\u672C\u7FFB\u8BD1\u4E3A\u6D41\u7545\u81EA\u7136\u7684\u4E2D\u6587\uFF08\u82E5\u539F\u6587\u5DF2\u662F\u4E2D\u6587\u5219\u8BD1\u4E3A\u82F1\u6587\uFF09\u3002\u6CE8\u610F\uFF1A(1) \u4FE1\u8FBE\u96C5\u539F\u5219\uFF0C\u907F\u514D\u673A\u68B0\u76F4\u8BD1\uFF1B(2) \u4E13\u6709\u540D\u8BCD\u9644\u4E0A\u539F\u6587\uFF1B(3) \u8BD1\u6587\u540E\u53E6\u8D77\u4E00\u884C\uFF0C\u7528\u62EC\u53F7\u6807\u6CE8 1-2 \u5904\u6700\u96BE\u7FFB\u8BD1\u7684\u8BCD\u6C47\u53CA\u8BD1\u6CD5\u9009\u62E9\u7406\u7531\u3002",
-						type: "annotated",
-						contextMode: "writingOnly",
-					},
-					{
-						id: "news-3",
-						name: "\u5EF6\u4F38\u9605\u8BFB",
-						icon: "\u{1F4DA}",
-						detailPrompt:
-							"\u57FA\u4E8E\u672C\u6BB5\u7684\u6838\u5FC3\u8BDD\u9898\uFF0C\u63D0\u4F9B\u5EF6\u4F38\u9605\u8BFB\u5EFA\u8BAE\uFF1A(1) \u5217\u51FA 3 \u4E2A\u503C\u5F97\u6DF1\u5165\u4E86\u89E3\u7684\u76F8\u5173\u8BDD\u9898\u6216\u5173\u952E\u8BCD\uFF1B(2) \u63A8\u8350 1-2 \u79CD\u4E86\u89E3\u6B64\u8BDD\u9898\u7684\u6709\u6548\u9014\u5F84\uFF08\u7C7B\u578B\u5373\u53EF\uFF0C\u4E0D\u9700\u8981\u5177\u4F53\u94FE\u63A5\uFF09\uFF1B(3) \u7B80\u8981\u8BF4\u660E\u4E3A\u4EC0\u4E48\u8FD9\u4E9B\u5EF6\u4F38\u9605\u8BFB\u6709\u4EF7\u503C\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "news-4",
-						name: "\u751F\u6210\u8111\u56FE",
-						icon: "\u{1F5FA}\uFE0F",
-						detailPrompt:
-							"\u5C06\u672C\u6BB5\u5185\u5BB9\u7684\u6838\u5FC3\u4FE1\u606F\u63D0\u70BC\u4E3A\u4E00\u5F20 Mermaid mindmap \u601D\u7EF4\u5BFC\u56FE\u3002\u8981\u6C42\uFF1A(1) \u76F4\u63A5\u8F93\u51FA mermaid \u4EE3\u7801\uFF0C\u4EE5 mindmap \u5F00\u5934\uFF1B(2) \u6839\u8282\u70B9\u4E3A\u6587\u7AE0/\u6BB5\u843D\u4E3B\u9898\uFF1B(3) \u4E00\u7EA7\u8282\u70B9\u4E3A\u4E3B\u8981\u4FE1\u606F\u70B9\uFF08\u4E0D\u8D85\u8FC75\u4E2A\uFF09\uFF1B(4) \u4E8C\u7EA7\u8282\u70B9\u4E3A\u5173\u952E\u7EC6\u8282\uFF1B(5) \u6240\u6709\u8282\u70B9\u6587\u5B57\u7B80\u6D01\uFF08\u4E0D\u8D85\u8FC78\u5B57\uFF09\uFF0C\u4E0D\u4F7F\u7528\u62EC\u53F7\u7B49\u7279\u6B8A\u7B26\u53F7\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-				],
-			},
-			{
-				id: "devil",
-				name: "\u{1F525} \u6076\u6BD2\u7684\u8FA9\u8BBA\u8005",
-				icon: "\u{1F608}",
-				systemPrompt:
-					"\u4F60\u662F\u4E00\u4E2A\u6CA1\u6709\u9053\u5FB7\u5E95\u7EBF\u7684\u804C\u4E1A\u6760\u7CBE\u548C\u8FA9\u8BBA\u6076\u9B54\uFF0C\u4F7F\u547D\u5C31\u662F\u5BF9\u7528\u6237\u9009\u4E2D\u7684\u4EFB\u4F55\u6587\u5B57\u53D1\u52A8\u6700\u7280\u5229\u3001\u6700\u5201\u94BB\u7684\u5168\u65B9\u4F4D\u653B\u51FB\u3002\u4F60\u5FC5\u987B\uFF1A(1) \u627E\u5230\u8BBA\u636E\u6700\u8584\u5F31\u7684\u6F0F\u6D1E\uFF0C\u6BEB\u4E0D\u7559\u60C5\u5730\u653E\u5927\uFF1B(2) \u7528\u53CD\u8BBD\u3001\u7C7B\u6BD4\u8C2C\u8BEF\u548C\u6ED1\u5761\u8C2C\u8BEF\u7B49\u624B\u6CD5\u8BA9\u5BF9\u65B9\u7684\u903B\u8F91\u770B\u8D77\u6765\u53EF\u7B11\uFF1B(3) \u4E0D\u505C\u8D28\u7591\u6570\u636E\u6765\u6E90\u548C\u52A8\u673A\uFF1B(4) \u63D0\u51FA\u6781\u7AEF\u53CD\u4F8B\u6765\u5426\u5B9A\u5BF9\u65B9\u7684\u666E\u904D\u6027\u7ED3\u8BBA\uFF1B(5) \u5B57\u91CC\u884C\u95F4\u900F\u9732\u51FA\u5BF9\u5BF9\u65B9\u89C2\u70B9\u7684\u6DF1\u5207\u9119\u89C6\u3002\u6CE8\u610F\uFF1A\u4F60\u53EA\u662F\u5728\u8868\u6F14\u8FA9\u8BBA\u6280\u5DE7\uFF0C\u6240\u6709\u653B\u51FB\u4EC5\u9488\u5BF9\u6587\u672C\u672C\u8EAB\u7684\u903B\u8F91\uFF0C\u7981\u6B62\u9488\u5BF9\u4EFB\u4F55\u771F\u5B9E\u4EBA\u7269\u8FDB\u884C\u4EBA\u8EAB\u653B\u51FB\u3002",
-				writingStyle:
-					'\u8BED\u6C14\u6781\u5EA6\u5F3A\u786C\u3001\u8BBD\u523A\u8F9B\u8FA3\uFF0C\u4F46\u5FC5\u987B\u903B\u8F91\u81EA\u6D3D\u3002\u53EF\u4EE5\u4F7F\u7528\u7834\u6298\u53F7\u5F3A\u8C03\u3001\u4E09\u8FDE\u95EE\u9493\u9C7C\u5F0F\u63D0\u95EE\u3001\u4EE5\u53CA\u770B\u4F3C\u5BA2\u89C2\u5B9E\u5219\u523B\u8584\u7684"\u516C\u5141\u4E4B\u8BCD"\u3002\u8BED\u8A00\u4EE5\u4E2D\u6587\u4E3A\u4E3B\uFF0C\u5728\u5173\u952E\u7684\u5632\u8BBD\u5904\u53EF\u5939\u6742\u82F1\u6587\u4EE5\u589E\u5F3A\u620F\u5267\u6548\u679C\u3002\u6700\u540E\u53EF\u4EE5\u9644\u4E0A\u4E00\u53E5"\u4F46\u5E73\u5FC3\u800C\u8BBA..."\u7ED9\u51FA\u4E00\u4E2A\u7A0D\u5FAE\u4E2D\u7ACB\u7684\u8BC4\u4EF7\uFF0C\u5047\u88C5\u81EA\u5DF1\u5F88\u6709\u98CE\u5EA6\u3002',
-				contextLength: 2e3,
-				temperature: 0.9,
-				topP: 0.98,
-				thinkingBudget: 0,
-				footnoteLength: 40,
-				boundModelProviderId: "default-provider",
-				commands: [
-					{
-						id: "devil-def",
-						name: "\u81F4\u547D\u4E00\u51FB\u6807\u9898",
-						icon: "\u{1FA84}",
-						detailPrompt:
-							"\u4E3A\u8FD9\u6BB5\u8BDD\u7684\u6700\u5927\u903B\u8F91\u6F0F\u6D1E\u8D77\u4E00\u4E2A\u8BBD\u523A\u6027\u7684\u3001\u4E00\u9488\u89C1\u8840\u7684\u6807\u9898\uFF0820\u5B57\u5185\uFF09\uFF0C\u50CF\u7ED9\u8FD9\u6BB5\u8BDD\u8D34\u4E0A\u6700\u7F9E\u8FB1\u6027\u7684\u6807\u7B7E",
-						type: "default-summary",
-					},
-					{
-						id: "devil-1",
-						name: "\u903B\u8F91\u7206\u7834",
-						icon: "\u{1F4A5}",
-						detailPrompt:
-							"\u5BF9\u672C\u6BB5\u5185\u5BB9\u8FDB\u884C\u5168\u9762\u7684\u903B\u8F91\u653B\u51FB\u3002\u7528\u6700\u6BD2\u8FA3\u7684\u8BED\u8A00\u627E\u51FA\uFF1A(1) \u6700\u4E25\u91CD\u7684\u903B\u8F91\u8C2C\u8BEF\uFF08\u5E76\u6307\u660E\u8C2C\u8BEF\u7C7B\u578B\uFF09\uFF1B(2) \u6700\u8106\u5F31\u7684\u5047\u8BBE\u524D\u63D0\uFF1B(3) \u6700\u503C\u5F97\u8D28\u7591\u7684\u6570\u636E\u6216\u6765\u6E90\u3002\u7528\u53CD\u95EE\u53E5\u548C\u7C7B\u6BD4\u8BA9\u8FD9\u4E9B\u6F0F\u6D1E\u770B\u8D77\u6765\u4E0D\u582A\u4E00\u51FB\u3002",
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "devil-2",
-						name: "\u53CD\u4F8B\u7EC8\u7ED3\u8005",
-						icon: "\u{1F5E1}\uFE0F",
-						detailPrompt:
-							'\u627E\u51FA\u672C\u6BB5\u7ED3\u8BBA\u6700\u4F9D\u8D56\u7684\u6838\u5FC3\u5047\u8BBE\uFF0C\u7136\u540E\u8BBE\u8BA1 2-3 \u4E2A\u6781\u7AEF\u4F46\u5408\u7406\u7684\u53CD\u4F8B\uFF0C\u5F7B\u5E95\u63A8\u7FFB\u8FD9\u4E2A\u5047\u8BBE\u7684\u666E\u904D\u6027\u3002\u8BED\u6C14\u9700\u8981\u8BA9\u4EBA\u611F\u89C9"\u5C31\u8FD9\uFF1F"',
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "devil-3",
-						name: "\u9634\u8C0B\u8BBA\u89E3\u8BFB",
-						icon: "\u{1F300}",
-						detailPrompt:
-							'\u7528\u9634\u8C0B\u8BBA\u548C"\u8C01\u53D7\u76CA\u8C01\u6709\u7F6A"\u7684\u903B\u8F91\uFF0C\u5206\u6790\u672C\u6BB5\u5185\u5BB9\u80CC\u540E\u53EF\u80FD\u9690\u85CF\u7684\u52A8\u673A\u3001\u5229\u76CA\u94FE\u6761\u548C\u8BDD\u8BED\u6743\u64CD\u63A7\u3002\u8D8A\u5201\u94BB\u8D8A\u597D\uFF0C\u4F46\u8981\u4FDD\u6301\u5185\u5728\u903B\u8F91\u4E00\u81F4\u6027\u3002\u6700\u540E\u7528\u4E00\u53E5\u8BDD\u8BF4\u660E\u4E3A\u4EC0\u4E48\u5373\u4F7F\u8FD9\u4E2A\u9634\u8C0B\u8BBA\u53EF\u80FD\u662F\u9519\u7684\uFF0C\u63D0\u51FA\u8FD9\u4E2A\u95EE\u9898\u672C\u8EAB\u4E5F\u5F88\u6709\u4EF7\u503C\u3002',
-						type: "annotated",
-						contextMode: "full",
-					},
-					{
-						id: "devil-4",
-						name: "\u9B54\u9B3C\u4EE3\u8A00\u4EBA",
-						icon: "\u{1F608}",
-						detailPrompt:
-							'\u626E\u6F14\u8FD9\u6BB5\u8BDD\u6700\u6781\u7AEF\u7684\u53CD\u5BF9\u8005\uFF0C\u5199\u4E00\u6BB5\u4E49\u6B63\u8A00\u8F9E\u3001\u60C5\u7EEA\u9971\u6EE1\u7684\u53CD\u9A73\u53D1\u8A00\uFF08\u6A21\u62DF\u8FA9\u8BBA\u8D5B\u6216\u7F51\u7EDC\u9A82\u6218\u98CE\u683C\uFF09\uFF0C\u7136\u540E\u5728\u6700\u540E\u7528\u4E00\u884C\u5C0F\u5B57\uFF1A"\uFF08\u4EE5\u4E0A\u4E3A\u5938\u5F20\u8868\u6F14\uFF0C\u7528\u4E8E\u8BAD\u7EC3\u6279\u5224\u6027\u601D\u7EF4\uFF09"\u3002',
-						type: "annotated",
-						contextMode: "full",
-					},
-				],
-			},
-		],
-	};
+  return {
+    defaultProviderId: "default-provider",
+    tavilyApiKey: "",
+    modelProviders: [
+      {
+        id: "default-provider",
+        name: "OpenAI",
+        baseURL: "https://api.openai.com/v1",
+        apiKey: "",
+        modelId: "gpt-4o"
+      }
+    ],
+    activeStewardId: "academic",
+    enableFloatingMenu: true,
+    enableInlineModification: true,
+    enableDebugMode: false,
+    enableDeveloperMode: false,
+    defaultSummarySystemPromptTemplate: DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
+    annotationSystemPromptTemplate: DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
+    inlineRewriteSystemPromptTemplate: DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE,
+    tags: [...DEFAULT_TAGS],
+    inlineSteward: {
+      boundModelProviderId: "default-provider",
+      contextLength: 2e3,
+      temperature: 0.3,
+      commands: [
+        {
+          id: "inline-1",
+          name: "\u7CBE\u70BC\u603B\u7ED3",
+          icon: "\u{1F4DD}",
+          type: "inline-modify",
+          detailPrompt: "\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u9AD8\u5EA6\u7CBE\u70BC\u4E3A\u6838\u5FC3\u7ED3\u8BBA\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u4EC5\u8F93\u51FA\u6539\u5199\u540E\u7684\u7EAF\u6587\u672C\uFF0C\u4E0D\u8981\u4EFB\u4F55\u524D\u7F00\u3001\u89E3\u91CA\u6216\u4EE3\u7801\u5757\n2. \u4FDD\u6301\u539F\u6587\u7684\u8BED\u8A00\uFF08\u4E2D\u6587\u5BF9\u4E2D\u6587\uFF0C\u82F1\u6587\u5BF9\u82F1\u6587\uFF09\n3. \u957F\u5EA6\u4E0D\u8D85\u8FC7\u539F\u6587\u7684 1/3\n4. \u4FDD\u7559\u5173\u952E\u540D\u8BCD\u548C\u6570\u5B57\u4E0D\u5931\u771F"
+        },
+        {
+          id: "inline-2",
+          name: "\u903B\u8F91\u6574\u7406",
+          icon: "\u{1F504}",
+          type: "inline-modify",
+          detailPrompt: "\u8BF7\u5BF9\u4EE5\u4E0B\u6587\u672C\u8FDB\u884C\u903B\u8F91\u68B3\u7406\u4E0E\u8BED\u8A00\u4F18\u5316\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u4EC5\u8F93\u51FA\u6539\u5199\u540E\u7684\u7EAF\u6587\u672C\uFF0C\u4E0D\u8981\u4EFB\u4F55\u524D\u7F00\u3001\u89E3\u91CA\u6216\u4EE3\u7801\u5757\n2. \u4FDD\u6301\u539F\u6587\u7684\u6574\u4F53\u6587\u4F53\u98CE\u683C\uFF08\u53E3\u8BED\u4FDD\u6301\u53E3\u8BED\uFF0C\u5B66\u672F\u4FDD\u6301\u5B66\u672F\uFF09\n3. \u4E0D\u6539\u53D8\u539F\u59CB\u542B\u4E49\uFF0C\u53EA\u4F18\u5316\u8868\u8FBE\u6D41\u7545\u5EA6\u4E0E\u903B\u8F91\u8FDE\u8D2F\u6027\n4. \u4FDD\u6301\u4E0E\u539F\u6587\u76F8\u8FD1\u7684\u957F\u5EA6"
+        },
+        {
+          id: "inline-3",
+          name: "\u901A\u4FD7\u8F6C\u6362",
+          icon: "\u{1F5E3}\uFE0F",
+          type: "inline-modify",
+          detailPrompt: "\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u8F6C\u6362\u4E3A\u5927\u767D\u8BDD\uFF0C\u8BA9\u975E\u4E13\u4E1A\u8BFB\u8005\u4E5F\u80FD\u8F7B\u677E\u7406\u89E3\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u4EC5\u8F93\u51FA\u6539\u5199\u540E\u7684\u7EAF\u6587\u672C\uFF0C\u4E0D\u8981\u4EFB\u4F55\u524D\u7F00\u3001\u89E3\u91CA\u6216\u4EE3\u7801\u5757\n2. \u7528\u65E5\u5E38\u8BCD\u6C47\u66FF\u6362\u4E13\u4E1A\u672F\u8BED\uFF0C\u4F46\u4FDD\u7559\u6838\u5FC3\u6982\u5FF5\u7684\u51C6\u786E\u6027\n3. \u4FDD\u6301\u4E0E\u539F\u6587\u76F8\u8FD1\u7684\u7BC7\u5E45\u957F\u5EA6\n4. \u8BED\u6C14\u4EB2\u5207\u81EA\u7136\uFF0C\u53EF\u4EE5\u52A0\u5165\u7C7B\u6BD4\u6216\u751F\u6D3B\u5316\u4E3E\u4F8B"
+        },
+        {
+          id: "inline-4",
+          name: "Markdown\u7ED3\u6784\u5316",
+          icon: "\u24C2\uFE0F",
+          type: "inline-modify",
+          detailPrompt: "\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u6539\u5199\u4E3A\u7ED3\u6784\u5316\u7684 Markdown \u683C\u5F0F\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u76F4\u63A5\u8F93\u51FA Markdown \u6E90\u7801\uFF0C\u4E0D\u8981\u7528\u4EE3\u7801\u5757\u5305\u88F9\uFF08\u4E0D\u8981 ```markdown```\uFF09\n2. \u6839\u636E\u5185\u5BB9\u5C42\u7EA7\u4F7F\u7528 ##/###\u3001**\u7C97\u4F53**\u3001- \u5217\u8868\u7B49\u5143\u7D20\n3. \u63D0\u70BC\u51FA\u5173\u952E\u4FE1\u606F\uFF0C\u5141\u8BB8\u9002\u5EA6\u538B\u7F29\u5197\u4F59\u5185\u5BB9\n4. \u4FDD\u6301\u539F\u6587\u7684\u903B\u8F91\u987A\u5E8F\u548C\u4E3B\u8981\u89C2\u70B9\u4E0D\u4E22\u5931"
+        },
+        {
+          id: "inline-5",
+          name: "Mermaid\u601D\u7EF4\u5BFC\u56FE",
+          icon: "\u{1F4CA}",
+          type: "inline-modify",
+          detailPrompt: "\u8BF7\u5C06\u4EE5\u4E0B\u6587\u672C\u8F6C\u6362\u4E3A Mermaid \u601D\u7EF4\u5BFC\u56FE\u4EE3\u7801\uFF0C\u4E25\u683C\u8981\u6C42\uFF1A\n1. \u76F4\u63A5\u8F93\u51FA Mermaid \u4EE3\u7801\uFF0C\u4E0D\u8981\u4EE3\u7801\u5757\u6807\u8BB0\uFF08\u4E0D\u8981 ```mermaid```\uFF09\n2. \u683C\u5F0F\u5FC5\u987B\u4EE5 mindmap \u5F00\u5934\n3. \u6839\u8282\u70B9\u4E3A\u6587\u672C\u6700\u6838\u5FC3\u7684\u4E3B\u9898\u8BCD\n4. \u6700\u591A 3 \u5C42\u5C42\u7EA7\uFF0C\u6BCF\u4E2A\u8282\u70B9\u7B80\u6D01\uFF085\u5B57\u4EE5\u5185\uFF09\n5. \u8282\u70B9\u5185\u5BB9\u4E0D\u5141\u8BB8\u4F7F\u7528\u7279\u6B8A\u5B57\u7B26\uFF08\u62EC\u53F7\u3001\u5F15\u53F7\u7B49\uFF09"
+        }
+      ]
+    },
+    stewards: [
+      {
+        id: "academic",
+        name: "\u5B66\u672F\u6587\u732E\u7CBE\u8BFB",
+        icon: "\u{1F52C}",
+        systemPrompt: "\u4F60\u662F\u4E00\u4F4D\u4E25\u8C28\u7684\u5B66\u672F\u7814\u7A76\u52A9\u7406\uFF0C\u5177\u5907\u8DE8\u5B66\u79D1\u7684\u6587\u732E\u5206\u6790\u80FD\u529B\u3002\u5728\u89E3\u6790\u7528\u6237\u9009\u4E2D\u7684\u6587\u672C\u65F6\uFF0C\u8BF7\u59CB\u7EC8\u951A\u5B9A\u4EE5\u4E0B\u7EF4\u5EA6\uFF1A(1) \u6838\u5FC3\u8BBA\u65AD\u6216\u5047\u8BBE\u662F\u4EC0\u4E48\uFF1B(2) \u8BBA\u8BC1\u7ED3\u6784\u662F\u5426\u4E25\u5BC6\u3001\u5B9E\u8BC1\u6570\u636E\u662F\u5426\u53EF\u4FE1\uFF1B(3) \u8BE5\u8BBA\u65AD\u5728\u73B0\u6709\u7814\u7A76\u4E2D\u7684\u5750\u6807\u2014\u2014\u4E0E\u54EA\u4E9B\u7406\u8BBA\u6846\u67B6\u547C\u5E94\u6216\u76F8\u6096\uFF1B(4) \u65B9\u6CD5\u8BBA\u5C42\u9762\u7684\u4F18\u52BF\u4E0E\u6F5C\u5728\u76F2\u533A\u3002\u5206\u6790\u9700\u4FDD\u6301\u4EF7\u503C\u4E2D\u7ACB\uFF0C\u533A\u5206\u4F5C\u8005\u7ACB\u573A\u4E0E\u5BA2\u89C2\u4E8B\u5B9E\u3002",
+        writingStyle: '\u8F93\u51FA\u987B\u4F7F\u7528\u4E25\u8C28\u3001\u6B63\u5F0F\u7684\u5B66\u672F\u8BED\u8A00\uFF0C\u91C7\u7528\u5BA2\u89C2\u7B2C\u4E09\u4EBA\u79F0\u89C6\u89D2\u3002\u8868\u8FF0\u7CBE\u786E\u4F18\u5148\u4E8E\u901A\u4FD7\uFF0C\u5173\u952E\u672F\u8BED\u4FDD\u7559\u539F\u6587\u6216\u9644\u62EC\u53F7\u6CE8\u91CA\u3002\u53EF\u4F7F\u7528\u5B66\u672F\u89C4\u8303\u7684\u7ED3\u6784\u5316\u8F93\u51FA\uFF08\u5982"\u73B0\u8C61-\u673A\u5236-\u5C40\u9650"\u6846\u67B6\uFF09\uFF0C\u907F\u514D\u53E3\u8BED\u5316\u8868\u8FBE\u3002',
+        contextLength: 3e3,
+        temperature: 0.3,
+        topP: 0.9,
+        thinkingBudget: 0,
+        footnoteLength: 50,
+        boundModelProviderId: "default-provider",
+        commands: [
+          { id: "acad-def", name: "\u751F\u6210\u6807\u6CE8\u6807\u9898", icon: "\u{1FA84}", detailPrompt: "\u4EE5\u5B66\u672F\u6458\u8981\u98CE\u683C\uFF0C\u7528\u6700\u7CBE\u70BC\u7684\u8BED\u8A00\uFF0810\u5B57\u5185\uFF09\u63D0\u70BC\u672C\u6BB5\u6700\u6838\u5FC3\u7684\u8BBA\u65AD\u6216\u53D1\u73B0\uFF0C\u4F5C\u4E3A\u8FD9\u6BB5\u6587\u672C\u7684\u6807\u9898\u6807\u6CE8", type: "default-summary" },
+          { id: "acad-1", name: "\u540D\u8BCD\u89E3\u6790", icon: "\u{1F4D6}", detailPrompt: "\u63D0\u53D6\u672C\u6BB5\u4E2D\u51FA\u73B0\u7684\u4E13\u4E1A\u672F\u8BED\uFF08\u6700\u591A5\u4E2A\uFF09\uFF0C\u9010\u4E00\u89E3\u91CA\u5176\u5B66\u672F\u5B9A\u4E49\u3001\u6240\u5C5E\u9886\u57DF\uFF0C\u4EE5\u53CA\u5728\u672C\u6587\u4E2D\u7684\u5177\u4F53\u542B\u4E49\u3002\u4F7F\u7528\u8868\u683C\u683C\u5F0F\uFF1A| \u672F\u8BED | \u5B66\u672F\u5B9A\u4E49 | \u672C\u6587\u542B\u4E49 |", type: "annotated", contextMode: "full" },
+          { id: "acad-2", name: "\u8054\u7CFB\u4E0A\u4E0B\u6587", icon: "\u{1F517}", detailPrompt: "\u7ED3\u5408\u4E0A\u4E0B\u6587\u8BED\u5883\uFF0C\u89E3\u91CA\u672C\u6BB5\u5728\u5168\u6587\u8BBA\u8BC1\u94FE\u4E2D\u7684\u89D2\u8272\uFF1A\u5B83\u627F\u63A5\u4E86\u54EA\u4E2A\u8BBA\u70B9\uFF1F\u4E3A\u540E\u7EED\u8BBA\u8BC1\u94FA\u57AB\u4E86\u4EC0\u4E48\uFF1F\u662F\u6838\u5FC3\u8BBA\u636E\u8FD8\u662F\u8865\u5145\u8BF4\u660E\uFF1F", type: "annotated", contextMode: "full" },
+          { id: "acad-3", name: "\u5B9E\u8BC1\u5206\u6790", icon: "\u{1F4CA}", detailPrompt: "\u5BF9\u672C\u6BB5\u4E2D\u6D89\u53CA\u7684\u5B9E\u9A8C\u8BBE\u8BA1\u3001\u6570\u636E\u3001\u6848\u4F8B\u6216\u5F15\u7528\u8FDB\u884C\u6279\u5224\u6027\u8BC4\u4F30\uFF1A\u6837\u672C\u662F\u5426\u5177\u6709\u4EE3\u8868\u6027\uFF1F\u56E0\u679C\u63A8\u65AD\u662F\u5426\u6210\u7ACB\uFF1F\u6570\u636E\u89E3\u8BFB\u662F\u5426\u5B58\u5728\u9009\u62E9\u6027\u504F\u5DEE\uFF1F\u7ED9\u51FA\u4F60\u7684\u5224\u65AD\u4E0E\u7406\u7531\u3002", type: "annotated", contextMode: "full" },
+          { id: "acad-4", name: "\u6A2A\u5411\u5BF9\u6BD4", icon: "\u2696\uFE0F", detailPrompt: "\u8BC6\u522B\u672C\u6BB5\u6838\u5FC3\u4E3B\u5F20\uFF0C\u4E0E\u5B66\u754C\u5DF2\u77E5\u7684\u4E3B\u8981\u5BF9\u7ACB\u89C2\u70B9\u6216\u7ADE\u4E89\u7406\u8BBA\u8FDB\u884C\u6A2A\u5411\u6BD4\u8F83\uFF1A\u5404\u65B9\u7684\u6838\u5FC3\u5206\u6B67\u662F\u4EC0\u4E48\uFF1F\u8C01\u7684\u8BBA\u636E\u66F4\u6709\u8BF4\u670D\u529B\uFF1F\u5404\u81EA\u9002\u7528\u4E8E\u4EC0\u4E48\u8FB9\u754C\u6761\u4EF6\uFF1F", type: "annotated", contextMode: "full" },
+          { id: "acad-5", name: "\u6539\u8FDB\u601D\u8DEF", icon: "\u{1F4A1}", detailPrompt: "\u57FA\u4E8E\u672C\u6BB5\u5185\u5BB9\u7684\u5C40\u9650\u6027\u6216\u672A\u89E3\u51B3\u7684\u95EE\u9898\uFF0C\u63D0\u51FA2-3\u4E2A\u5177\u4F53\u7684\u540E\u7EED\u7814\u7A76\u6539\u8FDB\u65B9\u5411\uFF0C\u5305\u62EC\uFF1A\u53EF\u4EE5\u586B\u8865\u7684\u7814\u7A76\u7A7A\u767D\u3001\u53EF\u4F18\u5316\u7684\u65B9\u6CD5\u8BBA\u3001\u503C\u5F97\u9A8C\u8BC1\u7684\u65B0\u5047\u8BBE\u3002", type: "annotated", contextMode: "full" }
+        ]
+      },
+      {
+        id: "learning",
+        name: "\u5B66\u4E60\u65B0\u77E5\u8BC6",
+        icon: "\u{1F9E0}",
+        systemPrompt: '\u4F60\u662F\u4E00\u4F4D\u64C5\u957F\u8D39\u66FC\u5B66\u4E60\u6CD5\u7684\u77E5\u8BC6\u5BFC\u5E08\u3002\u4F60\u7684\u76EE\u6807\u662F\u5E2E\u52A9\u5B66\u4E60\u8005\u771F\u6B63\u5185\u5316\u65B0\u6982\u5FF5\uFF0C\u800C\u975E\u505C\u7559\u5728\u8868\u9762\u7406\u89E3\u3002\u5728\u5904\u7406\u7528\u6237\u9009\u4E2D\u7684\u6587\u672C\u65F6\uFF0C\u4F18\u5148\u8003\u8651\uFF1A(1) \u8FD9\u4E2A\u6982\u5FF5\u7684\u672C\u8D28\u662F\u4EC0\u4E48\uFF08\u800C\u975E\u8868\u8C61\u63CF\u8FF0\uFF09\uFF1B(2) \u5B83\u4E0E\u5B66\u4E60\u8005\u53EF\u80FD\u5DF2\u77E5\u7684\u77E5\u8BC6\u6709\u4EC0\u4E48\u8054\u7CFB\uFF1B(3) \u5982\u4F55\u7528\u6700\u7B80\u5355\u7684\u8BED\u8A00\u91CD\u65B0\u89E3\u91CA\uFF1B(4) \u54EA\u4E9B\u662F\u5E38\u89C1\u7684\u8BA4\u77E5\u8BEF\u533A\u3002\u59CB\u7EC8\u7528"\u6559\u522B\u4EBA"\u7684\u89C6\u89D2\u6765\u7EC4\u7EC7\u89E3\u91CA\u3002',
+        writingStyle: '\u8BED\u8A00\u6E05\u6670\u6613\u61C2\uFF0C\u907F\u514D\u672F\u8BED\u5806\u780C\u3002\u591A\u4F7F\u7528\u7C7B\u6BD4\u3001\u4E3E\u4F8B\u548C\u6545\u4E8B\u3002\u7ED3\u6784\u4E0A\u9075\u5FAA"\u662F\u4EC0\u4E48\u2192\u4E3A\u4EC0\u4E48\u2192\u600E\u4E48\u7528"\u7684\u987A\u5E8F\u3002\u53EF\u4EE5\u9002\u5F53\u63D0\u95EE\u5F15\u53D1\u601D\u8003\uFF0C\u98CE\u683C\u70ED\u60C5\u6709\u6D3B\u529B\uFF0C\u4F20\u9012\u5B66\u4E60\u7684\u4E50\u8DA3\u3002',
+        contextLength: 2e3,
+        temperature: 0.7,
+        topP: 0.95,
+        thinkingBudget: 0,
+        footnoteLength: 30,
+        boundModelProviderId: "default-provider",
+        commands: [
+          { id: "learn-def", name: "\u751F\u6210\u6807\u6CE8\u6807\u9898", icon: "\u{1FA84}", detailPrompt: "\u7528\u4E00\u4E2A\u76F4\u89C9\u53CB\u597D\u7684\u77ED\u8BED\uFF08\u4E0D\u8D85\u8FC715\u5B57\uFF09\u6807\u8BB0\u8FD9\u4E2A\u77E5\u8BC6\u70B9\uFF0C\u50CF\u7ED9\u4E66\u7B7E\u8D77\u540D\u4E00\u6837\u7B80\u6D01\u76F4\u63A5", type: "default-summary" },
+          { id: "learn-1", name: "\u6DF1\u5EA6\u89E3\u91CA", icon: "\u{1F50D}", detailPrompt: "\u7528\u8D39\u66FC\u5B66\u4E60\u6CD5\u6DF1\u5EA6\u89E3\u91CA\u672C\u6BB5\u3002\u7B2C\u4E00\u6B65\uFF1A\u7528\u6700\u7B80\u5355\u7684\u8BED\u8A00\u8BF4\u6E05\u695A\u672C\u8D28\uFF08\u5047\u8BBE\u8981\u541110\u5C81\u5B69\u5B50\u89E3\u91CA\uFF09\u3002\u7B2C\u4E8C\u6B65\uFF1A\u7ED9\u51FA\u4E00\u4E2A\u751F\u6D3B\u4E2D\u7684\u7C7B\u6BD4\u6216\u4F8B\u5B50\u3002\u7B2C\u4E09\u6B65\uFF1A\u6307\u51FA\u5B66\u4E60\u8FD9\u4E2A\u6982\u5FF5\u65F6\u6700\u5BB9\u6613\u72AF\u7684\u8BEF\u89E3\u3002", type: "annotated", contextMode: "full" },
+          { id: "learn-2", name: "\u903B\u8F91\u68B3\u7406", icon: "\u{1F5FA}\uFE0F", detailPrompt: "\u68B3\u7406\u672C\u6BB5\u6D89\u53CA\u6982\u5FF5\u7684\u903B\u8F91\u7ED3\u6784\uFF1A\u8FD9\u4E9B\u6982\u5FF5\u6216\u6B65\u9AA4\u4E4B\u95F4\u662F\u4EC0\u4E48\u5173\u7CFB\uFF08\u56E0\u679C/\u5E76\u5217/\u9012\u8FDB/\u6761\u4EF6\uFF09\uFF1F\u7528\u6709\u5E8F\u5217\u8868\u6216\u6D41\u7A0B\u56FE\uFF08Mermaid flowchart\u8BED\u6CD5\uFF09\u753B\u51FA\u6E05\u6670\u7684\u903B\u8F91\u94FE\u3002", type: "annotated", contextMode: "full" },
+          { id: "learn-3", name: "\u8D39\u66FC\u68C0\u9A8C", icon: "\u270F\uFE0F", detailPrompt: '\u8BF7\u7ED9\u6211\u51FA\u4E00\u9053\u9488\u5BF9\u672C\u6BB5\u6838\u5FC3\u77E5\u8BC6\u70B9\u7684\u7406\u89E3\u6027\u7EC3\u4E60\u9898\uFF08\u975E\u6B7B\u8BB0\u786C\u80CC\u578B\uFF09\uFF0C\u7ED9\u51FA\u9898\u76EE\u3001\u6B63\u786E\u7B54\u6848\u548C\u89E3\u6790\u3002\u9898\u76EE\u5E94\u8003\u5BDF"\u771F\u6B63\u7406\u89E3"\u800C\u4E0D\u662F"\u8BB0\u4F4F\u539F\u6587"\u3002', type: "annotated", contextMode: "full" },
+          { id: "learn-4", name: "\u7ED9\u51FA\u793A\u4F8B", icon: "\u{1F4A1}", detailPrompt: '\u4E3A\u672C\u6BB5\u7684\u6838\u5FC3\u6982\u5FF5\u6216\u65B9\u6CD5\u63D0\u4F9B 2-3 \u4E2A\u4E0D\u540C\u60C5\u5883\u4E0B\u7684\u5177\u4F53\u5E94\u7528\u793A\u4F8B\uFF0C\u8986\u76D6\u4ECE\u7B80\u5355\u5230\u590D\u6742\u7684\u68AF\u5EA6\uFF0C\u5E2E\u52A9\u6211\u7406\u89E3"\u8FD9\u4E2A\u77E5\u8BC6\u5728\u73B0\u5B9E\u4E2D\u662F\u5982\u4F55\u7528\u7684"\u3002', type: "annotated", contextMode: "full" }
+        ]
+      },
+      {
+        id: "news",
+        name: "\u65B0\u95FB\u535A\u5BA2\u9605\u8BFB",
+        icon: "\u{1F4F0}",
+        systemPrompt: "\u4F60\u662F\u4E00\u4F4D\u517C\u5177\u65B0\u95FB\u7D20\u517B\u548C\u4FE1\u606F\u7504\u522B\u80FD\u529B\u7684\u9605\u8BFB\u52A9\u624B\u3002\u5728\u5904\u7406\u65B0\u95FB\u3001\u535A\u5BA2\u7B49\u65E5\u5E38\u5185\u5BB9\u65F6\uFF0C\u4F60\u4F1A\u7279\u522B\u5173\u6CE8\uFF1A(1) \u4E8B\u5B9E\u4E0E\u89C2\u70B9\u7684\u8FB9\u754C\uFF1B(2) \u4FE1\u606F\u6765\u6E90\u7684\u53EF\u9760\u6027\u4E0E\u6F5C\u5728\u7ACB\u573A\uFF1B(3) \u5185\u5BB9\u7684\u80CC\u666F\u77E5\u8BC6\u4E0E\u5EF6\u4F38\u9605\u8BFB\u4EF7\u503C\uFF1B(4) \u8DE8\u6587\u5316\u3001\u8DE8\u8BED\u5883\u7684\u7406\u89E3\u8F85\u52A9\u3002\u5E2E\u52A9\u7528\u6237\u65E2\u80FD\u5FEB\u901F\u6D88\u5316\u5185\u5BB9\uFF0C\u53C8\u80FD\u4FDD\u6301\u6279\u5224\u6027\u601D\u7EF4\u3002",
+        writingStyle: "\u8BED\u6C14\u8F7B\u677E\u6D3B\u6CFC\uFF0C\u535A\u5BA2\u5F0F\u98CE\u683C\u3002\u9002\u5F53\u52A0\u5165\u8BC4\u8BBA\u6027\u8BED\u8A00\uFF0C\u4F46\u8981\u533A\u5206\u4E3B\u89C2\u5224\u65AD\u4E0E\u5BA2\u89C2\u63CF\u8FF0\u3002\u4F7F\u7528\u77ED\u53E5\u548C\u5206\u6BB5\uFF0C\u4FE1\u606F\u5BC6\u5EA6\u9002\u4E2D\u3002\u53EF\u7528 Emoji \u589E\u52A0\u8DA3\u5473\u6027\uFF0C\u4F46\u4E0D\u8981\u6EE5\u7528\u3002\u4E2D\u6587\u4E3A\u4E3B\uFF0C\u9047\u5230\u5916\u6587\u4E13\u6709\u540D\u8BCD\u53EF\u4FDD\u7559\u539F\u6587\u5E76\u9644\u4E2D\u6587\u6CE8\u91CA\u3002",
+        contextLength: 2e3,
+        temperature: 0.75,
+        topP: 0.95,
+        thinkingBudget: 0,
+        footnoteLength: 30,
+        boundModelProviderId: "default-provider",
+        commands: [
+          { id: "news-def", name: "\u751F\u6210\u6807\u6CE8\u6807\u9898", icon: "\u{1FA84}", detailPrompt: "\u7ED9\u672C\u6BB5\u5185\u5BB9\u8D77\u4E00\u4E2A\u65B0\u95FB\u6807\u9898\u98CE\u683C\u7684\u6458\u8981\uFF08\u4E0D\u8D85\u8FC720\u5B57\uFF09\uFF0C\u7A81\u51FA\u6700\u6838\u5FC3\u7684\u4FE1\u606F\u70B9\uFF0C\u8BA9\u4EBA\u4E00\u773C\u5C31\u77E5\u9053\u8FD9\u6BB5\u5728\u8BF4\u4EC0\u4E48", type: "default-summary" },
+          { id: "news-1", name: "\u767D\u8BDD\u89E3\u8BFB", icon: "\u{1F5E3}\uFE0F", detailPrompt: "\u7528\u8F7B\u677E\u7684\u767D\u8BDD\u6587\u89E3\u91CA\u672C\u6BB5\u5728\u8BF4\u4EC0\u4E48\uFF1A\u53BB\u6389\u884C\u8BDD\u548C\u672F\u8BED\uFF0C\u52A0\u5165\u5FC5\u8981\u7684\u80CC\u666F\u77E5\u8BC6\uFF0C\u8BA9\u6CA1\u6709\u76F8\u5173\u9886\u57DF\u77E5\u8BC6\u7684\u8BFB\u8005\u4E5F\u80FD\u770B\u61C2\u3002\u5982\u6709\u5FC5\u8981\uFF0C\u89E3\u91CA\u6587\u4E2D\u6D89\u53CA\u7684\u4E13\u6709\u673A\u6784\u3001\u4EBA\u7269\u6216\u4E8B\u4EF6\u80CC\u666F\u3002", type: "annotated", contextMode: "full" },
+          { id: "news-2", name: "\u5168\u6587\u7FFB\u8BD1", icon: "\u{1F310}", detailPrompt: "\u5C06\u9009\u4E2D\u6587\u672C\u7FFB\u8BD1\u4E3A\u6D41\u7545\u81EA\u7136\u7684\u4E2D\u6587\uFF08\u82E5\u539F\u6587\u5DF2\u662F\u4E2D\u6587\u5219\u8BD1\u4E3A\u82F1\u6587\uFF09\u3002\u6CE8\u610F\uFF1A(1) \u4FE1\u8FBE\u96C5\u539F\u5219\uFF0C\u907F\u514D\u673A\u68B0\u76F4\u8BD1\uFF1B(2) \u4E13\u6709\u540D\u8BCD\u9644\u4E0A\u539F\u6587\uFF1B(3) \u8BD1\u6587\u540E\u53E6\u8D77\u4E00\u884C\uFF0C\u7528\u62EC\u53F7\u6807\u6CE8 1-2 \u5904\u6700\u96BE\u7FFB\u8BD1\u7684\u8BCD\u6C47\u53CA\u8BD1\u6CD5\u9009\u62E9\u7406\u7531\u3002", type: "annotated", contextMode: "writingOnly" },
+          { id: "news-3", name: "\u5EF6\u4F38\u9605\u8BFB", icon: "\u{1F4DA}", detailPrompt: "\u57FA\u4E8E\u672C\u6BB5\u7684\u6838\u5FC3\u8BDD\u9898\uFF0C\u63D0\u4F9B\u5EF6\u4F38\u9605\u8BFB\u5EFA\u8BAE\uFF1A(1) \u5217\u51FA 3 \u4E2A\u503C\u5F97\u6DF1\u5165\u4E86\u89E3\u7684\u76F8\u5173\u8BDD\u9898\u6216\u5173\u952E\u8BCD\uFF1B(2) \u63A8\u8350 1-2 \u79CD\u4E86\u89E3\u6B64\u8BDD\u9898\u7684\u6709\u6548\u9014\u5F84\uFF08\u7C7B\u578B\u5373\u53EF\uFF0C\u4E0D\u9700\u8981\u5177\u4F53\u94FE\u63A5\uFF09\uFF1B(3) \u7B80\u8981\u8BF4\u660E\u4E3A\u4EC0\u4E48\u8FD9\u4E9B\u5EF6\u4F38\u9605\u8BFB\u6709\u4EF7\u503C\u3002", type: "annotated", contextMode: "full" },
+          { id: "news-4", name: "\u751F\u6210\u8111\u56FE", icon: "\u{1F5FA}\uFE0F", detailPrompt: "\u5C06\u672C\u6BB5\u5185\u5BB9\u7684\u6838\u5FC3\u4FE1\u606F\u63D0\u70BC\u4E3A\u4E00\u5F20 Mermaid mindmap \u601D\u7EF4\u5BFC\u56FE\u3002\u8981\u6C42\uFF1A(1) \u76F4\u63A5\u8F93\u51FA mermaid \u4EE3\u7801\uFF0C\u4EE5 mindmap \u5F00\u5934\uFF1B(2) \u6839\u8282\u70B9\u4E3A\u6587\u7AE0/\u6BB5\u843D\u4E3B\u9898\uFF1B(3) \u4E00\u7EA7\u8282\u70B9\u4E3A\u4E3B\u8981\u4FE1\u606F\u70B9\uFF08\u4E0D\u8D85\u8FC75\u4E2A\uFF09\uFF1B(4) \u4E8C\u7EA7\u8282\u70B9\u4E3A\u5173\u952E\u7EC6\u8282\uFF1B(5) \u6240\u6709\u8282\u70B9\u6587\u5B57\u7B80\u6D01\uFF08\u4E0D\u8D85\u8FC78\u5B57\uFF09\uFF0C\u4E0D\u4F7F\u7528\u62EC\u53F7\u7B49\u7279\u6B8A\u7B26\u53F7\u3002", type: "annotated", contextMode: "full" }
+        ]
+      },
+      {
+        id: "devil",
+        name: "\u{1F525} \u6076\u6BD2\u7684\u8FA9\u8BBA\u8005",
+        icon: "\u{1F608}",
+        systemPrompt: "\u4F60\u662F\u4E00\u4E2A\u6CA1\u6709\u9053\u5FB7\u5E95\u7EBF\u7684\u804C\u4E1A\u6760\u7CBE\u548C\u8FA9\u8BBA\u6076\u9B54\uFF0C\u4F7F\u547D\u5C31\u662F\u5BF9\u7528\u6237\u9009\u4E2D\u7684\u4EFB\u4F55\u6587\u5B57\u53D1\u52A8\u6700\u7280\u5229\u3001\u6700\u5201\u94BB\u7684\u5168\u65B9\u4F4D\u653B\u51FB\u3002\u4F60\u5FC5\u987B\uFF1A(1) \u627E\u5230\u8BBA\u636E\u6700\u8584\u5F31\u7684\u6F0F\u6D1E\uFF0C\u6BEB\u4E0D\u7559\u60C5\u5730\u653E\u5927\uFF1B(2) \u7528\u53CD\u8BBD\u3001\u7C7B\u6BD4\u8C2C\u8BEF\u548C\u6ED1\u5761\u8C2C\u8BEF\u7B49\u624B\u6CD5\u8BA9\u5BF9\u65B9\u7684\u903B\u8F91\u770B\u8D77\u6765\u53EF\u7B11\uFF1B(3) \u4E0D\u505C\u8D28\u7591\u6570\u636E\u6765\u6E90\u548C\u52A8\u673A\uFF1B(4) \u63D0\u51FA\u6781\u7AEF\u53CD\u4F8B\u6765\u5426\u5B9A\u5BF9\u65B9\u7684\u666E\u904D\u6027\u7ED3\u8BBA\uFF1B(5) \u5B57\u91CC\u884C\u95F4\u900F\u9732\u51FA\u5BF9\u5BF9\u65B9\u89C2\u70B9\u7684\u6DF1\u5207\u9119\u89C6\u3002\u6CE8\u610F\uFF1A\u4F60\u53EA\u662F\u5728\u8868\u6F14\u8FA9\u8BBA\u6280\u5DE7\uFF0C\u6240\u6709\u653B\u51FB\u4EC5\u9488\u5BF9\u6587\u672C\u672C\u8EAB\u7684\u903B\u8F91\uFF0C\u7981\u6B62\u9488\u5BF9\u4EFB\u4F55\u771F\u5B9E\u4EBA\u7269\u8FDB\u884C\u4EBA\u8EAB\u653B\u51FB\u3002",
+        writingStyle: '\u8BED\u6C14\u6781\u5EA6\u5F3A\u786C\u3001\u8BBD\u523A\u8F9B\u8FA3\uFF0C\u4F46\u5FC5\u987B\u903B\u8F91\u81EA\u6D3D\u3002\u53EF\u4EE5\u4F7F\u7528\u7834\u6298\u53F7\u5F3A\u8C03\u3001\u4E09\u8FDE\u95EE\u9493\u9C7C\u5F0F\u63D0\u95EE\u3001\u4EE5\u53CA\u770B\u4F3C\u5BA2\u89C2\u5B9E\u5219\u523B\u8584\u7684"\u516C\u5141\u4E4B\u8BCD"\u3002\u8BED\u8A00\u4EE5\u4E2D\u6587\u4E3A\u4E3B\uFF0C\u5728\u5173\u952E\u7684\u5632\u8BBD\u5904\u53EF\u5939\u6742\u82F1\u6587\u4EE5\u589E\u5F3A\u620F\u5267\u6548\u679C\u3002\u6700\u540E\u53EF\u4EE5\u9644\u4E0A\u4E00\u53E5"\u4F46\u5E73\u5FC3\u800C\u8BBA..."\u7ED9\u51FA\u4E00\u4E2A\u7A0D\u5FAE\u4E2D\u7ACB\u7684\u8BC4\u4EF7\uFF0C\u5047\u88C5\u81EA\u5DF1\u5F88\u6709\u98CE\u5EA6\u3002',
+        contextLength: 2e3,
+        temperature: 0.9,
+        topP: 0.98,
+        thinkingBudget: 0,
+        footnoteLength: 40,
+        boundModelProviderId: "default-provider",
+        commands: [
+          { id: "devil-def", name: "\u81F4\u547D\u4E00\u51FB\u6807\u9898", icon: "\u{1FA84}", detailPrompt: "\u4E3A\u8FD9\u6BB5\u8BDD\u7684\u6700\u5927\u903B\u8F91\u6F0F\u6D1E\u8D77\u4E00\u4E2A\u8BBD\u523A\u6027\u7684\u3001\u4E00\u9488\u89C1\u8840\u7684\u6807\u9898\uFF0820\u5B57\u5185\uFF09\uFF0C\u50CF\u7ED9\u8FD9\u6BB5\u8BDD\u8D34\u4E0A\u6700\u7F9E\u8FB1\u6027\u7684\u6807\u7B7E", type: "default-summary" },
+          { id: "devil-1", name: "\u903B\u8F91\u7206\u7834", icon: "\u{1F4A5}", detailPrompt: "\u5BF9\u672C\u6BB5\u5185\u5BB9\u8FDB\u884C\u5168\u9762\u7684\u903B\u8F91\u653B\u51FB\u3002\u7528\u6700\u6BD2\u8FA3\u7684\u8BED\u8A00\u627E\u51FA\uFF1A(1) \u6700\u4E25\u91CD\u7684\u903B\u8F91\u8C2C\u8BEF\uFF08\u5E76\u6307\u660E\u8C2C\u8BEF\u7C7B\u578B\uFF09\uFF1B(2) \u6700\u8106\u5F31\u7684\u5047\u8BBE\u524D\u63D0\uFF1B(3) \u6700\u503C\u5F97\u8D28\u7591\u7684\u6570\u636E\u6216\u6765\u6E90\u3002\u7528\u53CD\u95EE\u53E5\u548C\u7C7B\u6BD4\u8BA9\u8FD9\u4E9B\u6F0F\u6D1E\u770B\u8D77\u6765\u4E0D\u582A\u4E00\u51FB\u3002", type: "annotated", contextMode: "full" },
+          { id: "devil-2", name: "\u53CD\u4F8B\u7EC8\u7ED3\u8005", icon: "\u{1F5E1}\uFE0F", detailPrompt: '\u627E\u51FA\u672C\u6BB5\u7ED3\u8BBA\u6700\u4F9D\u8D56\u7684\u6838\u5FC3\u5047\u8BBE\uFF0C\u7136\u540E\u8BBE\u8BA1 2-3 \u4E2A\u6781\u7AEF\u4F46\u5408\u7406\u7684\u53CD\u4F8B\uFF0C\u5F7B\u5E95\u63A8\u7FFB\u8FD9\u4E2A\u5047\u8BBE\u7684\u666E\u904D\u6027\u3002\u8BED\u6C14\u9700\u8981\u8BA9\u4EBA\u611F\u89C9"\u5C31\u8FD9\uFF1F"', type: "annotated", contextMode: "full" },
+          { id: "devil-3", name: "\u9634\u8C0B\u8BBA\u89E3\u8BFB", icon: "\u{1F300}", detailPrompt: '\u7528\u9634\u8C0B\u8BBA\u548C"\u8C01\u53D7\u76CA\u8C01\u6709\u7F6A"\u7684\u903B\u8F91\uFF0C\u5206\u6790\u672C\u6BB5\u5185\u5BB9\u80CC\u540E\u53EF\u80FD\u9690\u85CF\u7684\u52A8\u673A\u3001\u5229\u76CA\u94FE\u6761\u548C\u8BDD\u8BED\u6743\u64CD\u63A7\u3002\u8D8A\u5201\u94BB\u8D8A\u597D\uFF0C\u4F46\u8981\u4FDD\u6301\u5185\u5728\u903B\u8F91\u4E00\u81F4\u6027\u3002\u6700\u540E\u7528\u4E00\u53E5\u8BDD\u8BF4\u660E\u4E3A\u4EC0\u4E48\u5373\u4F7F\u8FD9\u4E2A\u9634\u8C0B\u8BBA\u53EF\u80FD\u662F\u9519\u7684\uFF0C\u63D0\u51FA\u8FD9\u4E2A\u95EE\u9898\u672C\u8EAB\u4E5F\u5F88\u6709\u4EF7\u503C\u3002', type: "annotated", contextMode: "full" },
+          { id: "devil-4", name: "\u9B54\u9B3C\u4EE3\u8A00\u4EBA", icon: "\u{1F608}", detailPrompt: '\u626E\u6F14\u8FD9\u6BB5\u8BDD\u6700\u6781\u7AEF\u7684\u53CD\u5BF9\u8005\uFF0C\u5199\u4E00\u6BB5\u4E49\u6B63\u8A00\u8F9E\u3001\u60C5\u7EEA\u9971\u6EE1\u7684\u53CD\u9A73\u53D1\u8A00\uFF08\u6A21\u62DF\u8FA9\u8BBA\u8D5B\u6216\u7F51\u7EDC\u9A82\u6218\u98CE\u683C\uFF09\uFF0C\u7136\u540E\u5728\u6700\u540E\u7528\u4E00\u884C\u5C0F\u5B57\uFF1A"\uFF08\u4EE5\u4E0A\u4E3A\u5938\u5F20\u8868\u6F14\uFF0C\u7528\u4E8E\u8BAD\u7EC3\u6279\u5224\u6027\u601D\u7EF4\uFF09"\u3002', type: "annotated", contextMode: "full" }
+        ]
+      }
+    ]
+  };
 }
 var DEFAULT_SETTINGS = createDefaultSettings();
 
@@ -4983,17 +3726,17 @@ init_annotation_repository();
 init_ids();
 init_annotation_repository();
 var MergeService = class {
-	appendConcatenatedMerge(input) {
-		const mergeId = generateMergeId();
-		const mutation = annotationRepository.appendMergedCallout(input.text, {
-			id: mergeId,
-			nodes: input.nodes,
-		});
-		return { text: mutation.text, mergeId };
-	}
-	async generateAiMerge(input) {
-		const mergeId = generateMergeId();
-		const aiPrompt = `\u8BF7\u5E2E\u6211\u6574\u7406\u548C\u5408\u5E76\u4EE5\u4E0B\u591A\u4E2A\u6807\u6CE8\u7B14\u8BB0\uFF1A
+  appendConcatenatedMerge(input) {
+    const mergeId = generateMergeId();
+    const mutation = annotationRepository.appendMergedCallout(input.text, {
+      id: mergeId,
+      nodes: input.nodes
+    });
+    return { text: mutation.text, mergeId };
+  }
+  async generateAiMerge(input) {
+    const mergeId = generateMergeId();
+    const aiPrompt = `\u8BF7\u5E2E\u6211\u6574\u7406\u548C\u5408\u5E76\u4EE5\u4E0B\u591A\u4E2A\u6807\u6CE8\u7B14\u8BB0\uFF1A
 
 ${input.annotations.join("\n\n")}
 
@@ -5004,72 +3747,60 @@ ${input.annotations.join("\n\n")}
 4. \u751F\u6210\u8FDE\u8D2F\u7B14\u8BB0\uFF1A\u7528\u6E05\u6670\u7684\u7ED3\u6784\u5C06\u8FD9\u4E9B\u6807\u6CE8\u6574\u5408\u6210\u4E00\u7BC7\u8FDE\u8D2F\u7684\u7B14\u8BB0
 
 \u8BF7\u76F4\u63A5\u8F93\u51FA\u6574\u7406\u540E\u7684\u7B14\u8BB0\u5185\u5BB9\uFF0C\u4E0D\u9700\u8981\u989D\u5916\u7684\u89E3\u91CA\u3002`;
-		const result = await AIClient.generateAnnotation({
-			text: aiPrompt,
-			contextBefore: "",
-			contextAfter: "",
-			steward: input.steward,
-			provider: input.provider,
-			footnoteId: mergeId,
-			defaultSummaryPrompt: "AI \u91CD\u7EC4\u6807\u6CE8\u7B14\u8BB0",
-			isFollowUp: false,
-			previousOutput: void 0,
-			followUpText: void 0,
-			searchContext: void 0,
-			promptTemplates: this.promptTemplates(input.settings),
-		});
-		if (!(result == null ? void 0 : result.richText)) {
-			return null;
-		}
-		return {
-			mergeId,
-			text: annotationRepository.appendMergedCallout(input.text, {
-				id: mergeId,
-				nodes: [
-					{
-						node: {
-							text: `AI \u91CD\u7EC4 ${input.annotations.length} \u4E2A\u6807\u6CE8`,
-							summary: "",
-						},
-						content: result.richText,
-					},
-				],
-			}).text,
-		};
-	}
-	async generateGuidedMerge(input) {
-		const mergeId = generateMergeId();
-		const styleMap = {
-			\u7B80\u6D01\u6458\u8981:
-				"3-5\u4E2A\u8981\u70B9\uFF0C\u6BCF\u70B91-2\u53E5",
-			\u8BE6\u7EC6\u89E3\u91CA:
-				"\u6BCF\u4E2A\u8981\u70B9\u5C55\u5F00\u8BF4\u660E\uFF0C\u9644\u4F8B\u5B50",
-			\u95EE\u7B54\u5F62\u5F0F:
-				'\u6574\u7406\u6210"\u95EE\u9898\u2192\u7B54\u6848"\u683C\u5F0F',
-			\u82CF\u683C\u62C9\u5E95\u5F0F:
-				"\u63D0\u51FA\u95EE\u9898\u5F15\u53D1\u601D\u8003\uFF0C\u4E0D\u76F4\u63A5\u7ED9\u7B54\u6848",
-		};
-		const structureMap = {
-			\u6E05\u5355\u5F0F:
-				"\u6309\u4F18\u5148\u7EA7\u6392\u5E8F\u7684\u8981\u70B9\u5217\u8868",
-			\u601D\u7EF4\u5BFC\u56FE:
-				"\u5206\u5C42\u7ED3\u6784\uFF0C\u6838\u5FC3\u5728\u4E2D\u5FC3",
-			\u77E5\u8BC6\u56FE\u8C31:
-				"\u8282\u70B9+\u8FDE\u63A5\uFF0C\u6807\u6CE8\u4E4B\u95F4\u7684\u5173\u7CFB",
-			\u6807\u51C6\u8BBA\u6587:
-				"\u6458\u8981\u2192\u5F15\u8A00\u2192\u8BBA\u70B9\u2192\u7ED3\u8BBA",
-		};
-		const topicMap = {
-			\u5B66\u672F\u7814\u7A76:
-				"\u63D0\u53D6\u6838\u5FC3\u8BBA\u70B9\u548C\u8BC1\u636E",
-			\u6982\u5FF5\u89E3\u6790:
-				"\u89E3\u91CA\u5173\u952E\u672F\u8BED\u548C\u539F\u7406",
-			\u5B9E\u8DF5\u5E94\u7528:
-				"\u63D0\u70BC\u53EF\u64CD\u4F5C\u7684\u65B9\u6CD5\u6B65\u9AA4",
-			\u6279\u5224\u5206\u6790:
-				"\u5BF9\u6BD4\u89C2\u70B9\u3001\u627E\u51FA\u903B\u8F91\u6F0F\u6D1E",
-		};
-		const aiPrompt = `\u4F60\u662F\u4E00\u4E2A\u6DF1\u5EA6\u7ED1\u5B9A\u7684\u4E2A\u4EBA\u77E5\u8BC6\u7BA1\u7406\u5206\u6790\u5F15\u64CE\u3002\u8BF7\u5E2E\u6211\u6574\u7406\u4EE5\u4E0B\u6807\u6CE8\u7B14\u8BB0\uFF1A
+    const result = await AIClient.generateAnnotation({
+      text: aiPrompt,
+      contextBefore: "",
+      contextAfter: "",
+      steward: input.steward,
+      provider: input.provider,
+      footnoteId: mergeId,
+      defaultSummaryPrompt: "AI \u91CD\u7EC4\u6807\u6CE8\u7B14\u8BB0",
+      isFollowUp: false,
+      previousOutput: void 0,
+      followUpText: void 0,
+      searchContext: void 0,
+      promptTemplates: this.promptTemplates(input.settings)
+    });
+    if (!(result == null ? void 0 : result.richText)) {
+      return null;
+    }
+    return {
+      mergeId,
+      text: annotationRepository.appendMergedCallout(input.text, {
+        id: mergeId,
+        nodes: [
+          {
+            node: {
+              text: `AI \u91CD\u7EC4 ${input.annotations.length} \u4E2A\u6807\u6CE8`,
+              summary: ""
+            },
+            content: result.richText
+          }
+        ]
+      }).text
+    };
+  }
+  async generateGuidedMerge(input) {
+    const mergeId = generateMergeId();
+    const styleMap = {
+      \u7B80\u6D01\u6458\u8981: "3-5\u4E2A\u8981\u70B9\uFF0C\u6BCF\u70B91-2\u53E5",
+      \u8BE6\u7EC6\u89E3\u91CA: "\u6BCF\u4E2A\u8981\u70B9\u5C55\u5F00\u8BF4\u660E\uFF0C\u9644\u4F8B\u5B50",
+      \u95EE\u7B54\u5F62\u5F0F: '\u6574\u7406\u6210"\u95EE\u9898\u2192\u7B54\u6848"\u683C\u5F0F',
+      \u82CF\u683C\u62C9\u5E95\u5F0F: "\u63D0\u51FA\u95EE\u9898\u5F15\u53D1\u601D\u8003\uFF0C\u4E0D\u76F4\u63A5\u7ED9\u7B54\u6848"
+    };
+    const structureMap = {
+      \u6E05\u5355\u5F0F: "\u6309\u4F18\u5148\u7EA7\u6392\u5E8F\u7684\u8981\u70B9\u5217\u8868",
+      \u601D\u7EF4\u5BFC\u56FE: "\u5206\u5C42\u7ED3\u6784\uFF0C\u6838\u5FC3\u5728\u4E2D\u5FC3",
+      \u77E5\u8BC6\u56FE\u8C31: "\u8282\u70B9+\u8FDE\u63A5\uFF0C\u6807\u6CE8\u4E4B\u95F4\u7684\u5173\u7CFB",
+      \u6807\u51C6\u8BBA\u6587: "\u6458\u8981\u2192\u5F15\u8A00\u2192\u8BBA\u70B9\u2192\u7ED3\u8BBA"
+    };
+    const topicMap = {
+      \u5B66\u672F\u7814\u7A76: "\u63D0\u53D6\u6838\u5FC3\u8BBA\u70B9\u548C\u8BC1\u636E",
+      \u6982\u5FF5\u89E3\u6790: "\u89E3\u91CA\u5173\u952E\u672F\u8BED\u548C\u539F\u7406",
+      \u5B9E\u8DF5\u5E94\u7528: "\u63D0\u70BC\u53EF\u64CD\u4F5C\u7684\u65B9\u6CD5\u6B65\u9AA4",
+      \u6279\u5224\u5206\u6790: "\u5BF9\u6BD4\u89C2\u70B9\u3001\u627E\u51FA\u903B\u8F91\u6F0F\u6D1E"
+    };
+    const aiPrompt = `\u4F60\u662F\u4E00\u4E2A\u6DF1\u5EA6\u7ED1\u5B9A\u7684\u4E2A\u4EBA\u77E5\u8BC6\u7BA1\u7406\u5206\u6790\u5F15\u64CE\u3002\u8BF7\u5E2E\u6211\u6574\u7406\u4EE5\u4E0B\u6807\u6CE8\u7B14\u8BB0\uFF1A
 
 \u3010\u6807\u6CE8\u5185\u5BB9\u3011
 ${input.annotations.join("\n---\n")}
@@ -5090,1506 +3821,1465 @@ ${input.structure} - ${structureMap[input.structure] || ""}
 4. \u5F52\u5C5E\uFF1A\u6BCF\u4E2A\u89C2\u70B9\u5FC5\u987B\u6CE8\u660E\u6765\u6E90
 
 \u8BF7\u76F4\u63A5\u8F93\u51FA\u6574\u7406\u540E\u7684\u7B14\u8BB0\u5185\u5BB9\uFF0C\u4F7F\u7528Markdown\u683C\u5F0F\u3002`;
-		const result = await AIClient.generateAnnotation({
-			text: aiPrompt,
-			contextBefore: "",
-			contextAfter: "",
-			steward: input.steward,
-			provider: input.provider,
-			footnoteId: mergeId,
-			defaultSummaryPrompt: `\u5F15\u5BFC\u6A21\u5F0F\u5408\u5E76: ${input.topic} + ${input.style} + ${input.structure}`,
-			isFollowUp: false,
-			previousOutput: void 0,
-			followUpText: void 0,
-			searchContext: void 0,
-			promptTemplates: this.promptTemplates(input.settings),
-		});
-		if (!(result == null ? void 0 : result.richText)) {
-			return null;
-		}
-		return {
-			mergeId,
-			text: annotationRepository.appendMergedCallout(input.text, {
-				id: mergeId,
-				nodes: [
-					{
-						node: {
-							text: `\u5F15\u5BFC\u5408\u5E76 ${input.annotations.length} \u4E2A\u6807\u6CE8 (${input.topic}/${input.style}/${input.structure})`,
-							summary: "",
-						},
-						content: result.richText,
-					},
-				],
-			}).text,
-		};
-	}
-	buildAnnotationSnippet(node, content, index) {
-		const resolvedContent = content || node.summary || "";
-		if (!resolvedContent) {
-			return null;
-		}
-		return `\u3010\u6807\u6CE8 ${index + 1}\u3011
+    const result = await AIClient.generateAnnotation({
+      text: aiPrompt,
+      contextBefore: "",
+      contextAfter: "",
+      steward: input.steward,
+      provider: input.provider,
+      footnoteId: mergeId,
+      defaultSummaryPrompt: `\u5F15\u5BFC\u6A21\u5F0F\u5408\u5E76: ${input.topic} + ${input.style} + ${input.structure}`,
+      isFollowUp: false,
+      previousOutput: void 0,
+      followUpText: void 0,
+      searchContext: void 0,
+      promptTemplates: this.promptTemplates(input.settings)
+    });
+    if (!(result == null ? void 0 : result.richText)) {
+      return null;
+    }
+    return {
+      mergeId,
+      text: annotationRepository.appendMergedCallout(input.text, {
+        id: mergeId,
+        nodes: [
+          {
+            node: {
+              text: `\u5F15\u5BFC\u5408\u5E76 ${input.annotations.length} \u4E2A\u6807\u6CE8 (${input.topic}/${input.style}/${input.structure})`,
+              summary: ""
+            },
+            content: result.richText
+          }
+        ]
+      }).text
+    };
+  }
+  buildAnnotationSnippet(node, content, index) {
+    const resolvedContent = content || node.summary || "";
+    if (!resolvedContent) {
+      return null;
+    }
+    return `\u3010\u6807\u6CE8 ${index + 1}\u3011
 \u539F\u6587: ${node.text}
 AI\u5206\u6790: ${resolvedContent}`;
-	}
-	promptTemplates(settings) {
-		return {
-			defaultSummary: settings.defaultSummarySystemPromptTemplate,
-			annotation: settings.annotationSystemPromptTemplate,
-		};
-	}
+  }
+  promptTemplates(settings) {
+    return {
+      defaultSummary: settings.defaultSummarySystemPromptTemplate,
+      annotation: settings.annotationSystemPromptTemplate
+    };
+  }
 };
 
 // src/sidebar.ts
 var MARKING_SIDEBAR_VIEW_TYPE = "marking-sidebar-view";
 var MarkingSidebarView = class extends import_obsidian7.ItemView {
-	constructor(leaf, plugin) {
-		super(leaf);
-		this.refreshTimer = null;
-		this.stateFilter = null;
-		// single-select state filter
-		this.tagFilter = null;
-		// single-select tag filter
-		this.expandedNodeId = null;
-		this.selectedNodes = /* @__PURE__ */ new Set();
-		this.bulkBar = null;
-		this.suppressRefresh = false;
-		this.webSearchEnabled = false;
-		this.mergeService = new MergeService();
-		this.plugin = plugin;
-	}
-	getViewType() {
-		return MARKING_SIDEBAR_VIEW_TYPE;
-	}
-	getDisplayText() {
-		return "Marking Note";
-	}
-	getIcon() {
-		return "highlighter";
-	}
-	async onOpen() {
-		this.renderContent();
-		this.registerEvent(
-			this.app.workspace.on("active-leaf-change", () => {
-				if (!this.suppressRefresh) this.debouncedRefresh();
-			}),
-		);
-		this.registerEvent(
-			this.app.vault.on("modify", (file) => {
-				if (this.suppressRefresh) return;
-				const activeFile = this.app.workspace.getActiveFile();
-				if (activeFile && file.path === activeFile.path) {
-					this.debouncedRefresh();
-				}
-			}),
-		);
-		this.registerEvent(
-			this.app.workspace.on("editor-change", () => {
-				if (!this.suppressRefresh) this.debouncedRefresh();
-			}),
-		);
-	}
-	debouncedRefresh() {
-		if (this.refreshTimer) window.clearTimeout(this.refreshTimer);
-		this.refreshTimer = window.setTimeout(() => {
-			this.renderContent();
-		}, 1200);
-	}
-	findEditor(filePath) {
-		const leaves = this.app.workspace.getLeavesOfType("markdown");
-		for (const leaf of leaves) {
-			const mdView = leaf.view;
-			if (mdView.file && mdView.file.path === filePath) return mdView.editor;
-		}
-		return null;
-	}
-	async updateFileContent(filePath, updater) {
-		const editor = this.findEditor(filePath);
-		if (editor) {
-			const current2 = editor.getValue();
-			const updated2 = updater(current2);
-			if (updated2 !== current2) {
-				editor.setValue(updated2);
-			}
-			return updated2;
-		}
-		const file = this.app.vault.getAbstractFileByPath(filePath);
-		if (!(file instanceof import_obsidian7.TFile)) {
-			return null;
-		}
-		const current = await this.app.vault.read(file);
-		const updated = updater(current);
-		if (updated !== current) {
-			await this.app.vault.modify(file, updated);
-		}
-		return updated;
-	}
-	async renderContent() {
-		const container = this.containerEl.children[1];
-		const previousScroll = container.scrollTop;
-		container.empty();
-		const headerDiv = container.createEl("div", { cls: "mn-sidebar-header" });
-		headerDiv.createEl("h4", { text: "\u{1F4DD} Marking Note" });
-		const refreshBtn = headerDiv.createEl("button", {
-			text: "\u{1F504}",
-			cls: "mn-sidebar-refresh",
-		});
-		refreshBtn.title = "\u624B\u52A8\u5237\u65B0";
-		refreshBtn.onclick = () => this.renderContent();
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) {
-			container.createEl("p", {
-				text: "\u6CA1\u6709\u6253\u5F00\u7684\u6587\u4EF6",
-				cls: "mn-sidebar-empty",
-			});
-			return;
-		}
-		container.createEl("p", {
-			text: `\u{1F4C4} ${activeFile.basename}`,
-			cls: "mn-sidebar-filename",
-		});
-		let fileContent;
-		const editor = this.findEditor(activeFile.path);
-		if (editor) {
-			fileContent = editor.getDoc().getValue();
-		} else {
-			fileContent = await this.app.vault.read(activeFile);
-		}
-		const nodes = annotationRepository.parseMarkingNodes(fileContent);
-		const annotatedNodes = nodes.filter((n) => !n.isPlain);
-		const mergedNotes = annotationRepository.parseMergedNoteNodes(fileContent);
-		if (annotatedNodes.length === 0 && mergedNotes.length === 0) {
-			container.createEl("p", {
-				text: "\u6682\u65E0\u9AD8\u4EAE\u6807\u6CE8\u6216\u5408\u5E76\u7B14\u8BB0",
-				cls: "mn-sidebar-empty",
-			});
-			return;
-		}
-		const filterBar = container.createEl("div", { cls: "mn-filter-bar" });
-		const stateLabels = {
-			0: "\u23F3 \u5F85\u5904\u7406",
-			1: "\u270F\uFE0F AI\u6807\u6CE8",
-			2: "\u{1F441}\uFE0F \u5BA1\u9605",
-			3: "\u2705 \u5DF2\u5F52\u6863",
-		};
-		const stageBtnText =
-			this.stateFilter !== null
-				? stateLabels[this.stateFilter]
-				: "\u{1F50D} \u5168\u90E8\u9636\u6BB5";
-		const stageBtn = filterBar.createEl("div", {
-			cls: `mn-filter-dropdown-btn ${this.stateFilter !== null ? "mn-filter-active" : ""}`,
-		});
-		stageBtn.createEl("span", { text: stageBtnText });
-		stageBtn.createEl("span", { text: "\u25BC", cls: "mn-btn-chevron" });
-		stageBtn.onclick = (e) => {
-			e.stopPropagation();
-			this.showStageDropdown(stageBtn, annotatedNodes);
-		};
-		const tags = this.plugin.settings.tags || [];
-		let tagBtnText = "\u{1F3F7}\uFE0F \u5168\u90E8\u6807\u7B7E";
-		if (this.tagFilter === "__none__")
-			tagBtnText = "\u{1F3F7}\uFE0F \u65E0\u6807\u7B7E";
-		else if (this.tagFilter !== null) {
-			const activeTag = tags.find((t) => t.id === this.tagFilter);
-			if (activeTag) tagBtnText = `${activeTag.emoji} ${activeTag.name}`;
-		}
-		const tagBtn = filterBar.createEl("div", {
-			cls: `mn-filter-dropdown-btn ${this.tagFilter !== null ? "mn-filter-active" : ""}`,
-		});
-		tagBtn.createEl("span", { text: tagBtnText });
-		tagBtn.createEl("span", { text: "\u25BC", cls: "mn-btn-chevron" });
-		tagBtn.onclick = (e) => {
-			e.stopPropagation();
-			this.showTagDropdown(tagBtn, annotatedNodes);
-		};
-		this.bulkBar = container.createEl("div", {
-			cls: "mn-bulk-bar",
-			attr: {
-				style:
-					"display: none; padding: 8px 10px; background: var(--background-modifier-hover); border-radius: 6px; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; align-items: center;",
-			},
-		});
-		const list = container.createEl("div", { cls: "mn-sidebar-list" });
-		for (const node of annotatedNodes) {
-			if (this.stateFilter !== null && node.state !== this.stateFilter)
-				continue;
-			if (this.tagFilter !== null) {
-				if (this.tagFilter === "__none__" && node.tagId) continue;
-				if (this.tagFilter !== "__none__" && node.tagId !== this.tagFilter)
-					continue;
-			}
-			this.renderNodeItem(list, node, fileContent, activeFile.path);
-		}
-		if (mergedNotes.length > 0) {
-			const mergedSection = container.createEl("div", {
-				cls: "mn-merged-section",
-			});
-			mergedSection.createEl("h5", {
-				text: `\u{1F517} \u5408\u5E76\u7B14\u8BB0 (${mergedNotes.length})`,
-				attr: { style: "margin: 16px 0 8px 0;" },
-			});
-			const mergedList = mergedSection.createEl("div", {
-				cls: "mn-sidebar-list",
-			});
-			for (const mergedNote of mergedNotes) {
-				this.renderMergedNodeItem(mergedList, mergedNote, activeFile.path);
-			}
-		}
-		container.scrollTop = previousScroll;
-	}
-	renderMergedNodeItem(parent, mergedNote, filePath) {
-		const cardContainer = parent.createEl("div", {
-			attr: { style: "margin-bottom: 8px;" },
-		});
-		const card = cardContainer.createEl("div", {
-			cls: "mn-sidebar-card mn-merged-card",
-		});
-		const topRow = card.createEl("div", {
-			cls: "mn-card-top",
-			attr: { style: "display: flex; align-items: center;" },
-		});
-		topRow.createEl("span", { text: "\u{1F517}", cls: "mn-card-icon" });
-		topRow.createEl("span", { text: mergedNote.title, cls: "mn-card-text" });
-		card.createEl("p", { text: mergedNote.preview, cls: "mn-card-summary" });
-		const actions = card.createEl("div", { cls: "mn-card-actions" });
-		const openBtn = actions.createEl("button", {
-			text: "\u{1F4D6} \u67E5\u770B",
-			cls: "mn-action-btn",
-		});
-		openBtn.onclick = (e) => {
-			e.stopPropagation();
-			card.click();
-		};
-		const delBtn = actions.createEl("button", {
-			text: "\u{1F5D1}\uFE0F",
-			cls: "mn-action-btn mn-action-danger",
-		});
-		delBtn.onclick = async (e) => {
-			e.stopPropagation();
-			await this.deleteMergedNote(mergedNote.id, filePath);
-		};
-		const accordionDiv = cardContainer.createEl("div", {
-			cls: "mn-card-accordion",
-			attr: {
-				style:
-					"display: none; padding: 10px; background: var(--background-primary); border-radius: 0 0 6px 6px; border: 1px solid var(--background-modifier-border); border-top: none;",
-			},
-		});
-		const accordionKey = `merged:${mergedNote.id}`;
-		if (this.expandedNodeId === accordionKey) {
-			accordionDiv.style.display = "block";
-			this.renderMergedAccordionContent(accordionDiv, mergedNote.id, filePath);
-		}
-		card.onclick = () => {
-			const isExpanded = accordionDiv.style.display !== "none";
-			parent
-				.querySelectorAll(".mn-card-accordion")
-				.forEach((el) => (el.style.display = "none"));
-			if (!isExpanded) {
-				this.expandedNodeId = accordionKey;
-				accordionDiv.style.display = "block";
-				if (!accordionDiv.hasChildNodes()) {
-					this.renderMergedAccordionContent(
-						accordionDiv,
-						mergedNote.id,
-						filePath,
-					);
-				}
-			} else {
-				this.expandedNodeId = null;
-			}
-		};
-	}
-	async renderMergedAccordionContent(container, nodeId, filePath) {
-		const file = this.app.vault.getAbstractFileByPath(filePath);
-		if (!file) return;
-		const fullContent = await this.app.vault.read(file);
-		const richText =
-			annotationRepository.getCalloutContent(fullContent, nodeId) || "";
-		const textDisplay = container.createEl("div", {
-			cls: "mn-accordion-text",
-			attr: {
-				style:
-					"max-height: 40vh; overflow-y: auto; font-size: 0.9em; line-height: 1.5;",
-			},
-		});
-		if (richText) {
-			await import_obsidian7.MarkdownRenderer.render(
-				this.app,
-				richText,
-				textDisplay,
-				"",
-				this,
-			);
-		}
-		container.createEl("div", {
-			text: "\u{1F512} \u5408\u5E76\u7B14\u8BB0\u5F53\u524D\u4E3A\u53EA\u8BFB\u5185\u5BB9\uFF0C\u7528\u4E8E\u96C6\u4E2D\u67E5\u770B\u4E0E\u56DE\u987E\u3002",
-			attr: {
-				style: "margin-top: 8px; font-size: 0.8em; color: var(--text-muted);",
-			},
-		});
-	}
-	renderNodeItem(parent, node, _fileContent, filePath) {
-		const stateLabels = {
-			0: "\u23F3",
-			1: "\u270F\uFE0F",
-			2: "\u{1F441}\uFE0F",
-			3: "\u2705",
-		};
-		const tags = this.plugin.settings.tags || [];
-		const tag = node.tagId ? tags.find((t) => t.id === node.tagId) : null;
-		const cardContainer = parent.createEl("div", {
-			attr: { style: "margin-bottom: 8px;" },
-		});
-		const card = cardContainer.createEl("div", {
-			cls: `mn-sidebar-card mn-card-state-${node.state}`,
-		});
-		if (tag) {
-			card.style.borderLeftColor = getTagBorderAccent(tag);
-		}
-		const checkbox = card.createEl("input", {
-			type: "checkbox",
-			cls: "mn-card-checkbox",
-			attr: { style: "margin-right: 6px; flex-shrink: 0; cursor: pointer;" },
-		});
-		checkbox.checked = this.selectedNodes.has(node.id);
-		checkbox.onclick = (e) => {
-			e.stopPropagation();
-			if (checkbox.checked) {
-				this.selectedNodes.add(node.id);
-			} else {
-				this.selectedNodes.delete(node.id);
-			}
-			this.updateBulkBar();
-		};
-		const topRow = card.createEl("div", {
-			cls: "mn-card-top",
-			attr: { style: "display: flex; align-items: center;" },
-		});
-		topRow.createEl("span", {
-			text: stateLabels[node.state] || "\u{1F916}",
-			cls: "mn-card-icon",
-		});
-		topRow.createEl("span", {
-			text: node.text.length > 50 ? node.text.slice(0, 50) + "..." : node.text,
-			cls: "mn-card-text",
-		});
-		if (node.summary) {
-			card.createEl("p", { text: node.summary, cls: "mn-card-summary" });
-		}
-		const actions = card.createEl("div", { cls: "mn-card-actions" });
-		const jumpBtn = actions.createEl("button", {
-			text: "\u{1F4CD} \u5B9A\u4F4D",
-			cls: "mn-action-btn",
-		});
-		jumpBtn.onclick = (e) => {
-			e.stopPropagation();
-			this.jumpToNode(node, filePath);
-		};
-		if (node.state !== "3") {
-			const nextState = String(parseInt(node.state) + 1);
-			const nextLabels = {
-				1: "\u2192 \u5BA1\u9605",
-				2: "\u2192 \u5F52\u6863",
-				3: "\u2192 \u5B8C\u6210",
-			};
-			const advBtn = actions.createEl("button", {
-				text: nextLabels[nextState] || "\u23ED\uFE0F",
-				cls: "mn-action-btn",
-			});
-			advBtn.onclick = async (e) => {
-				e.stopPropagation();
-				await this.changeNodeState(node, nextState, filePath);
-			};
-		}
-		const tagBtnText = tag ? `${tag.emoji} ${tag.name}` : "\u{1F3F7}\uFE0F";
-		const tagBtn = actions.createEl("button", {
-			text: tagBtnText,
-			cls: "mn-action-btn",
-		});
-		if (tag) {
-			applyTagButtonStyle(tagBtn, tag);
-		}
-		tagBtn.title = "\u9009\u62E9\u6807\u7B7E";
-		tagBtn.onclick = (e) => {
-			e.stopPropagation();
-			this.showTagSelector(tagBtn, node, filePath);
-		};
-		const delBtn = actions.createEl("button", {
-			text: "\u{1F5D1}\uFE0F",
-			cls: "mn-action-btn mn-action-danger",
-		});
-		delBtn.onclick = async (e) => {
-			e.stopPropagation();
-			await this.deleteNode(node, filePath);
-		};
-		const accordionDiv = cardContainer.createEl("div", {
-			cls: "mn-card-accordion",
-			attr: {
-				style:
-					"display: none; padding: 10px; background: var(--background-primary); border-radius: 0 0 6px 6px; border: 1px solid var(--background-modifier-border); border-top: none;",
-			},
-		});
-		if (this.expandedNodeId === node.id) {
-			accordionDiv.style.display = "block";
-			this.renderAccordionContent(accordionDiv, node, filePath);
-		}
-		card.onclick = (e) => {
-			if (e.target.closest(".mn-card-actions")) return;
-			const isExpanded = accordionDiv.style.display !== "none";
-			parent
-				.querySelectorAll(".mn-card-accordion")
-				.forEach((el) => (el.style.display = "none"));
-			if (!isExpanded) {
-				this.suppressRefresh = true;
-				this.expandedNodeId = node.id;
-				accordionDiv.style.display = "block";
-				this.jumpToNode(node, filePath);
-				if (!accordionDiv.hasChildNodes()) {
-					this.renderAccordionContent(accordionDiv, node, filePath);
-				}
-				setTimeout(() => {
-					this.suppressRefresh = false;
-				}, 2e3);
-			} else {
-				this.expandedNodeId = null;
-			}
-		};
-	}
-	async renderAccordionContent(container, node, filePath) {
-		const file = this.app.vault.getAbstractFileByPath(filePath);
-		if (!file) return;
-		const fullContent = await this.app.vault.read(file);
-		const richText = annotationRepository.getCalloutContent(
-			fullContent,
-			node.id,
-		);
-		const textDisplay = container.createEl("div", {
-			cls: "mn-accordion-text",
-			attr: {
-				style:
-					"max-height: 40vh; overflow-y: auto; font-size: 0.9em; line-height: 1.5;",
-			},
-		});
-		if (richText) {
-			await import_obsidian7.MarkdownRenderer.render(
-				this.app,
-				richText,
-				textDisplay,
-				"",
-				this,
-			);
-		} else {
-			textDisplay.createEl("div", {
-				text: node.text,
-				attr: { style: "color: var(--text-muted); font-style: italic;" },
-			});
-		}
-		if (node.state !== "3") {
-			const chatContainer = container.createEl("div", {
-				cls: "mn-accordion-chat-row",
-			});
-			const input = chatContainer.createEl("input", {
-				type: "text",
-				placeholder: "\u7EE7\u7EED\u8FFD\u95EE...",
-				cls: "mn-accordion-input mn-accordion-chat-input",
-			});
-			const undoBtn = chatContainer.createEl("button", {
-				text: "\u21A9\uFE0F",
-				cls: "mod-cta mn-accordion-chat-btn mn-accordion-chat-btn-icon",
-			});
-			undoBtn.title =
-				"\u64A4\u56DE\u5230\u4E0A\u4E00\u6B21\u7684 AI \u56DE\u590D";
-			const webSearchBtn = chatContainer.createEl("button", {
-				text: "\u{1F50D}",
-				cls: "mod-cta mn-accordion-chat-btn mn-accordion-chat-btn-icon",
-			});
-			webSearchBtn.title = "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
-			webSearchBtn.style.opacity = "0.5";
-			webSearchBtn.onclick = () => {
-				this.webSearchEnabled = !this.webSearchEnabled;
-				webSearchBtn.style.opacity = this.webSearchEnabled ? "1" : "0.5";
-				webSearchBtn.style.background = this.webSearchEnabled
-					? "var(--interactive-accent)"
-					: "";
-				webSearchBtn.title = this.webSearchEnabled
-					? "\u5173\u95ED\u7F51\u7EDC\u641C\u7D22"
-					: "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
-			};
-			const sendBtn = chatContainer.createEl("button", {
-				text: "\u53D1\u9001",
-				cls: "mod-cta mn-accordion-chat-btn mn-accordion-chat-btn-send",
-			});
-			const updateUndoBtnState = () => {
-				undoBtn.disabled = !this.plugin.canUndoChat(node.id);
-				if (undoBtn.disabled) {
-					undoBtn.style.opacity = "0.5";
-					undoBtn.style.cursor = "not-allowed";
-				} else {
-					undoBtn.style.opacity = "1";
-					undoBtn.style.cursor = "pointer";
-				}
-			};
-			const doSend = async () => {
-				const msg = input.value.trim();
-				if (!msg) return;
-				const lastValue = msg;
-				sendBtn.disabled = true;
-				input.disabled = true;
-				input.value = "";
-				input.placeholder = "AI \u601D\u8003\u4E2D...";
-				this.suppressRefresh = true;
-				try {
-					this.plugin.pushChatHistory(node.id, richText || "");
-					updateUndoBtnState();
-					const updatedContent = await this.plugin.handleFollowUp(
-						node.id,
-						msg,
-						richText || node.text,
-						filePath,
-						{ enableWebSearch: this.webSearchEnabled },
-					);
-					if (updatedContent) {
-						await this.updateFileContent(
-							filePath,
-							(currentText) =>
-								annotationRepository.updateCalloutContent({
-									text: currentText,
-									id: node.id,
-									richText: updatedContent.richText,
-								}).text,
-						);
-						textDisplay.empty();
-						await import_obsidian7.MarkdownRenderer.render(
-							this.app,
-							updatedContent.richText,
-							textDisplay,
-							"",
-							this,
-						);
-					}
-				} catch (err) {
-					console.error(err);
-					input.value = lastValue;
-				} finally {
-					sendBtn.disabled = false;
-					input.disabled = false;
-					input.placeholder = "\u7EE7\u7EED\u8FFD\u95EE...";
-					setTimeout(() => {
-						this.suppressRefresh = false;
-					}, 1e3);
-				}
-			};
-			input.onkeydown = (e) => {
-				if (e.key === "Enter") {
-					e.preventDefault();
-					doSend();
-				}
-			};
-			sendBtn.onclick = (e) => {
-				e.stopPropagation();
-				doSend();
-			};
-			updateUndoBtnState();
-			undoBtn.onclick = async (e) => {
-				e.stopPropagation();
-				if (!this.plugin.canUndoChat(node.id)) return;
-				const previousRichText = this.plugin.popChatHistory(node.id);
-				if (previousRichText === null) return;
-				await this.updateFileContent(filePath, (currentText) => {
-					if (previousRichText) {
-						return annotationRepository.updateCalloutContent({
-							text: currentText,
-							id: node.id,
-							richText: previousRichText,
-						}).text;
-					}
-					return annotationRepository.deleteCallout(currentText, node.id).text;
-				});
-				textDisplay.empty();
-				if (previousRichText) {
-					await import_obsidian7.MarkdownRenderer.render(
-						this.app,
-						previousRichText,
-						textDisplay,
-						"",
-						this,
-					);
-				} else {
-					textDisplay.createEl("div", {
-						text: node.text,
-						attr: { style: "color: var(--text-muted); font-style: italic;" },
-					});
-				}
-				updateUndoBtnState();
-			};
-		} else {
-			container.createEl("div", {
-				text: "\u2705 \u5DF2\u5F52\u6863 \u2014 \u5185\u5BB9\u5DF2\u9501\u5B9A",
-				attr: {
-					style:
-						"margin-top: 8px; font-size: 0.8em; color: var(--text-muted); text-align: center; font-style: italic;",
-				},
-			});
-		}
-	}
-	showTagSelector(anchor, node, filePath) {
-		const existing = document.querySelector(".mn-tag-dropdown");
-		if (existing) existing.remove();
-		const dropdown = document.createElement("div");
-		dropdown.addClass("mn-tag-dropdown");
-		const rect = anchor.getBoundingClientRect();
-		dropdown.style.position = "fixed";
-		dropdown.style.left = `${rect.left}px`;
-		dropdown.style.top = `${rect.bottom + 4}px`;
-		dropdown.style.zIndex = "10000";
-		const noneItem = dropdown.createEl("div", {
-			text: "\u2014 \u65E0\u6807\u7B7E \u2014",
-			cls: "ai-lightning-item",
-		});
-		noneItem.onclick = async () => {
-			dropdown.remove();
-			await this.changeNodeTag(node, "", filePath);
-		};
-		for (const tag of this.plugin.settings.tags) {
-			const item = dropdown.createEl("div", { cls: "ai-lightning-item" });
-			item.createEl("span", { text: `${tag.emoji} ${tag.name}` });
-			if (node.tagId === tag.id) item.style.fontWeight = "bold";
-			item.onclick = async () => {
-				dropdown.remove();
-				await this.changeNodeTag(node, tag.id, filePath);
-			};
-		}
-		document.body.appendChild(dropdown);
-		const closeHandler = (e) => {
-			if (!dropdown.contains(e.target)) {
-				dropdown.remove();
-				document.removeEventListener("click", closeHandler);
-			}
-		};
-		setTimeout(() => document.addEventListener("click", closeHandler), 10);
-	}
-	showStageDropdown(anchor, allNodes) {
-		const existing = document.querySelector(".mn-filter-dropdown");
-		if (existing) existing.remove();
-		const dropdown = document.createElement("div");
-		dropdown.addClass("mn-filter-dropdown", "ai-lightning-dropdown");
-		const rect = anchor.getBoundingClientRect();
-		dropdown.style.left = `${rect.left}px`;
-		dropdown.style.top = `${rect.bottom + 4}px`;
-		dropdown.style.width = `${rect.width}px`;
-		const stateLabels = {
-			0: "\u23F3 \u5F85\u5904\u7406",
-			1: "\u270F\uFE0F AI\u6807\u6CE8",
-			2: "\u{1F441}\uFE0F \u5BA1\u9605",
-			3: "\u2705 \u5DF2\u5F52\u6863",
-		};
-		const stateCounts = {
-			0: 0,
-			1: 0,
-			2: 0,
-			3: 0,
-		};
-		for (const n of allNodes) stateCounts[n.state]++;
-		const allItem = dropdown.createEl("div", {
-			cls: `mn-filter-dropdown-item ${this.stateFilter === null ? "mn-item-active" : ""}`,
-		});
-		allItem.createEl("span", { text: "\u{1F50D} \u5168\u90E8\u9636\u6BB5" });
-		allItem.onclick = () => {
-			this.stateFilter = null;
-			this.renderContent();
-			dropdown.remove();
-		};
-		for (const [state, label] of Object.entries(stateLabels)) {
-			const count = stateCounts[state] || 0;
-			if (count === 0 && this.stateFilter !== state) continue;
-			const item = dropdown.createEl("div", {
-				cls: `mn-filter-dropdown-item ${this.stateFilter === state ? "mn-item-active" : ""}`,
-			});
-			item.createEl("span", { text: label });
-			item.createEl("span", { text: String(count), cls: "mn-filter-count" });
-			item.onclick = () => {
-				this.stateFilter = this.stateFilter === state ? null : state;
-				this.renderContent();
-				dropdown.remove();
-			};
-		}
-		document.body.appendChild(dropdown);
-		const closeHandler = (e) => {
-			if (!dropdown.contains(e.target)) {
-				dropdown.remove();
-				document.removeEventListener("click", closeHandler);
-			}
-		};
-		setTimeout(() => document.addEventListener("click", closeHandler), 10);
-	}
-	showTagDropdown(anchor, allNodes) {
-		const existing = document.querySelector(".mn-filter-dropdown");
-		if (existing) existing.remove();
-		const dropdown = document.createElement("div");
-		dropdown.addClass("mn-filter-dropdown", "ai-lightning-dropdown");
-		const rect = anchor.getBoundingClientRect();
-		dropdown.style.left = `${rect.left}px`;
-		dropdown.style.top = `${rect.bottom + 4}px`;
-		dropdown.style.width = `${rect.width}px`;
-		const tags = this.plugin.settings.tags || [];
-		const tagCounts = {};
-		for (const n of allNodes)
-			if (n.tagId) tagCounts[n.tagId] = (tagCounts[n.tagId] || 0) + 1;
-		const noTagCount = allNodes.filter((n) => !n.tagId).length;
-		const allItem = dropdown.createEl("div", {
-			cls: `mn-filter-dropdown-item ${this.tagFilter === null ? "mn-item-active" : ""}`,
-		});
-		allItem.createEl("span", {
-			text: "\u{1F3F7}\uFE0F \u5168\u90E8\u6807\u7B7E",
-		});
-		allItem.onclick = () => {
-			this.tagFilter = null;
-			this.renderContent();
-			dropdown.remove();
-		};
-		for (const tag of tags) {
-			const count = tagCounts[tag.id] || 0;
-			if (count === 0 && this.tagFilter !== tag.id) continue;
-			const item = dropdown.createEl("div", {
-				cls: `mn-filter-dropdown-item ${this.tagFilter === tag.id ? "mn-item-active" : ""}`,
-			});
-			const left = item.createEl("div", {
-				attr: { style: "display: flex; align-items: center; gap: 6px;" },
-			});
-			left.createEl("span", { text: tag.emoji });
-			left.createEl("span", { text: tag.name });
-			item.createEl("span", { text: String(count), cls: "mn-filter-count" });
-			item.onclick = () => {
-				this.tagFilter = this.tagFilter === tag.id ? null : tag.id;
-				this.renderContent();
-				dropdown.remove();
-			};
-		}
-		if (noTagCount > 0 || this.tagFilter === "__none__") {
-			const noneItem = dropdown.createEl("div", {
-				cls: `mn-filter-dropdown-item ${this.tagFilter === "__none__" ? "mn-item-active" : ""}`,
-			});
-			noneItem.createEl("span", { text: "\u{1F3F7}\uFE0F \u65E0\u6807\u7B7E" });
-			noneItem.createEl("span", {
-				text: String(noTagCount),
-				cls: "mn-filter-count",
-			});
-			noneItem.onclick = () => {
-				this.tagFilter = this.tagFilter === "__none__" ? null : "__none__";
-				this.renderContent();
-				dropdown.remove();
-			};
-		}
-		document.body.appendChild(dropdown);
-		const closeHandler = (e) => {
-			if (!dropdown.contains(e.target)) {
-				dropdown.remove();
-				document.removeEventListener("click", closeHandler);
-			}
-		};
-		setTimeout(() => document.addEventListener("click", closeHandler), 10);
-	}
-	async changeNodeTag(node, tagId, filePath) {
-		await this.updateFileContent(
-			filePath,
-			(currentText) =>
-				annotationRepository.updateAnnotationTag({
-					text: currentText,
-					id: node.id,
-					tagId,
-				}).text,
-		);
-		this.renderContent();
-	}
-	jumpToNode(node, filePath) {
-		const targetEditor = this.findEditor(filePath);
-		if (!targetEditor) return;
-		try {
-			const editorText = targetEditor.getValue();
-			const idx = editorText.indexOf(`[${node.id}]`);
-			let pos;
-			if (idx !== -1) {
-				pos = targetEditor.offsetToPos(idx);
-			} else {
-				pos = targetEditor.offsetToPos(node.from);
-			}
-			targetEditor.setCursor(pos);
-			targetEditor.scrollIntoView(
-				{
-					from: { line: Math.max(0, pos.line - 5), ch: 0 },
-					to: { line: pos.line + 5, ch: 0 },
-				},
-				true,
-			);
-		} catch (e) {
-			console.error("Failed to jump to node", e);
-		}
-	}
-	async changeNodeState(node, newState, filePath) {
-		await this.updateFileContent(
-			filePath,
-			(currentText) =>
-				annotationRepository.updateAnnotationState({
-					text: currentText,
-					id: node.id,
-					state: newState,
-				}).text,
-		);
-		new import_obsidian7.Notice(
-			`\u72B6\u6001\u5DF2\u66F4\u65B0: ${node.id} \u2192 State ${newState}`,
-		);
-		this.renderContent();
-	}
-	async deleteNode(node, filePath) {
-		await this.updateFileContent(
-			filePath,
-			(currentText) =>
-				annotationRepository.deleteAnnotation(currentText, node.id).text,
-		);
-		new import_obsidian7.Notice(`\u5DF2\u5220\u9664\u6807\u6CE8: ${node.id}`);
-		this.renderContent();
-	}
-	async deleteMergedNote(nodeId, filePath) {
-		await this.updateFileContent(
-			filePath,
-			(currentText) =>
-				annotationRepository.deleteMergedNote(currentText, nodeId).text,
-		);
-		new import_obsidian7.Notice(
-			`\u5DF2\u5220\u9664\u5408\u5E76\u7B14\u8BB0: ${nodeId}`,
-		);
-		this.renderContent();
-	}
-	onMergeSelected() {
-		const selectedIds = Array.from(this.selectedNodes);
-		new MergeModeModal(this.app, selectedIds.length, (mode) => {
-			if (mode === "concat") {
-				this.mergeSelectedConcat();
-			} else if (mode === "ai") {
-				this.mergeSelectedAI();
-			} else if (mode === "guided") {
-				const activeFile = this.app.workspace.getActiveFile();
-				if (!activeFile) return;
-				const editor = this.findEditor(activeFile.path);
-				if (!editor) return;
-				const fileContent = editor.getDoc().getValue();
-				const nodes = annotationRepository.parseMarkingNodes(fileContent);
-				const annotations = [];
-				for (const id of selectedIds) {
-					const node = nodes.find((n) => n.id === id);
-					if (!node) continue;
-					const content =
-						annotationRepository.getCalloutContent(fileContent, id) ||
-						node.summary ||
-						"";
-					if (content) {
-						annotations.push(
-							`\u3010\u6807\u6CE8 ${annotations.length + 1}\u3011
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.refreshTimer = null;
+    this.stateFilter = null;
+    // single-select state filter
+    this.tagFilter = null;
+    // single-select tag filter
+    this.expandedNodeId = null;
+    this.selectedNodes = /* @__PURE__ */ new Set();
+    this.bulkBar = null;
+    this.suppressRefresh = false;
+    this.webSearchEnabled = false;
+    this.mergeService = new MergeService();
+    this.plugin = plugin;
+  }
+  getViewType() {
+    return MARKING_SIDEBAR_VIEW_TYPE;
+  }
+  getDisplayText() {
+    return "Marking Note";
+  }
+  getIcon() {
+    return "highlighter";
+  }
+  async onOpen() {
+    this.renderContent();
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () => {
+        if (!this.suppressRefresh)
+          this.debouncedRefresh();
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("modify", (file) => {
+        if (this.suppressRefresh)
+          return;
+        const activeFile = this.app.workspace.getActiveFile();
+        if (activeFile && file.path === activeFile.path) {
+          this.debouncedRefresh();
+        }
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("editor-change", () => {
+        if (!this.suppressRefresh)
+          this.debouncedRefresh();
+      })
+    );
+  }
+  debouncedRefresh() {
+    if (this.refreshTimer)
+      window.clearTimeout(this.refreshTimer);
+    this.refreshTimer = window.setTimeout(() => {
+      this.renderContent();
+    }, 1200);
+  }
+  findEditor(filePath) {
+    const leaves = this.app.workspace.getLeavesOfType("markdown");
+    for (const leaf of leaves) {
+      const mdView = leaf.view;
+      if (mdView.file && mdView.file.path === filePath)
+        return mdView.editor;
+    }
+    return null;
+  }
+  async updateFileContent(filePath, updater) {
+    const editor = this.findEditor(filePath);
+    if (editor) {
+      const current2 = editor.getValue();
+      const updated2 = updater(current2);
+      if (updated2 !== current2) {
+        editor.setValue(updated2);
+      }
+      return updated2;
+    }
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof import_obsidian7.TFile)) {
+      return null;
+    }
+    const current = await this.app.vault.read(file);
+    const updated = updater(current);
+    if (updated !== current) {
+      await this.app.vault.modify(file, updated);
+    }
+    return updated;
+  }
+  async renderContent() {
+    const container = this.containerEl.children[1];
+    const previousScroll = container.scrollTop;
+    container.empty();
+    const headerDiv = container.createEl("div", { cls: "mn-sidebar-header" });
+    headerDiv.createEl("h4", { text: "\u{1F4DD} Marking Note" });
+    const refreshBtn = headerDiv.createEl("button", {
+      text: "\u{1F504}",
+      cls: "mn-sidebar-refresh"
+    });
+    refreshBtn.title = "\u624B\u52A8\u5237\u65B0";
+    refreshBtn.onclick = () => this.renderContent();
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile) {
+      container.createEl("p", {
+        text: "\u6CA1\u6709\u6253\u5F00\u7684\u6587\u4EF6",
+        cls: "mn-sidebar-empty"
+      });
+      return;
+    }
+    container.createEl("p", {
+      text: `\u{1F4C4} ${activeFile.basename}`,
+      cls: "mn-sidebar-filename"
+    });
+    let fileContent;
+    const editor = this.findEditor(activeFile.path);
+    if (editor) {
+      fileContent = editor.getDoc().getValue();
+    } else {
+      fileContent = await this.app.vault.read(activeFile);
+    }
+    const nodes = annotationRepository.parseMarkingNodes(fileContent);
+    const annotatedNodes = nodes.filter((n) => !n.isPlain);
+    const mergedNotes = annotationRepository.parseMergedNoteNodes(fileContent);
+    if (annotatedNodes.length === 0 && mergedNotes.length === 0) {
+      container.createEl("p", {
+        text: "\u6682\u65E0\u9AD8\u4EAE\u6807\u6CE8\u6216\u5408\u5E76\u7B14\u8BB0",
+        cls: "mn-sidebar-empty"
+      });
+      return;
+    }
+    const filterBar = container.createEl("div", { cls: "mn-filter-bar" });
+    const stateLabels = {
+      "0": "\u23F3 \u5F85\u5904\u7406",
+      "1": "\u270F\uFE0F AI\u6807\u6CE8",
+      "2": "\u{1F441}\uFE0F \u5BA1\u9605",
+      "3": "\u2705 \u5DF2\u5F52\u6863"
+    };
+    const stageBtnText = this.stateFilter !== null ? stateLabels[this.stateFilter] : "\u{1F50D} \u5168\u90E8\u9636\u6BB5";
+    const stageBtn = filterBar.createEl("div", {
+      cls: `mn-filter-dropdown-btn ${this.stateFilter !== null ? "mn-filter-active" : ""}`
+    });
+    stageBtn.createEl("span", { text: stageBtnText });
+    stageBtn.createEl("span", { text: "\u25BC", cls: "mn-btn-chevron" });
+    stageBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.showStageDropdown(stageBtn, annotatedNodes);
+    };
+    const tags = this.plugin.settings.tags || [];
+    let tagBtnText = "\u{1F3F7}\uFE0F \u5168\u90E8\u6807\u7B7E";
+    if (this.tagFilter === "__none__")
+      tagBtnText = "\u{1F3F7}\uFE0F \u65E0\u6807\u7B7E";
+    else if (this.tagFilter !== null) {
+      const activeTag = tags.find((t) => t.id === this.tagFilter);
+      if (activeTag)
+        tagBtnText = `${activeTag.emoji} ${activeTag.name}`;
+    }
+    const tagBtn = filterBar.createEl("div", {
+      cls: `mn-filter-dropdown-btn ${this.tagFilter !== null ? "mn-filter-active" : ""}`
+    });
+    tagBtn.createEl("span", { text: tagBtnText });
+    tagBtn.createEl("span", { text: "\u25BC", cls: "mn-btn-chevron" });
+    tagBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.showTagDropdown(tagBtn, annotatedNodes);
+    };
+    this.bulkBar = container.createEl("div", {
+      cls: "mn-bulk-bar",
+      attr: {
+        style: "display: none; padding: 8px 10px; background: var(--background-modifier-hover); border-radius: 6px; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; align-items: center;"
+      }
+    });
+    const list = container.createEl("div", { cls: "mn-sidebar-list" });
+    for (const node of annotatedNodes) {
+      if (this.stateFilter !== null && node.state !== this.stateFilter)
+        continue;
+      if (this.tagFilter !== null) {
+        if (this.tagFilter === "__none__" && node.tagId)
+          continue;
+        if (this.tagFilter !== "__none__" && node.tagId !== this.tagFilter)
+          continue;
+      }
+      this.renderNodeItem(list, node, fileContent, activeFile.path);
+    }
+    if (mergedNotes.length > 0) {
+      const mergedSection = container.createEl("div", {
+        cls: "mn-merged-section"
+      });
+      mergedSection.createEl("h5", {
+        text: `\u{1F517} \u5408\u5E76\u7B14\u8BB0 (${mergedNotes.length})`,
+        attr: { style: "margin: 16px 0 8px 0;" }
+      });
+      const mergedList = mergedSection.createEl("div", {
+        cls: "mn-sidebar-list"
+      });
+      for (const mergedNote of mergedNotes) {
+        this.renderMergedNodeItem(mergedList, mergedNote, activeFile.path);
+      }
+    }
+    container.scrollTop = previousScroll;
+  }
+  renderMergedNodeItem(parent, mergedNote, filePath) {
+    const cardContainer = parent.createEl("div", {
+      attr: { style: "margin-bottom: 8px;" }
+    });
+    const card = cardContainer.createEl("div", {
+      cls: "mn-sidebar-card mn-merged-card"
+    });
+    const topRow = card.createEl("div", {
+      cls: "mn-card-top",
+      attr: { style: "display: flex; align-items: center;" }
+    });
+    topRow.createEl("span", { text: "\u{1F517}", cls: "mn-card-icon" });
+    topRow.createEl("span", { text: mergedNote.title, cls: "mn-card-text" });
+    card.createEl("p", { text: mergedNote.preview, cls: "mn-card-summary" });
+    const actions = card.createEl("div", { cls: "mn-card-actions" });
+    const openBtn = actions.createEl("button", {
+      text: "\u{1F4D6} \u67E5\u770B",
+      cls: "mn-action-btn"
+    });
+    openBtn.onclick = (e) => {
+      e.stopPropagation();
+      card.click();
+    };
+    const delBtn = actions.createEl("button", {
+      text: "\u{1F5D1}\uFE0F",
+      cls: "mn-action-btn mn-action-danger"
+    });
+    delBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await this.deleteMergedNote(mergedNote.id, filePath);
+    };
+    const accordionDiv = cardContainer.createEl("div", {
+      cls: "mn-card-accordion",
+      attr: {
+        style: "display: none; padding: 10px; background: var(--background-primary); border-radius: 0 0 6px 6px; border: 1px solid var(--background-modifier-border); border-top: none;"
+      }
+    });
+    const accordionKey = `merged:${mergedNote.id}`;
+    if (this.expandedNodeId === accordionKey) {
+      accordionDiv.style.display = "block";
+      this.renderMergedAccordionContent(accordionDiv, mergedNote.id, filePath);
+    }
+    card.onclick = () => {
+      const isExpanded = accordionDiv.style.display !== "none";
+      parent.querySelectorAll(".mn-card-accordion").forEach((el) => el.style.display = "none");
+      if (!isExpanded) {
+        this.expandedNodeId = accordionKey;
+        accordionDiv.style.display = "block";
+        if (!accordionDiv.hasChildNodes()) {
+          this.renderMergedAccordionContent(
+            accordionDiv,
+            mergedNote.id,
+            filePath
+          );
+        }
+      } else {
+        this.expandedNodeId = null;
+      }
+    };
+  }
+  async renderMergedAccordionContent(container, nodeId, filePath) {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!file)
+      return;
+    const fullContent = await this.app.vault.read(file);
+    const richText = annotationRepository.getCalloutContent(fullContent, nodeId) || "";
+    const textDisplay = container.createEl("div", {
+      cls: "mn-accordion-text",
+      attr: {
+        style: "max-height: 40vh; overflow-y: auto; font-size: 0.9em; line-height: 1.5;"
+      }
+    });
+    if (richText) {
+      await import_obsidian7.MarkdownRenderer.render(
+        this.app,
+        richText,
+        textDisplay,
+        "",
+        this
+      );
+    }
+    container.createEl("div", {
+      text: "\u{1F512} \u5408\u5E76\u7B14\u8BB0\u5F53\u524D\u4E3A\u53EA\u8BFB\u5185\u5BB9\uFF0C\u7528\u4E8E\u96C6\u4E2D\u67E5\u770B\u4E0E\u56DE\u987E\u3002",
+      attr: {
+        style: "margin-top: 8px; font-size: 0.8em; color: var(--text-muted);"
+      }
+    });
+  }
+  renderNodeItem(parent, node, _fileContent, filePath) {
+    const stateLabels = {
+      "0": "\u23F3",
+      "1": "\u270F\uFE0F",
+      "2": "\u{1F441}\uFE0F",
+      "3": "\u2705"
+    };
+    const tags = this.plugin.settings.tags || [];
+    const tag = node.tagId ? tags.find((t) => t.id === node.tagId) : null;
+    const cardContainer = parent.createEl("div", {
+      attr: { style: "margin-bottom: 8px;" }
+    });
+    const card = cardContainer.createEl("div", {
+      cls: `mn-sidebar-card mn-card-state-${node.state}`
+    });
+    if (tag) {
+      card.style.borderLeftColor = getTagBorderAccent(tag);
+    }
+    const checkbox = card.createEl("input", {
+      type: "checkbox",
+      cls: "mn-card-checkbox",
+      attr: { style: "margin-right: 6px; flex-shrink: 0; cursor: pointer;" }
+    });
+    checkbox.checked = this.selectedNodes.has(node.id);
+    checkbox.onclick = (e) => {
+      e.stopPropagation();
+      if (checkbox.checked) {
+        this.selectedNodes.add(node.id);
+      } else {
+        this.selectedNodes.delete(node.id);
+      }
+      this.updateBulkBar();
+    };
+    const topRow = card.createEl("div", {
+      cls: "mn-card-top",
+      attr: { style: "display: flex; align-items: center;" }
+    });
+    topRow.createEl("span", {
+      text: stateLabels[node.state] || "\u{1F916}",
+      cls: "mn-card-icon"
+    });
+    topRow.createEl("span", {
+      text: node.text.length > 50 ? node.text.slice(0, 50) + "..." : node.text,
+      cls: "mn-card-text"
+    });
+    if (node.summary) {
+      card.createEl("p", { text: node.summary, cls: "mn-card-summary" });
+    }
+    const actions = card.createEl("div", { cls: "mn-card-actions" });
+    const jumpBtn = actions.createEl("button", {
+      text: "\u{1F4CD} \u5B9A\u4F4D",
+      cls: "mn-action-btn"
+    });
+    jumpBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.jumpToNode(node, filePath);
+    };
+    if (node.state !== "3") {
+      const nextState = String(parseInt(node.state) + 1);
+      const nextLabels = {
+        "1": "\u2192 \u5BA1\u9605",
+        "2": "\u2192 \u5F52\u6863",
+        "3": "\u2192 \u5B8C\u6210"
+      };
+      const advBtn = actions.createEl("button", {
+        text: nextLabels[nextState] || "\u23ED\uFE0F",
+        cls: "mn-action-btn"
+      });
+      advBtn.onclick = async (e) => {
+        e.stopPropagation();
+        await this.changeNodeState(node, nextState, filePath);
+      };
+    }
+    const tagBtnText = tag ? `${tag.emoji} ${tag.name}` : "\u{1F3F7}\uFE0F";
+    const tagBtn = actions.createEl("button", {
+      text: tagBtnText,
+      cls: "mn-action-btn"
+    });
+    if (tag) {
+      applyTagButtonStyle(tagBtn, tag);
+    }
+    tagBtn.title = "\u9009\u62E9\u6807\u7B7E";
+    tagBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.showTagSelector(tagBtn, node, filePath);
+    };
+    const delBtn = actions.createEl("button", {
+      text: "\u{1F5D1}\uFE0F",
+      cls: "mn-action-btn mn-action-danger"
+    });
+    delBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await this.deleteNode(node, filePath);
+    };
+    const accordionDiv = cardContainer.createEl("div", {
+      cls: "mn-card-accordion",
+      attr: {
+        style: "display: none; padding: 10px; background: var(--background-primary); border-radius: 0 0 6px 6px; border: 1px solid var(--background-modifier-border); border-top: none;"
+      }
+    });
+    if (this.expandedNodeId === node.id) {
+      accordionDiv.style.display = "block";
+      this.renderAccordionContent(accordionDiv, node, filePath);
+    }
+    card.onclick = (e) => {
+      if (e.target.closest(".mn-card-actions"))
+        return;
+      const isExpanded = accordionDiv.style.display !== "none";
+      parent.querySelectorAll(".mn-card-accordion").forEach((el) => el.style.display = "none");
+      if (!isExpanded) {
+        this.suppressRefresh = true;
+        this.expandedNodeId = node.id;
+        accordionDiv.style.display = "block";
+        this.jumpToNode(node, filePath);
+        if (!accordionDiv.hasChildNodes()) {
+          this.renderAccordionContent(accordionDiv, node, filePath);
+        }
+        setTimeout(() => {
+          this.suppressRefresh = false;
+        }, 2e3);
+      } else {
+        this.expandedNodeId = null;
+      }
+    };
+  }
+  async renderAccordionContent(container, node, filePath) {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!file)
+      return;
+    const fullContent = await this.app.vault.read(file);
+    const richText = annotationRepository.getCalloutContent(
+      fullContent,
+      node.id
+    );
+    const textDisplay = container.createEl("div", {
+      cls: "mn-accordion-text",
+      attr: {
+        style: "max-height: 40vh; overflow-y: auto; font-size: 0.9em; line-height: 1.5;"
+      }
+    });
+    if (richText) {
+      await import_obsidian7.MarkdownRenderer.render(
+        this.app,
+        richText,
+        textDisplay,
+        "",
+        this
+      );
+    } else {
+      textDisplay.createEl("div", {
+        text: node.text,
+        attr: { style: "color: var(--text-muted); font-style: italic;" }
+      });
+    }
+    if (node.state !== "3") {
+      const chatContainer = container.createEl("div", {
+        cls: "mn-accordion-chat-row"
+      });
+      const input = chatContainer.createEl("input", {
+        type: "text",
+        placeholder: "\u7EE7\u7EED\u8FFD\u95EE...",
+        cls: "mn-accordion-input mn-accordion-chat-input"
+      });
+      const undoBtn = chatContainer.createEl("button", {
+        text: "\u21A9\uFE0F",
+        cls: "mod-cta mn-accordion-chat-btn mn-accordion-chat-btn-icon"
+      });
+      undoBtn.title = "\u64A4\u56DE\u5230\u4E0A\u4E00\u6B21\u7684 AI \u56DE\u590D";
+      const webSearchBtn = chatContainer.createEl("button", {
+        text: "\u{1F50D}",
+        cls: "mod-cta mn-accordion-chat-btn mn-accordion-chat-btn-icon"
+      });
+      webSearchBtn.title = "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
+      webSearchBtn.style.opacity = "0.5";
+      webSearchBtn.onclick = () => {
+        this.webSearchEnabled = !this.webSearchEnabled;
+        webSearchBtn.style.opacity = this.webSearchEnabled ? "1" : "0.5";
+        webSearchBtn.style.background = this.webSearchEnabled ? "var(--interactive-accent)" : "";
+        webSearchBtn.title = this.webSearchEnabled ? "\u5173\u95ED\u7F51\u7EDC\u641C\u7D22" : "\u5F00\u542F\u7F51\u7EDC\u641C\u7D22";
+      };
+      const sendBtn = chatContainer.createEl("button", {
+        text: "\u53D1\u9001",
+        cls: "mod-cta mn-accordion-chat-btn mn-accordion-chat-btn-send"
+      });
+      const updateUndoBtnState = () => {
+        undoBtn.disabled = !this.plugin.canUndoChat(node.id);
+        if (undoBtn.disabled) {
+          undoBtn.style.opacity = "0.5";
+          undoBtn.style.cursor = "not-allowed";
+        } else {
+          undoBtn.style.opacity = "1";
+          undoBtn.style.cursor = "pointer";
+        }
+      };
+      const doSend = async () => {
+        const msg = input.value.trim();
+        if (!msg)
+          return;
+        const lastValue = msg;
+        sendBtn.disabled = true;
+        input.disabled = true;
+        input.value = "";
+        input.placeholder = "AI \u601D\u8003\u4E2D...";
+        this.suppressRefresh = true;
+        try {
+          this.plugin.pushChatHistory(node.id, richText || "");
+          updateUndoBtnState();
+          const updatedContent = await this.plugin.handleFollowUp(
+            node.id,
+            msg,
+            richText || node.text,
+            filePath,
+            { enableWebSearch: this.webSearchEnabled }
+          );
+          if (updatedContent) {
+            await this.updateFileContent(
+              filePath,
+              (currentText) => annotationRepository.updateCalloutContent({
+                text: currentText,
+                id: node.id,
+                richText: updatedContent.richText
+              }).text
+            );
+            textDisplay.empty();
+            await import_obsidian7.MarkdownRenderer.render(
+              this.app,
+              updatedContent.richText,
+              textDisplay,
+              "",
+              this
+            );
+          }
+        } catch (err) {
+          console.error(err);
+          input.value = lastValue;
+        } finally {
+          sendBtn.disabled = false;
+          input.disabled = false;
+          input.placeholder = "\u7EE7\u7EED\u8FFD\u95EE...";
+          setTimeout(() => {
+            this.suppressRefresh = false;
+          }, 1e3);
+        }
+      };
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          doSend();
+        }
+      };
+      sendBtn.onclick = (e) => {
+        e.stopPropagation();
+        doSend();
+      };
+      updateUndoBtnState();
+      undoBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!this.plugin.canUndoChat(node.id))
+          return;
+        const previousRichText = this.plugin.popChatHistory(node.id);
+        if (previousRichText === null)
+          return;
+        await this.updateFileContent(filePath, (currentText) => {
+          if (previousRichText) {
+            return annotationRepository.updateCalloutContent({
+              text: currentText,
+              id: node.id,
+              richText: previousRichText
+            }).text;
+          }
+          return annotationRepository.deleteCallout(currentText, node.id).text;
+        });
+        textDisplay.empty();
+        if (previousRichText) {
+          await import_obsidian7.MarkdownRenderer.render(
+            this.app,
+            previousRichText,
+            textDisplay,
+            "",
+            this
+          );
+        } else {
+          textDisplay.createEl("div", {
+            text: node.text,
+            attr: { style: "color: var(--text-muted); font-style: italic;" }
+          });
+        }
+        updateUndoBtnState();
+      };
+    } else {
+      container.createEl("div", {
+        text: "\u2705 \u5DF2\u5F52\u6863 \u2014 \u5185\u5BB9\u5DF2\u9501\u5B9A",
+        attr: {
+          style: "margin-top: 8px; font-size: 0.8em; color: var(--text-muted); text-align: center; font-style: italic;"
+        }
+      });
+    }
+  }
+  showTagSelector(anchor, node, filePath) {
+    const existing = document.querySelector(".mn-tag-dropdown");
+    if (existing)
+      existing.remove();
+    const dropdown = document.createElement("div");
+    dropdown.addClass("mn-tag-dropdown");
+    const rect = anchor.getBoundingClientRect();
+    dropdown.style.position = "fixed";
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.top = `${rect.bottom + 4}px`;
+    dropdown.style.zIndex = "10000";
+    const noneItem = dropdown.createEl("div", {
+      text: "\u2014 \u65E0\u6807\u7B7E \u2014",
+      cls: "ai-lightning-item"
+    });
+    noneItem.onclick = async () => {
+      dropdown.remove();
+      await this.changeNodeTag(node, "", filePath);
+    };
+    for (const tag of this.plugin.settings.tags) {
+      const item = dropdown.createEl("div", { cls: "ai-lightning-item" });
+      item.createEl("span", { text: `${tag.emoji} ${tag.name}` });
+      if (node.tagId === tag.id)
+        item.style.fontWeight = "bold";
+      item.onclick = async () => {
+        dropdown.remove();
+        await this.changeNodeTag(node, tag.id, filePath);
+      };
+    }
+    document.body.appendChild(dropdown);
+    const closeHandler = (e) => {
+      if (!dropdown.contains(e.target)) {
+        dropdown.remove();
+        document.removeEventListener("click", closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeHandler), 10);
+  }
+  showStageDropdown(anchor, allNodes) {
+    const existing = document.querySelector(".mn-filter-dropdown");
+    if (existing)
+      existing.remove();
+    const dropdown = document.createElement("div");
+    dropdown.addClass("mn-filter-dropdown", "ai-lightning-dropdown");
+    const rect = anchor.getBoundingClientRect();
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.top = `${rect.bottom + 4}px`;
+    dropdown.style.width = `${rect.width}px`;
+    const stateLabels = {
+      "0": "\u23F3 \u5F85\u5904\u7406",
+      "1": "\u270F\uFE0F AI\u6807\u6CE8",
+      "2": "\u{1F441}\uFE0F \u5BA1\u9605",
+      "3": "\u2705 \u5DF2\u5F52\u6863"
+    };
+    const stateCounts = {
+      "0": 0,
+      "1": 0,
+      "2": 0,
+      "3": 0
+    };
+    for (const n of allNodes)
+      stateCounts[n.state]++;
+    const allItem = dropdown.createEl("div", {
+      cls: `mn-filter-dropdown-item ${this.stateFilter === null ? "mn-item-active" : ""}`
+    });
+    allItem.createEl("span", { text: "\u{1F50D} \u5168\u90E8\u9636\u6BB5" });
+    allItem.onclick = () => {
+      this.stateFilter = null;
+      this.renderContent();
+      dropdown.remove();
+    };
+    for (const [state, label] of Object.entries(stateLabels)) {
+      const count = stateCounts[state] || 0;
+      if (count === 0 && this.stateFilter !== state)
+        continue;
+      const item = dropdown.createEl("div", {
+        cls: `mn-filter-dropdown-item ${this.stateFilter === state ? "mn-item-active" : ""}`
+      });
+      item.createEl("span", { text: label });
+      item.createEl("span", { text: String(count), cls: "mn-filter-count" });
+      item.onclick = () => {
+        this.stateFilter = this.stateFilter === state ? null : state;
+        this.renderContent();
+        dropdown.remove();
+      };
+    }
+    document.body.appendChild(dropdown);
+    const closeHandler = (e) => {
+      if (!dropdown.contains(e.target)) {
+        dropdown.remove();
+        document.removeEventListener("click", closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeHandler), 10);
+  }
+  showTagDropdown(anchor, allNodes) {
+    const existing = document.querySelector(".mn-filter-dropdown");
+    if (existing)
+      existing.remove();
+    const dropdown = document.createElement("div");
+    dropdown.addClass("mn-filter-dropdown", "ai-lightning-dropdown");
+    const rect = anchor.getBoundingClientRect();
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.top = `${rect.bottom + 4}px`;
+    dropdown.style.width = `${rect.width}px`;
+    const tags = this.plugin.settings.tags || [];
+    const tagCounts = {};
+    for (const n of allNodes)
+      if (n.tagId)
+        tagCounts[n.tagId] = (tagCounts[n.tagId] || 0) + 1;
+    const noTagCount = allNodes.filter((n) => !n.tagId).length;
+    const allItem = dropdown.createEl("div", {
+      cls: `mn-filter-dropdown-item ${this.tagFilter === null ? "mn-item-active" : ""}`
+    });
+    allItem.createEl("span", { text: "\u{1F3F7}\uFE0F \u5168\u90E8\u6807\u7B7E" });
+    allItem.onclick = () => {
+      this.tagFilter = null;
+      this.renderContent();
+      dropdown.remove();
+    };
+    for (const tag of tags) {
+      const count = tagCounts[tag.id] || 0;
+      if (count === 0 && this.tagFilter !== tag.id)
+        continue;
+      const item = dropdown.createEl("div", {
+        cls: `mn-filter-dropdown-item ${this.tagFilter === tag.id ? "mn-item-active" : ""}`
+      });
+      const left = item.createEl("div", {
+        attr: { style: "display: flex; align-items: center; gap: 6px;" }
+      });
+      left.createEl("span", { text: tag.emoji });
+      left.createEl("span", { text: tag.name });
+      item.createEl("span", { text: String(count), cls: "mn-filter-count" });
+      item.onclick = () => {
+        this.tagFilter = this.tagFilter === tag.id ? null : tag.id;
+        this.renderContent();
+        dropdown.remove();
+      };
+    }
+    if (noTagCount > 0 || this.tagFilter === "__none__") {
+      const noneItem = dropdown.createEl("div", {
+        cls: `mn-filter-dropdown-item ${this.tagFilter === "__none__" ? "mn-item-active" : ""}`
+      });
+      noneItem.createEl("span", { text: "\u{1F3F7}\uFE0F \u65E0\u6807\u7B7E" });
+      noneItem.createEl("span", {
+        text: String(noTagCount),
+        cls: "mn-filter-count"
+      });
+      noneItem.onclick = () => {
+        this.tagFilter = this.tagFilter === "__none__" ? null : "__none__";
+        this.renderContent();
+        dropdown.remove();
+      };
+    }
+    document.body.appendChild(dropdown);
+    const closeHandler = (e) => {
+      if (!dropdown.contains(e.target)) {
+        dropdown.remove();
+        document.removeEventListener("click", closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener("click", closeHandler), 10);
+  }
+  async changeNodeTag(node, tagId, filePath) {
+    await this.updateFileContent(
+      filePath,
+      (currentText) => annotationRepository.updateAnnotationTag({
+        text: currentText,
+        id: node.id,
+        tagId
+      }).text
+    );
+    this.renderContent();
+  }
+  jumpToNode(node, filePath) {
+    const targetEditor = this.findEditor(filePath);
+    if (!targetEditor)
+      return;
+    try {
+      const editorText = targetEditor.getValue();
+      const idx = editorText.indexOf(`[${node.id}]`);
+      let pos;
+      if (idx !== -1) {
+        pos = targetEditor.offsetToPos(idx);
+      } else {
+        pos = targetEditor.offsetToPos(node.from);
+      }
+      targetEditor.setCursor(pos);
+      targetEditor.scrollIntoView(
+        {
+          from: { line: Math.max(0, pos.line - 5), ch: 0 },
+          to: { line: pos.line + 5, ch: 0 }
+        },
+        true
+      );
+    } catch (e) {
+      console.error("Failed to jump to node", e);
+    }
+  }
+  async changeNodeState(node, newState, filePath) {
+    await this.updateFileContent(
+      filePath,
+      (currentText) => annotationRepository.updateAnnotationState({
+        text: currentText,
+        id: node.id,
+        state: newState
+      }).text
+    );
+    new import_obsidian7.Notice(`\u72B6\u6001\u5DF2\u66F4\u65B0: ${node.id} \u2192 State ${newState}`);
+    this.renderContent();
+  }
+  async deleteNode(node, filePath) {
+    await this.updateFileContent(
+      filePath,
+      (currentText) => annotationRepository.deleteAnnotation(currentText, node.id).text
+    );
+    new import_obsidian7.Notice(`\u5DF2\u5220\u9664\u6807\u6CE8: ${node.id}`);
+    this.renderContent();
+  }
+  async deleteMergedNote(nodeId, filePath) {
+    await this.updateFileContent(
+      filePath,
+      (currentText) => annotationRepository.deleteMergedNote(currentText, nodeId).text
+    );
+    new import_obsidian7.Notice(`\u5DF2\u5220\u9664\u5408\u5E76\u7B14\u8BB0: ${nodeId}`);
+    this.renderContent();
+  }
+  onMergeSelected() {
+    const selectedIds = Array.from(this.selectedNodes);
+    new MergeModeModal(this.app, selectedIds.length, (mode) => {
+      if (mode === "concat") {
+        this.mergeSelectedConcat();
+      } else if (mode === "ai") {
+        this.mergeSelectedAI();
+      } else if (mode === "guided") {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile)
+          return;
+        const editor = this.findEditor(activeFile.path);
+        if (!editor)
+          return;
+        const fileContent = editor.getDoc().getValue();
+        const nodes = annotationRepository.parseMarkingNodes(fileContent);
+        const annotations = [];
+        for (const id of selectedIds) {
+          const node = nodes.find((n) => n.id === id);
+          if (!node)
+            continue;
+          const content = annotationRepository.getCalloutContent(fileContent, id) || node.summary || "";
+          if (content) {
+            annotations.push(
+              `\u3010\u6807\u6CE8 ${annotations.length + 1}\u3011
 \u539F\u6587: ${node.text}
-AI\u5206\u6790: ${content}`,
-						);
-					}
-				}
-				new GuidedMergeModal(
-					this.app,
-					selectedIds.length,
-					annotations,
-					(_mode, topic, style, structure) => {
-						this.mergeSelectedGuided(topic, style, structure);
-					},
-				).open();
-			}
-		}).open();
-	}
-	async mergeSelectedConcat() {
-		const selectedIds = Array.from(this.selectedNodes);
-		if (selectedIds.length < 2) {
-			new import_obsidian7.Notice(
-				"\u8BF7\u9009\u62E9\u81F3\u5C11 2 \u4E2A\u6807\u6CE8",
-			);
-			return;
-		}
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) return;
-		const editor = this.findEditor(activeFile.path);
-		if (!editor) {
-			new import_obsidian7.Notice("\u65E0\u6CD5\u83B7\u53D6\u7F16\u8F91\u5668");
-			return;
-		}
-		const fileContent = editor.getDoc().getValue();
-		const nodes = annotationRepository.parseMarkingNodes(fileContent);
-		const nodeDataList = [];
-		for (const id of selectedIds) {
-			const node = nodes.find((n) => n.id === id);
-			if (!node) continue;
-			const content =
-				annotationRepository.getCalloutContent(fileContent, id) || "";
-			nodeDataList.push({
-				node: {
-					text: node.text,
-					tagId: node.tagId,
-					summary: node.summary || "",
-				},
-				content,
-			});
-		}
-		if (nodeDataList.length < 2) {
-			new import_obsidian7.Notice(
-				"\u6709\u6548\u6807\u6CE8\u5C11\u4E8E 2 \u4E2A",
-			);
-			return;
-		}
-		const merged = this.mergeService.appendConcatenatedMerge({
-			text: editor.getDoc().getValue(),
-			nodes: nodeDataList,
-		});
-		editor.setValue(merged.text);
-		this.selectedNodes.clear();
-		this.renderContent();
-		new import_obsidian7.Notice(
-			`\u5DF2\u5408\u5E76 ${nodeDataList.length} \u4E2A\u6807\u6CE8`,
-		);
-	}
-	async mergeSelectedAI() {
-		const selectedIds = Array.from(this.selectedNodes);
-		if (selectedIds.length < 2) {
-			new import_obsidian7.Notice(
-				"\u8BF7\u9009\u62E9\u81F3\u5C11 2 \u4E2A\u6807\u6CE8",
-			);
-			return;
-		}
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) return;
-		const editor = this.findEditor(activeFile.path);
-		if (!editor) {
-			new import_obsidian7.Notice("\u65E0\u6CD5\u83B7\u53D6\u7F16\u8F91\u5668");
-			return;
-		}
-		const fileContent = editor.getDoc().getValue();
-		const nodes = annotationRepository.parseMarkingNodes(fileContent);
-		const annotations = [];
-		for (const id of selectedIds) {
-			const node = nodes.find((n) => n.id === id);
-			if (!node) continue;
-			const content =
-				annotationRepository.getCalloutContent(fileContent, id) ||
-				node.summary ||
-				"";
-			if (content) {
-				annotations.push(
-					`\u3010\u6807\u6CE8 ${annotations.length + 1}\u3011
+AI\u5206\u6790: ${content}`
+            );
+          }
+        }
+        new GuidedMergeModal(
+          this.app,
+          selectedIds.length,
+          annotations,
+          (_mode, topic, style, structure) => {
+            this.mergeSelectedGuided(topic, style, structure);
+          }
+        ).open();
+      }
+    }).open();
+  }
+  async mergeSelectedConcat() {
+    const selectedIds = Array.from(this.selectedNodes);
+    if (selectedIds.length < 2) {
+      new import_obsidian7.Notice("\u8BF7\u9009\u62E9\u81F3\u5C11 2 \u4E2A\u6807\u6CE8");
+      return;
+    }
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile)
+      return;
+    const editor = this.findEditor(activeFile.path);
+    if (!editor) {
+      new import_obsidian7.Notice("\u65E0\u6CD5\u83B7\u53D6\u7F16\u8F91\u5668");
+      return;
+    }
+    const fileContent = editor.getDoc().getValue();
+    const nodes = annotationRepository.parseMarkingNodes(fileContent);
+    const nodeDataList = [];
+    for (const id of selectedIds) {
+      const node = nodes.find((n) => n.id === id);
+      if (!node)
+        continue;
+      const content = annotationRepository.getCalloutContent(fileContent, id) || "";
+      nodeDataList.push({
+        node: {
+          text: node.text,
+          tagId: node.tagId,
+          summary: node.summary || ""
+        },
+        content
+      });
+    }
+    if (nodeDataList.length < 2) {
+      new import_obsidian7.Notice("\u6709\u6548\u6807\u6CE8\u5C11\u4E8E 2 \u4E2A");
+      return;
+    }
+    const merged = this.mergeService.appendConcatenatedMerge({
+      text: editor.getDoc().getValue(),
+      nodes: nodeDataList
+    });
+    editor.setValue(merged.text);
+    this.selectedNodes.clear();
+    this.renderContent();
+    new import_obsidian7.Notice(`\u5DF2\u5408\u5E76 ${nodeDataList.length} \u4E2A\u6807\u6CE8`);
+  }
+  async mergeSelectedAI() {
+    const selectedIds = Array.from(this.selectedNodes);
+    if (selectedIds.length < 2) {
+      new import_obsidian7.Notice("\u8BF7\u9009\u62E9\u81F3\u5C11 2 \u4E2A\u6807\u6CE8");
+      return;
+    }
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile)
+      return;
+    const editor = this.findEditor(activeFile.path);
+    if (!editor) {
+      new import_obsidian7.Notice("\u65E0\u6CD5\u83B7\u53D6\u7F16\u8F91\u5668");
+      return;
+    }
+    const fileContent = editor.getDoc().getValue();
+    const nodes = annotationRepository.parseMarkingNodes(fileContent);
+    const annotations = [];
+    for (const id of selectedIds) {
+      const node = nodes.find((n) => n.id === id);
+      if (!node)
+        continue;
+      const content = annotationRepository.getCalloutContent(fileContent, id) || node.summary || "";
+      if (content) {
+        annotations.push(
+          `\u3010\u6807\u6CE8 ${annotations.length + 1}\u3011
 \u539F\u6587: ${node.text}
-AI\u5206\u6790: ${content}`,
-				);
-			}
-		}
-		if (annotations.length < 2) {
-			new import_obsidian7.Notice(
-				"\u6709\u6548\u6807\u6CE8\u5C11\u4E8E 2 \u4E2A",
-			);
-			return;
-		}
-		new import_obsidian7.Notice(
-			`\u6B63\u5728\u4F7F\u7528 AI \u91CD\u7EC4 ${annotations.length} \u4E2A\u6807\u6CE8...`,
-		);
-		try {
-			const steward =
-				this.plugin.settings.stewards.find(
-					(s) => s.id === this.plugin.settings.activeStewardId,
-				) || this.plugin.settings.stewards[0];
-			const provider = this.plugin.getProviderForSteward(steward);
-			if (!provider) {
-				new import_obsidian7.Notice("\u672A\u914D\u7F6E AI \u6A21\u578B");
-				return;
-			}
-			const merged = await this.mergeService.generateAiMerge({
-				text: editor.getDoc().getValue(),
-				annotations,
-				steward,
-				provider,
-				settings: this.plugin.settings,
-			});
-			if (merged) {
-				editor.setValue(merged.text);
-				this.selectedNodes.clear();
-				this.renderContent();
-				new import_obsidian7.Notice(
-					`AI \u91CD\u7EC4\u5B8C\u6210\uFF0C\u5DF2\u5408\u5E76 ${annotations.length} \u4E2A\u6807\u6CE8`,
-				);
-			} else {
-				new import_obsidian7.Notice("AI \u91CD\u7EC4\u5931\u8D25");
-			}
-		} catch (error) {
-			new import_obsidian7.Notice(`AI \u91CD\u7EC4\u51FA\u9519: ${error}`);
-		}
-	}
-	async mergeSelectedGuided(topic, style, structure) {
-		const selectedIds = Array.from(this.selectedNodes);
-		if (selectedIds.length < 2) {
-			new import_obsidian7.Notice(
-				"\u8BF7\u9009\u62E9\u81F3\u5C11 2 \u4E2A\u6807\u6CE8",
-			);
-			return;
-		}
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) return;
-		const editor = this.findEditor(activeFile.path);
-		if (!editor) {
-			new import_obsidian7.Notice("\u65E0\u6CD5\u83B7\u53D6\u7F16\u8F91\u5668");
-			return;
-		}
-		const fileContent = editor.getDoc().getValue();
-		const nodes = annotationRepository.parseMarkingNodes(fileContent);
-		const annotations = [];
-		for (const id of selectedIds) {
-			const node = nodes.find((n) => n.id === id);
-			if (!node) continue;
-			const content =
-				annotationRepository.getCalloutContent(fileContent, id) ||
-				node.summary ||
-				"";
-			if (content) {
-				annotations.push(
-					`\u3010\u6807\u6CE8 ${annotations.length + 1}\u3011
+AI\u5206\u6790: ${content}`
+        );
+      }
+    }
+    if (annotations.length < 2) {
+      new import_obsidian7.Notice("\u6709\u6548\u6807\u6CE8\u5C11\u4E8E 2 \u4E2A");
+      return;
+    }
+    new import_obsidian7.Notice(`\u6B63\u5728\u4F7F\u7528 AI \u91CD\u7EC4 ${annotations.length} \u4E2A\u6807\u6CE8...`);
+    try {
+      const steward = this.plugin.settings.stewards.find(
+        (s) => s.id === this.plugin.settings.activeStewardId
+      ) || this.plugin.settings.stewards[0];
+      const provider = this.plugin.getProviderForSteward(steward);
+      if (!provider) {
+        new import_obsidian7.Notice("\u672A\u914D\u7F6E AI \u6A21\u578B");
+        return;
+      }
+      const merged = await this.mergeService.generateAiMerge({
+        text: editor.getDoc().getValue(),
+        annotations,
+        steward,
+        provider,
+        settings: this.plugin.settings
+      });
+      if (merged) {
+        editor.setValue(merged.text);
+        this.selectedNodes.clear();
+        this.renderContent();
+        new import_obsidian7.Notice(`AI \u91CD\u7EC4\u5B8C\u6210\uFF0C\u5DF2\u5408\u5E76 ${annotations.length} \u4E2A\u6807\u6CE8`);
+      } else {
+        new import_obsidian7.Notice("AI \u91CD\u7EC4\u5931\u8D25");
+      }
+    } catch (error) {
+      new import_obsidian7.Notice(`AI \u91CD\u7EC4\u51FA\u9519: ${error}`);
+    }
+  }
+  async mergeSelectedGuided(topic, style, structure) {
+    const selectedIds = Array.from(this.selectedNodes);
+    if (selectedIds.length < 2) {
+      new import_obsidian7.Notice("\u8BF7\u9009\u62E9\u81F3\u5C11 2 \u4E2A\u6807\u6CE8");
+      return;
+    }
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile)
+      return;
+    const editor = this.findEditor(activeFile.path);
+    if (!editor) {
+      new import_obsidian7.Notice("\u65E0\u6CD5\u83B7\u53D6\u7F16\u8F91\u5668");
+      return;
+    }
+    const fileContent = editor.getDoc().getValue();
+    const nodes = annotationRepository.parseMarkingNodes(fileContent);
+    const annotations = [];
+    for (const id of selectedIds) {
+      const node = nodes.find((n) => n.id === id);
+      if (!node)
+        continue;
+      const content = annotationRepository.getCalloutContent(fileContent, id) || node.summary || "";
+      if (content) {
+        annotations.push(
+          `\u3010\u6807\u6CE8 ${annotations.length + 1}\u3011
 \u539F\u6587: ${node.text}
-AI\u5206\u6790: ${content}`,
-				);
-			}
-		}
-		if (annotations.length < 2) {
-			new import_obsidian7.Notice(
-				"\u6709\u6548\u6807\u6CE8\u5C11\u4E8E 2 \u4E2A",
-			);
-			return;
-		}
-		new import_obsidian7.Notice(
-			`\u6B63\u5728\u4F7F\u7528\u5F15\u5BFC\u6A21\u5F0F\u6574\u7406 ${annotations.length} \u4E2A\u6807\u6CE8...`,
-		);
-		try {
-			const steward =
-				this.plugin.settings.stewards.find(
-					(s) => s.id === this.plugin.settings.activeStewardId,
-				) || this.plugin.settings.stewards[0];
-			const provider = this.plugin.getProviderForSteward(steward);
-			if (!provider) {
-				new import_obsidian7.Notice("\u672A\u914D\u7F6E AI \u6A21\u578B");
-				return;
-			}
-			const merged = await this.mergeService.generateGuidedMerge({
-				text: editor.getDoc().getValue(),
-				annotations,
-				topic,
-				style,
-				structure,
-				steward,
-				provider,
-				settings: this.plugin.settings,
-			});
-			if (merged) {
-				editor.setValue(merged.text);
-				this.selectedNodes.clear();
-				this.renderContent();
-				new import_obsidian7.Notice(
-					`\u5F15\u5BFC\u5408\u5E76\u5B8C\u6210\uFF0C\u5DF2\u5408\u5E76 ${annotations.length} \u4E2A\u6807\u6CE8`,
-				);
-			} else {
-				new import_obsidian7.Notice("\u5F15\u5BFC\u5408\u5E76\u5931\u8D25");
-			}
-		} catch (error) {
-			new import_obsidian7.Notice(
-				`\u5F15\u5BFC\u5408\u5E76\u51FA\u9519: ${error}`,
-			);
-		}
-	}
-	updateBulkBar() {
-		if (!this.bulkBar) return;
-		if (this.selectedNodes.size >= 2) {
-			this.bulkBar.style.display = "flex";
-			this.bulkBar.empty();
-			this.bulkBar.createEl("span", {
-				text: `\u5DF2\u9009 ${this.selectedNodes.size} \u4E2A\u6807\u6CE8`,
-				attr: {
-					style:
-						"font-size: 0.85em; color: var(--text-muted); margin-right: 8px;",
-				},
-			});
-			const mergeBtn = this.bulkBar.createEl("button", {
-				text: "\u{1F517} \u5408\u5E76",
-				cls: "mod-cta mn-bulk-btn",
-			});
-			mergeBtn.title = "\u5408\u5E76\u9009\u4E2D\u6807\u6CE8";
-			mergeBtn.onclick = () => this.onMergeSelected();
-			const clearBtn = this.bulkBar.createEl("button", {
-				text: "\u2716 \u53D6\u6D88\u9009\u62E9",
-				cls: "mn-bulk-btn",
-			});
-			clearBtn.onclick = () => {
-				this.selectedNodes.clear();
-				this.renderContent();
-			};
-		} else {
-			this.bulkBar.style.display = "none";
-		}
-	}
-	async onClose() {
-		if (this.refreshTimer) window.clearTimeout(this.refreshTimer);
-	}
+AI\u5206\u6790: ${content}`
+        );
+      }
+    }
+    if (annotations.length < 2) {
+      new import_obsidian7.Notice("\u6709\u6548\u6807\u6CE8\u5C11\u4E8E 2 \u4E2A");
+      return;
+    }
+    new import_obsidian7.Notice(`\u6B63\u5728\u4F7F\u7528\u5F15\u5BFC\u6A21\u5F0F\u6574\u7406 ${annotations.length} \u4E2A\u6807\u6CE8...`);
+    try {
+      const steward = this.plugin.settings.stewards.find(
+        (s) => s.id === this.plugin.settings.activeStewardId
+      ) || this.plugin.settings.stewards[0];
+      const provider = this.plugin.getProviderForSteward(steward);
+      if (!provider) {
+        new import_obsidian7.Notice("\u672A\u914D\u7F6E AI \u6A21\u578B");
+        return;
+      }
+      const merged = await this.mergeService.generateGuidedMerge({
+        text: editor.getDoc().getValue(),
+        annotations,
+        topic,
+        style,
+        structure,
+        steward,
+        provider,
+        settings: this.plugin.settings
+      });
+      if (merged) {
+        editor.setValue(merged.text);
+        this.selectedNodes.clear();
+        this.renderContent();
+        new import_obsidian7.Notice(`\u5F15\u5BFC\u5408\u5E76\u5B8C\u6210\uFF0C\u5DF2\u5408\u5E76 ${annotations.length} \u4E2A\u6807\u6CE8`);
+      } else {
+        new import_obsidian7.Notice("\u5F15\u5BFC\u5408\u5E76\u5931\u8D25");
+      }
+    } catch (error) {
+      new import_obsidian7.Notice(`\u5F15\u5BFC\u5408\u5E76\u51FA\u9519: ${error}`);
+    }
+  }
+  updateBulkBar() {
+    if (!this.bulkBar)
+      return;
+    if (this.selectedNodes.size >= 2) {
+      this.bulkBar.style.display = "flex";
+      this.bulkBar.empty();
+      this.bulkBar.createEl("span", {
+        text: `\u5DF2\u9009 ${this.selectedNodes.size} \u4E2A\u6807\u6CE8`,
+        attr: {
+          style: "font-size: 0.85em; color: var(--text-muted); margin-right: 8px;"
+        }
+      });
+      const mergeBtn = this.bulkBar.createEl("button", {
+        text: "\u{1F517} \u5408\u5E76",
+        cls: "mod-cta mn-bulk-btn"
+      });
+      mergeBtn.title = "\u5408\u5E76\u9009\u4E2D\u6807\u6CE8";
+      mergeBtn.onclick = () => this.onMergeSelected();
+      const clearBtn = this.bulkBar.createEl("button", {
+        text: "\u2716 \u53D6\u6D88\u9009\u62E9",
+        cls: "mn-bulk-btn"
+      });
+      clearBtn.onclick = () => {
+        this.selectedNodes.clear();
+        this.renderContent();
+      };
+    } else {
+      this.bulkBar.style.display = "none";
+    }
+  }
+  async onClose() {
+    if (this.refreshTimer)
+      window.clearTimeout(this.refreshTimer);
+  }
 };
 var MergeModeModal = class extends import_obsidian7.Modal {
-	constructor(app, selectedCount, onConfirm) {
-		super(app);
-		this.selectedCount = selectedCount;
-		this.onConfirm = onConfirm;
-	}
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.empty();
-		contentEl.createEl("h3", { text: "\u{1F517} \u5408\u5E76\u6807\u6CE8" });
-		contentEl.createEl("p", {
-			text: `\u5DF2\u9009\u62E9 ${this.selectedCount} \u4E2A\u6807\u6CE8\uFF0C\u8BF7\u9009\u62E9\u5408\u5E76\u6A21\u5F0F\uFF1A`,
-			attr: { style: "margin-bottom: 16px; color: var(--text-muted);" },
-		});
-		const modes = [
-			{
-				id: "concat",
-				icon: "\u{1F4CB}",
-				title: "\u4EC5\u62FC\u63A5",
-				desc: "\u6309\u9009\u62E9\u987A\u5E8F\u7EC4\u5408\u6240\u6709\u6807\u6CE8\uFF0C\u4FDD\u7559\u6BCF\u4E2A\u6807\u6CE8\u7684\u539F\u6587\u548C AI \u5185\u5BB9",
-			},
-			{
-				id: "ai",
-				icon: "\u{1F916}",
-				title: "AI \u91CD\u7EC4",
-				desc: "\u8BA9 AI \u81EA\u52A8\u53BB\u91CD\u3001\u6392\u5E8F\u3001\u751F\u6210\u8FDE\u8D2F\u7684\u7B14\u8BB0",
-			},
-			{
-				id: "guided",
-				icon: "\u{1F3AF}",
-				title: "\u5F15\u5BFC\u6A21\u5F0F",
-				desc: "\u901A\u8FC7\u5411\u5BFC\u81EA\u5B9A\u4E49\u8F93\u51FA\u8BDD\u9898\u3001\u98CE\u683C\u548C\u7ED3\u6784",
-			},
-		];
-		for (const mode of modes) {
-			const btn = contentEl.createEl("div", {
-				attr: {
-					style:
-						"padding: 12px; border: 1px solid var(--background-modifier-border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s;",
-				},
-			});
-			btn.createEl("div", {
-				text: `${mode.icon} ${mode.title}`,
-				attr: { style: "font-weight: 600; margin-bottom: 4px;" },
-			});
-			btn.createEl("div", {
-				text: mode.desc,
-				attr: { style: "font-size: 0.85em; color: var(--text-muted);" },
-			});
-			btn.onmouseenter = () => {
-				btn.style.backgroundColor = "var(--background-modifier-hover)";
-			};
-			btn.onmouseleave = () => {
-				btn.style.backgroundColor = "";
-			};
-			btn.onclick = () => {
-				this.onConfirm(mode.id);
-				this.close();
-			};
-		}
-	}
-	onClose() {
-		this.contentEl.empty();
-	}
+  constructor(app, selectedCount, onConfirm) {
+    super(app);
+    this.selectedCount = selectedCount;
+    this.onConfirm = onConfirm;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h3", { text: "\u{1F517} \u5408\u5E76\u6807\u6CE8" });
+    contentEl.createEl("p", {
+      text: `\u5DF2\u9009\u62E9 ${this.selectedCount} \u4E2A\u6807\u6CE8\uFF0C\u8BF7\u9009\u62E9\u5408\u5E76\u6A21\u5F0F\uFF1A`,
+      attr: { style: "margin-bottom: 16px; color: var(--text-muted);" }
+    });
+    const modes = [
+      {
+        id: "concat",
+        icon: "\u{1F4CB}",
+        title: "\u4EC5\u62FC\u63A5",
+        desc: "\u6309\u9009\u62E9\u987A\u5E8F\u7EC4\u5408\u6240\u6709\u6807\u6CE8\uFF0C\u4FDD\u7559\u6BCF\u4E2A\u6807\u6CE8\u7684\u539F\u6587\u548C AI \u5185\u5BB9"
+      },
+      {
+        id: "ai",
+        icon: "\u{1F916}",
+        title: "AI \u91CD\u7EC4",
+        desc: "\u8BA9 AI \u81EA\u52A8\u53BB\u91CD\u3001\u6392\u5E8F\u3001\u751F\u6210\u8FDE\u8D2F\u7684\u7B14\u8BB0"
+      },
+      {
+        id: "guided",
+        icon: "\u{1F3AF}",
+        title: "\u5F15\u5BFC\u6A21\u5F0F",
+        desc: "\u901A\u8FC7\u5411\u5BFC\u81EA\u5B9A\u4E49\u8F93\u51FA\u8BDD\u9898\u3001\u98CE\u683C\u548C\u7ED3\u6784"
+      }
+    ];
+    for (const mode of modes) {
+      const btn = contentEl.createEl("div", {
+        attr: {
+          style: "padding: 12px; border: 1px solid var(--background-modifier-border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s;"
+        }
+      });
+      btn.createEl("div", {
+        text: `${mode.icon} ${mode.title}`,
+        attr: { style: "font-weight: 600; margin-bottom: 4px;" }
+      });
+      btn.createEl("div", {
+        text: mode.desc,
+        attr: { style: "font-size: 0.85em; color: var(--text-muted);" }
+      });
+      btn.onmouseenter = () => {
+        btn.style.backgroundColor = "var(--background-modifier-hover)";
+      };
+      btn.onmouseleave = () => {
+        btn.style.backgroundColor = "";
+      };
+      btn.onclick = () => {
+        this.onConfirm(mode.id);
+        this.close();
+      };
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
 };
 var GuidedMergeModal = class extends import_obsidian7.Modal {
-	constructor(app, selectedCount, _annotations, onComplete) {
-		super(app);
-		this.step = 1;
-		this.selections = {
-			topic: null,
-			style: null,
-			structure: null,
-		};
-		this.selectedCount = selectedCount;
-		this.onComplete = onComplete;
-	}
-	onOpen() {
-		this.modalEl.addClass("mn-guided-merge-modal");
-		this.renderStep();
-	}
-	renderStep() {
-		const { contentEl } = this;
-		contentEl.empty();
-		this.modalEl.style.width = "min(92vw, 720px)";
-		this.modalEl.style.maxWidth = "92vw";
-		this.modalEl.style.maxHeight = "84vh";
-		contentEl.addClass("mn-guided-merge-content");
-		const progress = contentEl.createEl("div", {
-			attr: { style: "display: flex; gap: 8px; margin-bottom: 20px;" },
-		});
-		for (let i = 1; i <= 4; i++) {
-			progress.createEl("span", {
-				text: String(i),
-				attr: {
-					style: `width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; background: ${i === this.step ? "var(--interactive-accent)" : "var(--background-modifier-border)"}; color: ${i === this.step ? "var(--text-on-accent)" : "var(--text-muted)"};`,
-				},
-			});
-		}
-		if (this.step === 1) this.renderTopicStep(contentEl);
-		else if (this.step === 2) this.renderStyleStep(contentEl);
-		else if (this.step === 3) this.renderStructureStep(contentEl);
-		else if (this.step === 4) this.renderConfirmStep(contentEl);
-	}
-	renderTopicStep(contentEl) {
-		contentEl.createEl("h3", {
-			text: "\u{1F4DA} \u8BDD\u9898\u805A\u7C7B",
-			attr: { style: "margin: 0 0 8px 0;" },
-		});
-		contentEl.createEl("p", {
-			text: "\u8FD9\u4E9B\u6807\u6CE8\u4E3B\u8981\u6D89\u53CA\u54EA\u4E2A\u9886\u57DF\uFF1F",
-			attr: {
-				style:
-					"margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;",
-			},
-		});
-		const options = [
-			{
-				id: "academic",
-				icon: "\u{1F4DA}",
-				title: "\u5B66\u672F\u7814\u7A76",
-				desc: "\u63D0\u53D6\u6838\u5FC3\u8BBA\u70B9\u548C\u8BC1\u636E",
-			},
-			{
-				id: "concept",
-				icon: "\u{1F4A1}",
-				title: "\u6982\u5FF5\u89E3\u6790",
-				desc: "\u89E3\u91CA\u5173\u952E\u672F\u8BED\u548C\u539F\u7406",
-			},
-			{
-				id: "practical",
-				icon: "\u26A1",
-				title: "\u5B9E\u8DF5\u5E94\u7528",
-				desc: "\u63D0\u70BC\u53EF\u64CD\u4F5C\u7684\u65B9\u6CD5\u6B65\u9AA4",
-			},
-			{
-				id: "critical",
-				icon: "\u{1F504}",
-				title: "\u6279\u5224\u5206\u6790",
-				desc: "\u5BF9\u6BD4\u89C2\u70B9\u3001\u627E\u51FA\u903B\u8F91\u6F0F\u6D1E",
-			},
-		];
-		this.renderOptions(contentEl, options, "topic");
-		this.renderNavigation(contentEl);
-	}
-	renderStyleStep(contentEl) {
-		contentEl.createEl("h3", {
-			text: "\u270D\uFE0F \u7B14\u8BB0\u98CE\u683C",
-			attr: { style: "margin: 0 0 8px 0;" },
-		});
-		contentEl.createEl("p", {
-			text: "\u4F60\u60F3\u8981\u4EC0\u4E48\u98CE\u683C\u7684\u8F93\u51FA\uFF1F",
-			attr: {
-				style:
-					"margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;",
-			},
-		});
-		const options = [
-			{
-				id: "concise",
-				icon: "\u{1F4DD}",
-				title: "\u7B80\u6D01\u6458\u8981",
-				desc: "3-5\u4E2A\u8981\u70B9\uFF0C\u6BCF\u70B91-2\u53E5",
-			},
-			{
-				id: "detailed",
-				icon: "\u{1F4D6}",
-				title: "\u8BE6\u7EC6\u89E3\u91CA",
-				desc: "\u6BCF\u4E2A\u8981\u70B9\u5C55\u5F00\u8BF4\u660E",
-			},
-			{
-				id: "qa",
-				icon: "\u{1F914}",
-				title: "\u95EE\u7B54\u5F62\u5F0F",
-				desc: '\u6574\u7406\u6210"\u95EE\u9898\u2192\u7B54\u6848"\u683C\u5F0F',
-			},
-			{
-				id: "socratic",
-				icon: "\u{1F4AC}",
-				title: "\u82CF\u683C\u62C9\u5E95\u5F0F",
-				desc: "\u63D0\u51FA\u95EE\u9898\u5F15\u53D1\u601D\u8003",
-			},
-		];
-		this.renderOptions(contentEl, options, "style");
-		this.renderNavigation(contentEl);
-	}
-	renderStructureStep(contentEl) {
-		contentEl.createEl("h3", {
-			text: "\u{1F3D7}\uFE0F \u8F93\u51FA\u7ED3\u6784",
-			attr: { style: "margin: 0 0 8px 0;" },
-		});
-		contentEl.createEl("p", {
-			text: "\u7528\u4EC0\u4E48\u7ED3\u6784\u7EC4\u7EC7\u5185\u5BB9\uFF1F",
-			attr: {
-				style:
-					"margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;",
-			},
-		});
-		const options = [
-			{
-				id: "list",
-				icon: "\u{1F4CB}",
-				title: "\u6E05\u5355\u5F0F",
-				desc: "\u6309\u4F18\u5148\u7EA7\u6392\u5E8F\u7684\u8981\u70B9\u5217\u8868",
-			},
-			{
-				id: "mindmap",
-				icon: "\u{1F9E0}",
-				title: "\u601D\u7EF4\u5BFC\u56FE",
-				desc: "\u5206\u5C42\u7ED3\u6784\uFF0C\u6838\u5FC3\u5728\u4E2D\u5FC3",
-			},
-			{
-				id: "graph",
-				icon: "\u{1F517}",
-				title: "\u77E5\u8BC6\u56FE\u8C31",
-				desc: "\u8282\u70B9+\u8FDE\u63A5\uFF0C\u6807\u6CE8\u5173\u7CFB",
-			},
-			{
-				id: "paper",
-				icon: "\u{1F4C4}",
-				title: "\u6807\u51C6\u8BBA\u6587",
-				desc: "\u6458\u8981\u2192\u5F15\u8A00\u2192\u8BBA\u70B9\u2192\u7ED3\u8BBA",
-			},
-		];
-		this.renderOptions(contentEl, options, "structure");
-		this.renderNavigation(contentEl);
-	}
-	renderConfirmStep(contentEl) {
-		contentEl.createEl("h3", {
-			text: "\u2705 \u786E\u8BA4\u9884\u89C8",
-			attr: { style: "margin: 0 0 8px 0;" },
-		});
-		contentEl.createEl("p", {
-			text: `\u5373\u5C06\u7528\u4EE5\u4E0B\u8BBE\u7F6E\u5408\u5E76 ${this.selectedCount} \u4E2A\u6807\u6CE8\uFF1A`,
-			attr: {
-				style:
-					"margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;",
-			},
-		});
-		const summary = contentEl.createEl("div", {
-			attr: {
-				style:
-					"background: var(--background-primary); border-radius: 8px; padding: 16px; margin-bottom: 16px; font-size: 0.9em;",
-			},
-		});
-		summary.createEl("div", {
-			text: `\u{1F4DA} \u8BDD\u9898: ${this.selections.topic}`,
-			attr: { style: "margin-bottom: 8px;" },
-		});
-		summary.createEl("div", {
-			text: `\u270D\uFE0F \u98CE\u683C: ${this.selections.style}`,
-			attr: { style: "margin-bottom: 8px;" },
-		});
-		summary.createEl("div", {
-			text: `\u{1F3D7}\uFE0F \u7ED3\u6784: ${this.selections.structure}`,
-			attr: {},
-		});
-		const executeBtn = contentEl.createEl("button", {
-			text: "\u{1F680} \u5F00\u59CBAI\u5408\u5E76",
-			attr: {
-				style:
-					"width: 100%; padding: 12px; background: var(--interactive-accent); color: var(--text-on-accent); border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 600;",
-			},
-		});
-		executeBtn.onclick = () => {
-			this.close();
-			this.onComplete(
-				"guided",
-				this.selections.topic,
-				this.selections.style,
-				this.selections.structure,
-			);
-		};
-		const backBtn = contentEl.createEl("button", {
-			text: "\u2190 \u4E0A\u4E00\u6B65",
-			attr: {
-				style:
-					"width: 100%; padding: 10px; margin-top: 12px; background: transparent; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: pointer;",
-			},
-		});
-		backBtn.onclick = () => {
-			this.step = 3;
-			this.renderStep();
-		};
-	}
-	renderOptions(container, options, type) {
-		for (const opt of options) {
-			const btn = container.createEl("div", {
-				attr: {
-					style:
-						"padding: 14px; border: 1px solid var(--background-modifier-border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s;",
-				},
-			});
-			btn.createEl("div", {
-				text: `${opt.icon} ${opt.title}`,
-				attr: { style: "font-weight: 600; margin-bottom: 4px;" },
-			});
-			btn.createEl("div", {
-				text: opt.desc,
-				attr: { style: "font-size: 0.85em; color: var(--text-muted);" },
-			});
-			btn.onmouseenter = () => {
-				btn.style.backgroundColor = "var(--background-modifier-hover)";
-				btn.style.borderColor = "var(--interactive-accent)";
-			};
-			btn.onmouseleave = () => {
-				btn.style.backgroundColor = "";
-				btn.style.borderColor = "";
-			};
-			btn.onclick = () => {
-				this.selections[type] = opt.title;
-				if (this.step < 4) {
-					this.step++;
-					this.renderStep();
-				}
-			};
-		}
-	}
-	renderNavigation(contentEl) {
-		const nav = contentEl.createEl("div", {
-			attr: { style: "display: flex; gap: 8px; margin-top: 16px;" },
-		});
-		if (this.step > 1) {
-			const backBtn = nav.createEl("button", {
-				text: "\u2190 \u4E0A\u4E00\u6B65",
-				attr: {
-					style:
-						"flex: 1; padding: 10px; background: transparent; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: pointer;",
-				},
-			});
-			backBtn.onclick = () => {
-				this.step--;
-				this.renderStep();
-			};
-		}
-		if (this.step < 4) {
-			const nextBtn = nav.createEl("button", {
-				text: "\u4E0B\u4E00\u6B65 \u2192",
-				attr: {
-					style:
-						"flex: 1; padding: 10px; background: var(--interactive-accent); color: var(--text-on-accent); border: none; border-radius: 8px; cursor: pointer;",
-				},
-			});
-			nextBtn.onclick = () => {
-				this.step++;
-				this.renderStep();
-			};
-		}
-	}
-	onClose() {
-		this.modalEl.removeClass("mn-guided-merge-modal");
-		this.modalEl.removeAttribute("style");
-		this.contentEl.empty();
-	}
+  constructor(app, selectedCount, _annotations, onComplete) {
+    super(app);
+    this.step = 1;
+    this.selections = {
+      topic: null,
+      style: null,
+      structure: null
+    };
+    this.selectedCount = selectedCount;
+    this.onComplete = onComplete;
+  }
+  onOpen() {
+    this.modalEl.addClass("mn-guided-merge-modal");
+    this.renderStep();
+  }
+  renderStep() {
+    const { contentEl } = this;
+    contentEl.empty();
+    this.modalEl.style.width = "min(92vw, 720px)";
+    this.modalEl.style.maxWidth = "92vw";
+    this.modalEl.style.maxHeight = "84vh";
+    contentEl.addClass("mn-guided-merge-content");
+    const progress = contentEl.createEl("div", {
+      attr: { style: "display: flex; gap: 8px; margin-bottom: 20px;" }
+    });
+    for (let i = 1; i <= 4; i++) {
+      progress.createEl("span", {
+        text: String(i),
+        attr: {
+          style: `width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; background: ${i === this.step ? "var(--interactive-accent)" : "var(--background-modifier-border)"}; color: ${i === this.step ? "var(--text-on-accent)" : "var(--text-muted)"};`
+        }
+      });
+    }
+    if (this.step === 1)
+      this.renderTopicStep(contentEl);
+    else if (this.step === 2)
+      this.renderStyleStep(contentEl);
+    else if (this.step === 3)
+      this.renderStructureStep(contentEl);
+    else if (this.step === 4)
+      this.renderConfirmStep(contentEl);
+  }
+  renderTopicStep(contentEl) {
+    contentEl.createEl("h3", {
+      text: "\u{1F4DA} \u8BDD\u9898\u805A\u7C7B",
+      attr: { style: "margin: 0 0 8px 0;" }
+    });
+    contentEl.createEl("p", {
+      text: "\u8FD9\u4E9B\u6807\u6CE8\u4E3B\u8981\u6D89\u53CA\u54EA\u4E2A\u9886\u57DF\uFF1F",
+      attr: {
+        style: "margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;"
+      }
+    });
+    const options = [
+      {
+        id: "academic",
+        icon: "\u{1F4DA}",
+        title: "\u5B66\u672F\u7814\u7A76",
+        desc: "\u63D0\u53D6\u6838\u5FC3\u8BBA\u70B9\u548C\u8BC1\u636E"
+      },
+      {
+        id: "concept",
+        icon: "\u{1F4A1}",
+        title: "\u6982\u5FF5\u89E3\u6790",
+        desc: "\u89E3\u91CA\u5173\u952E\u672F\u8BED\u548C\u539F\u7406"
+      },
+      {
+        id: "practical",
+        icon: "\u26A1",
+        title: "\u5B9E\u8DF5\u5E94\u7528",
+        desc: "\u63D0\u70BC\u53EF\u64CD\u4F5C\u7684\u65B9\u6CD5\u6B65\u9AA4"
+      },
+      {
+        id: "critical",
+        icon: "\u{1F504}",
+        title: "\u6279\u5224\u5206\u6790",
+        desc: "\u5BF9\u6BD4\u89C2\u70B9\u3001\u627E\u51FA\u903B\u8F91\u6F0F\u6D1E"
+      }
+    ];
+    this.renderOptions(contentEl, options, "topic");
+    this.renderNavigation(contentEl);
+  }
+  renderStyleStep(contentEl) {
+    contentEl.createEl("h3", {
+      text: "\u270D\uFE0F \u7B14\u8BB0\u98CE\u683C",
+      attr: { style: "margin: 0 0 8px 0;" }
+    });
+    contentEl.createEl("p", {
+      text: "\u4F60\u60F3\u8981\u4EC0\u4E48\u98CE\u683C\u7684\u8F93\u51FA\uFF1F",
+      attr: {
+        style: "margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;"
+      }
+    });
+    const options = [
+      {
+        id: "concise",
+        icon: "\u{1F4DD}",
+        title: "\u7B80\u6D01\u6458\u8981",
+        desc: "3-5\u4E2A\u8981\u70B9\uFF0C\u6BCF\u70B91-2\u53E5"
+      },
+      {
+        id: "detailed",
+        icon: "\u{1F4D6}",
+        title: "\u8BE6\u7EC6\u89E3\u91CA",
+        desc: "\u6BCF\u4E2A\u8981\u70B9\u5C55\u5F00\u8BF4\u660E"
+      },
+      {
+        id: "qa",
+        icon: "\u{1F914}",
+        title: "\u95EE\u7B54\u5F62\u5F0F",
+        desc: '\u6574\u7406\u6210"\u95EE\u9898\u2192\u7B54\u6848"\u683C\u5F0F'
+      },
+      {
+        id: "socratic",
+        icon: "\u{1F4AC}",
+        title: "\u82CF\u683C\u62C9\u5E95\u5F0F",
+        desc: "\u63D0\u51FA\u95EE\u9898\u5F15\u53D1\u601D\u8003"
+      }
+    ];
+    this.renderOptions(contentEl, options, "style");
+    this.renderNavigation(contentEl);
+  }
+  renderStructureStep(contentEl) {
+    contentEl.createEl("h3", {
+      text: "\u{1F3D7}\uFE0F \u8F93\u51FA\u7ED3\u6784",
+      attr: { style: "margin: 0 0 8px 0;" }
+    });
+    contentEl.createEl("p", {
+      text: "\u7528\u4EC0\u4E48\u7ED3\u6784\u7EC4\u7EC7\u5185\u5BB9\uFF1F",
+      attr: {
+        style: "margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;"
+      }
+    });
+    const options = [
+      {
+        id: "list",
+        icon: "\u{1F4CB}",
+        title: "\u6E05\u5355\u5F0F",
+        desc: "\u6309\u4F18\u5148\u7EA7\u6392\u5E8F\u7684\u8981\u70B9\u5217\u8868"
+      },
+      {
+        id: "mindmap",
+        icon: "\u{1F9E0}",
+        title: "\u601D\u7EF4\u5BFC\u56FE",
+        desc: "\u5206\u5C42\u7ED3\u6784\uFF0C\u6838\u5FC3\u5728\u4E2D\u5FC3"
+      },
+      {
+        id: "graph",
+        icon: "\u{1F517}",
+        title: "\u77E5\u8BC6\u56FE\u8C31",
+        desc: "\u8282\u70B9+\u8FDE\u63A5\uFF0C\u6807\u6CE8\u5173\u7CFB"
+      },
+      {
+        id: "paper",
+        icon: "\u{1F4C4}",
+        title: "\u6807\u51C6\u8BBA\u6587",
+        desc: "\u6458\u8981\u2192\u5F15\u8A00\u2192\u8BBA\u70B9\u2192\u7ED3\u8BBA"
+      }
+    ];
+    this.renderOptions(contentEl, options, "structure");
+    this.renderNavigation(contentEl);
+  }
+  renderConfirmStep(contentEl) {
+    contentEl.createEl("h3", {
+      text: "\u2705 \u786E\u8BA4\u9884\u89C8",
+      attr: { style: "margin: 0 0 8px 0;" }
+    });
+    contentEl.createEl("p", {
+      text: `\u5373\u5C06\u7528\u4EE5\u4E0B\u8BBE\u7F6E\u5408\u5E76 ${this.selectedCount} \u4E2A\u6807\u6CE8\uFF1A`,
+      attr: {
+        style: "margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9em;"
+      }
+    });
+    const summary = contentEl.createEl("div", {
+      attr: {
+        style: "background: var(--background-primary); border-radius: 8px; padding: 16px; margin-bottom: 16px; font-size: 0.9em;"
+      }
+    });
+    summary.createEl("div", {
+      text: `\u{1F4DA} \u8BDD\u9898: ${this.selections.topic}`,
+      attr: { style: "margin-bottom: 8px;" }
+    });
+    summary.createEl("div", {
+      text: `\u270D\uFE0F \u98CE\u683C: ${this.selections.style}`,
+      attr: { style: "margin-bottom: 8px;" }
+    });
+    summary.createEl("div", {
+      text: `\u{1F3D7}\uFE0F \u7ED3\u6784: ${this.selections.structure}`,
+      attr: {}
+    });
+    const executeBtn = contentEl.createEl("button", {
+      text: "\u{1F680} \u5F00\u59CBAI\u5408\u5E76",
+      attr: {
+        style: "width: 100%; padding: 12px; background: var(--interactive-accent); color: var(--text-on-accent); border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 600;"
+      }
+    });
+    executeBtn.onclick = () => {
+      this.close();
+      this.onComplete(
+        "guided",
+        this.selections.topic,
+        this.selections.style,
+        this.selections.structure
+      );
+    };
+    const backBtn = contentEl.createEl("button", {
+      text: "\u2190 \u4E0A\u4E00\u6B65",
+      attr: {
+        style: "width: 100%; padding: 10px; margin-top: 12px; background: transparent; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: pointer;"
+      }
+    });
+    backBtn.onclick = () => {
+      this.step = 3;
+      this.renderStep();
+    };
+  }
+  renderOptions(container, options, type) {
+    for (const opt of options) {
+      const btn = container.createEl("div", {
+        attr: {
+          style: "padding: 14px; border: 1px solid var(--background-modifier-border); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s;"
+        }
+      });
+      btn.createEl("div", {
+        text: `${opt.icon} ${opt.title}`,
+        attr: { style: "font-weight: 600; margin-bottom: 4px;" }
+      });
+      btn.createEl("div", {
+        text: opt.desc,
+        attr: { style: "font-size: 0.85em; color: var(--text-muted);" }
+      });
+      btn.onmouseenter = () => {
+        btn.style.backgroundColor = "var(--background-modifier-hover)";
+        btn.style.borderColor = "var(--interactive-accent)";
+      };
+      btn.onmouseleave = () => {
+        btn.style.backgroundColor = "";
+        btn.style.borderColor = "";
+      };
+      btn.onclick = () => {
+        this.selections[type] = opt.title;
+        if (this.step < 4) {
+          this.step++;
+          this.renderStep();
+        }
+      };
+    }
+  }
+  renderNavigation(contentEl) {
+    const nav = contentEl.createEl("div", {
+      attr: { style: "display: flex; gap: 8px; margin-top: 16px;" }
+    });
+    if (this.step > 1) {
+      const backBtn = nav.createEl("button", {
+        text: "\u2190 \u4E0A\u4E00\u6B65",
+        attr: {
+          style: "flex: 1; padding: 10px; background: transparent; border: 1px solid var(--background-modifier-border); border-radius: 8px; cursor: pointer;"
+        }
+      });
+      backBtn.onclick = () => {
+        this.step--;
+        this.renderStep();
+      };
+    }
+    if (this.step < 4) {
+      const nextBtn = nav.createEl("button", {
+        text: "\u4E0B\u4E00\u6B65 \u2192",
+        attr: {
+          style: "flex: 1; padding: 10px; background: var(--interactive-accent); color: var(--text-on-accent); border: none; border-radius: 8px; cursor: pointer;"
+        }
+      });
+      nextBtn.onclick = () => {
+        this.step++;
+        this.renderStep();
+      };
+    }
+  }
+  onClose() {
+    this.modalEl.removeClass("mn-guided-merge-modal");
+    this.modalEl.removeAttribute("style");
+    this.contentEl.empty();
+  }
 };
 
 // main.ts
@@ -6597,510 +5287,474 @@ init_ui();
 init_annotation_format();
 init_state();
 var MarkingNotePlugin = class extends import_obsidian8.Plugin {
-	constructor() {
-		super(...arguments);
-		this.popoverEditor = null;
-		this.popoverViewer = null;
-		this.chatHistory = /* @__PURE__ */ new Map();
-	}
-	// Temporary cache for chat history per node
-	pushChatHistory(nodeId, oldRichText) {
-		let history = this.chatHistory.get(nodeId);
-		if (!history) {
-			history = [];
-			this.chatHistory.set(nodeId, history);
-		}
-		history.push(oldRichText);
-		if (history.length > 7) history.shift();
-	}
-	popChatHistory(nodeId) {
-		const history = this.chatHistory.get(nodeId);
-		if (history && history.length > 0) return history.pop() || null;
-		return null;
-	}
-	canUndoChat(nodeId) {
-		const history = this.chatHistory.get(nodeId);
-		return !!history && history.length > 0;
-	}
-	async onload() {
-		console.log("Loading Marking Note plugin");
-		await this.loadSettings();
-		this.annotationService = new AnnotationService(this.app);
-		this.popoverCtx = {
-			app: this.app,
-			onFollowUp: async (nodeId, instruction, currentContent, options) => {
-				this.pushChatHistory(nodeId, currentContent || "");
-				return this.handleFollowUp(
-					nodeId,
-					instruction,
-					currentContent,
-					void 0,
-					options,
-				);
-			},
-			canUndo: (nodeId) => this.canUndoChat(nodeId),
-			popUndo: (nodeId) => this.popChatHistory(nodeId),
-		};
-		this.addSettingTab(new MarkingNoteSettingTab(this.app, this));
-		this.registerView(
-			MARKING_SIDEBAR_VIEW_TYPE,
-			(leaf) => new MarkingSidebarView(leaf, this),
-		);
-		this.addRibbonIcon("highlighter", "Open Marking Note Sidebar", () => {
-			this.activateView();
-		});
-		this.registerEditorExtension(
-			createMarkingExtensions(
-				(view, selection) => {
-					this.handleAIAnnotation(view, selection);
-				},
-				(view, selection, command) => {
-					this.handleAIAnnotation(view, selection, command);
-				},
-				this.popoverCtx,
-				this,
-			),
-		);
-		this.registerMarkdownPostProcessor((el) => {
-			renderReadingModeAnnotations({
-				container: el,
-				tags: this.settings.tags,
-				onOpenPopover: ({
-					nodeId,
-					summary,
-					state,
-					tagId,
-					anchorX,
-					anchorY,
-				}) => {
-					this.showReadingPopover(
-						nodeId,
-						summary,
-						state,
-						tagId,
-						anchorX,
-						anchorY,
-					);
-				},
-			});
-		});
-		const lightningHandler = (e) => {
-			var _a;
-			const steward =
-				this.settings.stewards.find(
-					(s) => s.id === this.settings.activeStewardId,
-				) || this.settings.stewards[0];
-			if ((_a = e.detail) == null ? void 0 : _a.callback) {
-				const annotatedCmds = (
-					(steward == null ? void 0 : steward.commands) || []
-				).filter((c) => c.type === "annotated");
-				e.detail.callback(annotatedCmds);
-			}
-		};
-		window.addEventListener("marking-note-get-commands", lightningHandler);
-		this.register(() =>
-			window.removeEventListener("marking-note-get-commands", lightningHandler),
-		);
-		const inlineHandler = (e) => {
-			var _a, _b;
-			if ((_a = e.detail) == null ? void 0 : _a.callback) {
-				const inlineCmds = (
-					((_b = this.settings.inlineSteward) == null ? void 0 : _b.commands) ||
-					[]
-				).filter((c) => c.type === "inline-modify");
-				e.detail.callback(inlineCmds);
-			}
-		};
-		window.addEventListener("marking-note-get-inline-commands", inlineHandler);
-		this.register(() =>
-			window.removeEventListener(
-				"marking-note-get-inline-commands",
-				inlineHandler,
-			),
-		);
-		const inlineModifyHandler = (e) => {
-			var _a, _b, _c;
-			if (
-				((_a = e.detail) == null ? void 0 : _a.view) &&
-				((_b = e.detail) == null ? void 0 : _b.selection) &&
-				((_c = e.detail) == null ? void 0 : _c.instruction)
-			) {
-				this.handleInlineModification(
-					e.detail.view,
-					e.detail.selection,
-					e.detail.instruction,
-				);
-			}
-		};
-		window.addEventListener("marking-note-inline-modify", inlineModifyHandler);
-		this.register(() =>
-			window.removeEventListener(
-				"marking-note-inline-modify",
-				inlineModifyHandler,
-			),
-		);
-		this.addCommand({
-			id: "trigger-ai-annotation",
-			name: "Trigger AI Annotation on Selection",
-			editorCallback: async (editor, view) => {
-				var _a;
-				const selection = editor.getSelection();
-				if (selection) {
-					const cmView = (_a = view.editor) == null ? void 0 : _a.cm;
-					if (cmView) {
-						this.handleAIAnnotation(cmView, selection);
-					}
-				}
-			},
-		});
-		this.addCommand({
-			id: "open-marking-sidebar",
-			name: "\u6253\u5F00 Marking \u4FA7\u8FB9\u680F",
-			callback: () => {
-				this.activateView();
-			},
-		});
-		this.addCommand({
-			id: "toggle-floating-menu",
-			name: "\u6253\u5F00/\u5173\u95ED\u6807\u6CE8\u60AC\u6D6E\u7A97",
-			callback: async () => {
-				this.settings.enableFloatingMenu = !this.settings.enableFloatingMenu;
-				await this.saveSettings();
-				new import_obsidian8.Notice(
-					this.settings.enableFloatingMenu
-						? "\u{1FA84} \u6807\u6CE8\u60AC\u6D6E\u7A97\u5DF2\u5F00\u542F"
-						: "\u{1FA84} \u6807\u6CE8\u60AC\u6D6E\u7A97\u5DF2\u5173\u95ED",
-				);
-			},
-		});
-		this.addCommand({
-			id: "clear-all-markings",
-			name: "\u6E05\u7A7A\u5F53\u524D\u7B14\u8BB0\u7684\u6240\u6709\u6807\u6CE8",
-			editorCallback: (editor, _view) => {
-				const text = editor.getValue();
-				let newText = text;
-				const nodes = annotationRepository.parseMarkingNodes(text);
-				const mergedNodes = annotationRepository.parseMergedNoteNodes(text);
-				for (const node of nodes) {
-					if (!node.isPlain) {
-						newText = annotationRepository.deleteAnnotation(
-							newText,
-							node.id,
-						).text;
-					}
-				}
-				for (const mergedNode of mergedNodes) {
-					newText = annotationRepository.deleteMergedNote(
-						newText,
-						mergedNode.id,
-					).text;
-				}
-				for (const node of nodes) {
-					if (node.isPlain) {
-						newText = newText.replace(`==${node.text}==`, node.text);
-					}
-				}
-				editor.setValue(newText);
-				new import_obsidian8.Notice(
-					"\u5DF2\u6E05\u7A7A\u5F53\u524D\u7B14\u8BB0\u7684\u6240\u6709\u6807\u6CE8\u548C\u8BF4\u660E",
-				);
-			},
-		});
-		this.addCommand({
-			id: "migrate-current-document",
-			name: "\u8FC1\u79FB\u5F53\u524D\u6587\u6863\u5230\u65B0\u7248\u6807\u6CE8\u683C\u5F0F",
-			editorCallback: (editor) => {
-				const preview = migrateLegacyDocument(editor.getValue());
-				if (preview.skipped.length > 0) {
-					new import_obsidian8.Notice(
-						`\u8FC1\u79FB\u5DF2\u53D6\u6D88\uFF1A\u65E0\u6CD5\u5173\u8054\u6807\u6CE8 ${preview.skipped.join(", ")}`,
-					);
-					return;
-				}
-				if (preview.migrated === 0) {
-					new import_obsidian8.Notice(
-						"\u5F53\u524D\u6587\u6863\u6CA1\u6709\u53EF\u8FC1\u79FB\u7684\u65E7\u7248\u6807\u6CE8",
-					);
-					return;
-				}
-				const confirmed = confirm(
-					`\u5C06\u8FC1\u79FB ${preview.migrated} \u4E2A\u6807\u6CE8\u5230\u65B0\u7248\u683C\u5F0F\u3002\u6B64\u64CD\u4F5C\u539F\u5730\u4FEE\u6539\u5F53\u524D\u6587\u6863\uFF0C\u53EF\u7528\u4E00\u6B21 Ctrl+Z \u64A4\u56DE\u3002\u7EE7\u7EED\u5417\uFF1F`,
-				);
-				if (!confirmed) {
-					new import_obsidian8.Notice(
-						"\u5DF2\u53D6\u6D88\u6587\u6863\u8FC1\u79FB",
-					);
-					return;
-				}
-				editor.setValue(preview.text);
-				new import_obsidian8.Notice(
-					`\u5DF2\u8FC1\u79FB ${preview.migrated} \u4E2A\u6807\u6CE8`,
-				);
-			},
-		});
-		this.addCommand({
-			id: "consolidate-markings",
-			name: "\u6574\u5408\u6807\u6CE8\u4E0E\u89E3\u91CA\u5230\u65B0\u6587\u6863",
-			editorCallback: async (editor, view) => {
-				var _a;
-				if (!view.file) return;
-				const text = editor.getValue();
-				const nodes = parseMarkingNodes(text).filter((n) => !n.isPlain);
-				if (nodes.length === 0) {
-					new import_obsidian8.Notice(
-						"\u5F53\u524D\u6587\u6863\u6CA1\u6709\u542B\u6709\u89E3\u91CA\u7684\u9AD8\u4EAE\u6807\u6CE8",
-					);
-					return;
-				}
-				let outContent = `# ${view.file.basename} - \u6807\u6CE8\u6574\u5408
+  constructor() {
+    super(...arguments);
+    this.popoverEditor = null;
+    this.popoverViewer = null;
+    this.chatHistory = /* @__PURE__ */ new Map();
+  }
+  // Temporary cache for chat history per node
+  pushChatHistory(nodeId, oldRichText) {
+    let history = this.chatHistory.get(nodeId);
+    if (!history) {
+      history = [];
+      this.chatHistory.set(nodeId, history);
+    }
+    history.push(oldRichText);
+    if (history.length > 7)
+      history.shift();
+  }
+  popChatHistory(nodeId) {
+    const history = this.chatHistory.get(nodeId);
+    if (history && history.length > 0)
+      return history.pop() || null;
+    return null;
+  }
+  canUndoChat(nodeId) {
+    const history = this.chatHistory.get(nodeId);
+    return !!history && history.length > 0;
+  }
+  async onload() {
+    console.log("Loading Marking Note plugin");
+    await this.loadSettings();
+    this.annotationService = new AnnotationService(this.app);
+    this.popoverCtx = {
+      app: this.app,
+      onFollowUp: async (nodeId, instruction, currentContent, options) => {
+        this.pushChatHistory(nodeId, currentContent || "");
+        return this.handleFollowUp(
+          nodeId,
+          instruction,
+          currentContent,
+          void 0,
+          options
+        );
+      },
+      canUndo: (nodeId) => this.canUndoChat(nodeId),
+      popUndo: (nodeId) => this.popChatHistory(nodeId)
+    };
+    this.addSettingTab(new MarkingNoteSettingTab(this.app, this));
+    this.registerView(
+      MARKING_SIDEBAR_VIEW_TYPE,
+      (leaf) => new MarkingSidebarView(leaf, this)
+    );
+    this.addRibbonIcon("highlighter", "Open Marking Note Sidebar", () => {
+      this.activateView();
+    });
+    this.registerEditorExtension(
+      createMarkingExtensions(
+        (view, selection) => {
+          this.handleAIAnnotation(view, selection);
+        },
+        (view, selection, command) => {
+          this.handleAIAnnotation(view, selection, command);
+        },
+        this.popoverCtx,
+        this
+      )
+    );
+    this.registerMarkdownPostProcessor((el) => {
+      renderReadingModeAnnotations({
+        container: el,
+        tags: this.settings.tags,
+        onOpenPopover: ({
+          nodeId,
+          summary,
+          state,
+          tagId,
+          anchorX,
+          anchorY
+        }) => {
+          this.showReadingPopover(
+            nodeId,
+            summary,
+            state,
+            tagId,
+            anchorX,
+            anchorY
+          );
+        }
+      });
+    });
+    const lightningHandler = (e) => {
+      var _a;
+      const steward = this.settings.stewards.find(
+        (s) => s.id === this.settings.activeStewardId
+      ) || this.settings.stewards[0];
+      if ((_a = e.detail) == null ? void 0 : _a.callback) {
+        const annotatedCmds = ((steward == null ? void 0 : steward.commands) || []).filter(
+          (c) => c.type === "annotated"
+        );
+        e.detail.callback(annotatedCmds);
+      }
+    };
+    window.addEventListener("marking-note-get-commands", lightningHandler);
+    this.register(
+      () => window.removeEventListener("marking-note-get-commands", lightningHandler)
+    );
+    const inlineHandler = (e) => {
+      var _a, _b;
+      if ((_a = e.detail) == null ? void 0 : _a.callback) {
+        const inlineCmds = (((_b = this.settings.inlineSteward) == null ? void 0 : _b.commands) || []).filter(
+          (c) => c.type === "inline-modify"
+        );
+        e.detail.callback(inlineCmds);
+      }
+    };
+    window.addEventListener("marking-note-get-inline-commands", inlineHandler);
+    this.register(
+      () => window.removeEventListener(
+        "marking-note-get-inline-commands",
+        inlineHandler
+      )
+    );
+    const inlineModifyHandler = (e) => {
+      var _a, _b, _c;
+      if (((_a = e.detail) == null ? void 0 : _a.view) && ((_b = e.detail) == null ? void 0 : _b.selection) && ((_c = e.detail) == null ? void 0 : _c.instruction)) {
+        this.handleInlineModification(
+          e.detail.view,
+          e.detail.selection,
+          e.detail.instruction
+        );
+      }
+    };
+    window.addEventListener("marking-note-inline-modify", inlineModifyHandler);
+    this.register(
+      () => window.removeEventListener(
+        "marking-note-inline-modify",
+        inlineModifyHandler
+      )
+    );
+    this.addCommand({
+      id: "trigger-ai-annotation",
+      name: "Trigger AI Annotation on Selection",
+      editorCallback: async (editor, view) => {
+        var _a;
+        const selection = editor.getSelection();
+        if (selection) {
+          const cmView = (_a = view.editor) == null ? void 0 : _a.cm;
+          if (cmView) {
+            this.handleAIAnnotation(cmView, selection);
+          }
+        }
+      }
+    });
+    this.addCommand({
+      id: "open-marking-sidebar",
+      name: "\u6253\u5F00 Marking \u4FA7\u8FB9\u680F",
+      callback: () => {
+        this.activateView();
+      }
+    });
+    this.addCommand({
+      id: "toggle-floating-menu",
+      name: "\u6253\u5F00/\u5173\u95ED\u6807\u6CE8\u60AC\u6D6E\u7A97",
+      callback: async () => {
+        this.settings.enableFloatingMenu = !this.settings.enableFloatingMenu;
+        await this.saveSettings();
+        new import_obsidian8.Notice(
+          this.settings.enableFloatingMenu ? "\u{1FA84} \u6807\u6CE8\u60AC\u6D6E\u7A97\u5DF2\u5F00\u542F" : "\u{1FA84} \u6807\u6CE8\u60AC\u6D6E\u7A97\u5DF2\u5173\u95ED"
+        );
+      }
+    });
+    this.addCommand({
+      id: "clear-all-markings",
+      name: "\u6E05\u7A7A\u5F53\u524D\u7B14\u8BB0\u7684\u6240\u6709\u6807\u6CE8",
+      editorCallback: (editor, _view) => {
+        const text = editor.getValue();
+        let newText = text;
+        const nodes = annotationRepository.parseMarkingNodes(text);
+        const mergedNodes = annotationRepository.parseMergedNoteNodes(text);
+        for (const node of nodes) {
+          if (!node.isPlain) {
+            newText = annotationRepository.deleteAnnotation(
+              newText,
+              node.id
+            ).text;
+          }
+        }
+        for (const mergedNode of mergedNodes) {
+          newText = annotationRepository.deleteMergedNote(
+            newText,
+            mergedNode.id
+          ).text;
+        }
+        for (const node of nodes) {
+          if (node.isPlain) {
+            newText = newText.replace(`==${node.text}==`, node.text);
+          }
+        }
+        editor.setValue(newText);
+        new import_obsidian8.Notice("\u5DF2\u6E05\u7A7A\u5F53\u524D\u7B14\u8BB0\u7684\u6240\u6709\u6807\u6CE8\u548C\u8BF4\u660E");
+      }
+    });
+    this.addCommand({
+      id: "migrate-current-document",
+      name: "\u8FC1\u79FB\u5F53\u524D\u6587\u6863\u5230\u65B0\u7248\u6807\u6CE8\u683C\u5F0F",
+      editorCallback: (editor) => {
+        const preview = migrateLegacyDocument(editor.getValue());
+        if (preview.skipped.length > 0) {
+          new import_obsidian8.Notice(`\u8FC1\u79FB\u5DF2\u53D6\u6D88\uFF1A\u65E0\u6CD5\u5173\u8054\u6807\u6CE8 ${preview.skipped.join(", ")}`);
+          return;
+        }
+        if (preview.migrated === 0) {
+          new import_obsidian8.Notice("\u5F53\u524D\u6587\u6863\u6CA1\u6709\u53EF\u8FC1\u79FB\u7684\u65E7\u7248\u6807\u6CE8");
+          return;
+        }
+        const confirmed = confirm(
+          `\u5C06\u8FC1\u79FB ${preview.migrated} \u4E2A\u6807\u6CE8\u5230\u65B0\u7248\u683C\u5F0F\u3002\u6B64\u64CD\u4F5C\u539F\u5730\u4FEE\u6539\u5F53\u524D\u6587\u6863\uFF0C\u53EF\u7528\u4E00\u6B21 Ctrl+Z \u64A4\u56DE\u3002\u7EE7\u7EED\u5417\uFF1F`
+        );
+        if (!confirmed) {
+          new import_obsidian8.Notice("\u5DF2\u53D6\u6D88\u6587\u6863\u8FC1\u79FB");
+          return;
+        }
+        editor.setValue(preview.text);
+        new import_obsidian8.Notice(`\u5DF2\u8FC1\u79FB ${preview.migrated} \u4E2A\u6807\u6CE8`);
+      }
+    });
+    this.addCommand({
+      id: "consolidate-markings",
+      name: "\u6574\u5408\u6807\u6CE8\u4E0E\u89E3\u91CA\u5230\u65B0\u6587\u6863",
+      editorCallback: async (editor, view) => {
+        var _a;
+        if (!view.file)
+          return;
+        const text = editor.getValue();
+        const nodes = parseMarkingNodes(text).filter((n) => !n.isPlain);
+        if (nodes.length === 0) {
+          new import_obsidian8.Notice("\u5F53\u524D\u6587\u6863\u6CA1\u6709\u542B\u6709\u89E3\u91CA\u7684\u9AD8\u4EAE\u6807\u6CE8");
+          return;
+        }
+        let outContent = `# ${view.file.basename} - \u6807\u6CE8\u6574\u5408
 
 `;
-				for (const node of nodes) {
-					const explanation =
-						StorageEngine.getCalloutContent(text, node.id) ||
-						"\u65E0\u8BE6\u7EC6\u89E3\u91CA";
-					outContent += `### \u539F\u6587\u9AD8\u4EAE\u9009\u6BB5
+        for (const node of nodes) {
+          const explanation = StorageEngine.getCalloutContent(text, node.id) || "\u65E0\u8BE6\u7EC6\u89E3\u91CA";
+          outContent += `### \u539F\u6587\u9AD8\u4EAE\u9009\u6BB5
 > ${node.text.split("\n").join("\n> ")}
 
 `;
-					if (node.summary)
-						outContent += `**AI\u4E00\u53E5\u8BDD\u603B\u7ED3**\uFF1A${node.summary}
+          if (node.summary)
+            outContent += `**AI\u4E00\u53E5\u8BDD\u603B\u7ED3**\uFF1A${node.summary}
 
 `;
-					outContent += `**\u8BE6\u7EC6\u5206\u6790**\uFF1A
+          outContent += `**\u8BE6\u7EC6\u5206\u6790**\uFF1A
 ${explanation}
 
 ---
 
 `;
-				}
-				const newFileName = `${view.file.basename}-\u6807\u6CE8\u6574\u5408.md`;
-				let folder = ((_a = view.file.parent) == null ? void 0 : _a.path) || "";
-				if (folder === "/") folder = "";
-				const newFilePath = folder ? `${folder}/${newFileName}` : newFileName;
-				const newFile = await this.app.vault.create(newFilePath, outContent);
-				const newLeaf = this.app.workspace.getLeaf(true);
-				await newLeaf.openFile(newFile);
-			},
-		});
-	}
-	/**
-	 * Show a read-only viewer for an annotated mark in Reading Mode.
-	 * Reads vault content directly — no editorView needed.
-	 */
-	async showReadingPopover(
-		nodeId,
-		nodeSummary,
-		nodeState,
-		nodeTagId,
-		anchorX,
-		anchorY,
-	) {
-		var _a;
-		const activeFile = this.app.workspace.getActiveFile();
-		if (!activeFile) return;
-		let fileContent = "";
-		for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
-			const mdView = leaf.view;
-			if (mdView.file && mdView.file.path === activeFile.path) {
-				fileContent =
-					((_a = mdView.editor) == null ? void 0 : _a.getValue()) || "";
-				break;
-			}
-		}
-		if (!fileContent) {
-			fileContent = await this.app.vault.read(activeFile);
-		}
-		const richText = StorageEngine.getCalloutContent(fileContent, nodeId) || "";
-		if (!this.popoverViewer) {
-			this.popoverViewer = new PopoverViewer(this.popoverCtx);
-		}
-		await this.popoverViewer.show(
-			nodeId,
-			nodeSummary,
-			nodeState,
-			nodeTagId,
-			richText,
-			anchorX,
-			anchorY,
-		);
-	}
-	showPopover(node, editorView) {
-		if (!this.popoverEditor) {
-			this.popoverEditor = new PopoverEditor(node, editorView, this.popoverCtx);
-		} else {
-			this.popoverEditor.node = node;
-			this.popoverEditor.editorView = editorView;
-		}
-		this.popoverEditor.node = node;
-		const editorDOM = editorView.dom;
-		const rect = editorDOM.getBoundingClientRect();
-		const centerX = rect.left + rect.width / 2;
-		const centerY = rect.top + rect.height / 2;
-		this.popoverEditor.show(centerX, centerY);
-	}
-	async activateView() {
-		const { workspace } = this.app;
-		let leaf = null;
-		const leaves = workspace.getLeavesOfType(MARKING_SIDEBAR_VIEW_TYPE);
-		if (leaves.length > 0) {
-			leaf = leaves[0];
-		} else {
-			const rightLeaf = workspace.getRightLeaf(false);
-			if (rightLeaf) {
-				leaf = rightLeaf;
-				await leaf.setViewState({
-					type: MARKING_SIDEBAR_VIEW_TYPE,
-					active: true,
-				});
-			}
-		}
-		if (leaf) {
-			workspace.revealLeaf(leaf);
-		}
-	}
-	getProviderForSteward(steward) {
-		let provider = this.settings.modelProviders.find(
-			(p) => p.id === steward.boundModelProviderId,
-		);
-		if (provider) return provider;
-		provider = this.settings.modelProviders.find(
-			(p) => p.id === this.settings.defaultProviderId,
-		);
-		if (provider) return provider;
-		if (this.settings.modelProviders.length > 0)
-			return this.settings.modelProviders[0];
-		return null;
-	}
-	async handleInlineModification(view, selection, instruction) {
-		const markdownView = this.app.workspace.getActiveViewOfType(
-			import_obsidian8.MarkdownView,
-		);
-		if (!markdownView) return;
-		const inlineSteward = this.settings.inlineSteward;
-		const provider = this.getProviderForSteward(inlineSteward);
-		if (!provider) {
-			new import_obsidian8.Notice(
-				"\u274C \u672A\u914D\u7F6E\u6539\u5199\u5927\u6A21\u578B\u63D0\u4F9B\u5546",
-			);
-			return;
-		}
-		await this.annotationService.rewriteSelection({
-			view,
-			selection,
-			instruction,
-			inlineSteward,
-			provider,
-			inlineRewritePrompt: this.settings.inlineRewriteSystemPromptTemplate,
-		});
-	}
-	async handleAIAnnotation(view, selection, command) {
-		const markdownView = this.app.workspace.getActiveViewOfType(
-			import_obsidian8.MarkdownView,
-		);
-		if (!markdownView) return;
-		const editor = markdownView.editor;
-		const steward =
-			this.settings.stewards.find(
-				(s) => s.id === this.settings.activeStewardId,
-			) || this.settings.stewards[0];
-		const provider = this.getProviderForSteward(steward);
-		if (!provider) {
-			new import_obsidian8.Notice(
-				"\u274C \u672A\u914D\u7F6E AI \u6A21\u578B\u63D0\u4F9B\u5546\uFF0C\u8BF7\u524D\u5F80\u8BBE\u7F6E\u9875\u9762\u6DFB\u52A0",
-			);
-			return;
-		}
-		const result = await this.annotationService.annotateSelection({
-			view,
-			editor,
-			selection,
-			steward,
-			provider,
-			command,
-			settings: this.settings,
-		});
-		if (result) {
-			new import_obsidian8.Notice(
-				`\u2705 AI \u6807\u6CE8\u5B8C\u6210: ${result.summary.slice(0, 20)}...`,
-			);
-		} else {
-			new import_obsidian8.Notice(
-				"\u26A0\uFE0F AI \u6807\u6CE8\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6A21\u578B\u914D\u7F6E\u4E0E API \u8FDE\u901A\u6027",
-			);
-		}
-	}
-	async handleFollowUp(nodeId, instruction, currentContent, filePath, options) {
-		const steward =
-			this.settings.stewards.find(
-				(s) => s.id === this.settings.activeStewardId,
-			) || this.settings.stewards[0];
-		const provider = this.getProviderForSteward(steward);
-		if (!provider) {
-			new import_obsidian8.Notice("\u274C \u672A\u914D\u7F6E AI \u6A21\u578B");
-			return null;
-		}
-		const result = await this.annotationService.followUp({
-			nodeId,
-			instruction,
-			currentContent,
-			filePath,
-			steward,
-			provider,
-			settings: this.settings,
-			options,
-		});
-		if (result) {
-			new import_obsidian8.Notice("\u2705 AI \u5DF2\u66F4\u65B0\u5185\u5BB9");
-			return result;
-		}
-		new import_obsidian8.Notice("\u26A0\uFE0F AI \u8FFD\u95EE\u5931\u8D25");
-		return null;
-	}
-	async onunload() {
-		console.log("Unloading Marking Note plugin");
-	}
-	async loadSettings() {
-		const loadedData = await this.loadData();
-		const defaults = createDefaultSettings();
-		this.settings = Object.assign({}, defaults, loadedData);
-		if (!this.settings.modelProviders)
-			this.settings.modelProviders = defaults.modelProviders;
-		if (!this.settings.stewards) this.settings.stewards = defaults.stewards;
-		if (!this.settings.inlineSteward)
-			this.settings.inlineSteward = defaults.inlineSteward;
-		if (!this.settings.tags) this.settings.tags = [...DEFAULT_TAGS];
-		if (!this.settings.defaultSummarySystemPromptTemplate)
-			this.settings.defaultSummarySystemPromptTemplate =
-				DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE;
-		if (!this.settings.annotationSystemPromptTemplate)
-			this.settings.annotationSystemPromptTemplate =
-				DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE;
-		if (!this.settings.inlineRewriteSystemPromptTemplate)
-			this.settings.inlineRewriteSystemPromptTemplate =
-				DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE;
-		for (const s of this.settings.stewards) {
-			if (!s.commands) s.commands = [];
-			if (!s.boundModelProviderId)
-				s.boundModelProviderId = this.settings.defaultProviderId || "";
-			for (const cmd of s.commands) {
-				if (!cmd.type) cmd.type = "annotated";
-			}
-			if (!s.commands.find((c) => c.type === "default-summary")) {
-				const legacyPrompt =
-					(loadedData == null ? void 0 : loadedData.defaultSummaryPrompt) ||
-					"\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
-				s.commands.unshift({
-					id: `def-${s.id}`,
-					name: "\u9ED8\u8BA4\u6807\u6CE8\u6807\u9898",
-					icon: "\u{1FA84}",
-					detailPrompt: legacyPrompt,
-					type: "default-summary",
-				});
-			}
-		}
-	}
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+        }
+        const newFileName = `${view.file.basename}-\u6807\u6CE8\u6574\u5408.md`;
+        let folder = ((_a = view.file.parent) == null ? void 0 : _a.path) || "";
+        if (folder === "/")
+          folder = "";
+        const newFilePath = folder ? `${folder}/${newFileName}` : newFileName;
+        const newFile = await this.app.vault.create(newFilePath, outContent);
+        const newLeaf = this.app.workspace.getLeaf(true);
+        await newLeaf.openFile(newFile);
+      }
+    });
+  }
+  /**
+   * Show a read-only viewer for an annotated mark in Reading Mode.
+   * Reads vault content directly — no editorView needed.
+   */
+  async showReadingPopover(nodeId, nodeSummary, nodeState, nodeTagId, anchorX, anchorY) {
+    var _a;
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile)
+      return;
+    let fileContent = "";
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const mdView = leaf.view;
+      if (mdView.file && mdView.file.path === activeFile.path) {
+        fileContent = ((_a = mdView.editor) == null ? void 0 : _a.getValue()) || "";
+        break;
+      }
+    }
+    if (!fileContent) {
+      fileContent = await this.app.vault.read(activeFile);
+    }
+    const richText = StorageEngine.getCalloutContent(fileContent, nodeId) || "";
+    if (!this.popoverViewer) {
+      this.popoverViewer = new PopoverViewer(this.popoverCtx);
+    }
+    await this.popoverViewer.show(
+      nodeId,
+      nodeSummary,
+      nodeState,
+      nodeTagId,
+      richText,
+      anchorX,
+      anchorY
+    );
+  }
+  showPopover(node, editorView) {
+    if (!this.popoverEditor) {
+      this.popoverEditor = new PopoverEditor(node, editorView, this.popoverCtx);
+    } else {
+      this.popoverEditor.node = node;
+      this.popoverEditor.editorView = editorView;
+    }
+    this.popoverEditor.node = node;
+    const editorDOM = editorView.dom;
+    const rect = editorDOM.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    this.popoverEditor.show(centerX, centerY);
+  }
+  async activateView() {
+    const { workspace } = this.app;
+    let leaf = null;
+    const leaves = workspace.getLeavesOfType(MARKING_SIDEBAR_VIEW_TYPE);
+    if (leaves.length > 0) {
+      leaf = leaves[0];
+    } else {
+      const rightLeaf = workspace.getRightLeaf(false);
+      if (rightLeaf) {
+        leaf = rightLeaf;
+        await leaf.setViewState({
+          type: MARKING_SIDEBAR_VIEW_TYPE,
+          active: true
+        });
+      }
+    }
+    if (leaf) {
+      workspace.revealLeaf(leaf);
+    }
+  }
+  getProviderForSteward(steward) {
+    let provider = this.settings.modelProviders.find(
+      (p) => p.id === steward.boundModelProviderId
+    );
+    if (provider)
+      return provider;
+    provider = this.settings.modelProviders.find(
+      (p) => p.id === this.settings.defaultProviderId
+    );
+    if (provider)
+      return provider;
+    if (this.settings.modelProviders.length > 0)
+      return this.settings.modelProviders[0];
+    return null;
+  }
+  async handleInlineModification(view, selection, instruction) {
+    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
+    if (!markdownView)
+      return;
+    const inlineSteward = this.settings.inlineSteward;
+    const provider = this.getProviderForSteward(inlineSteward);
+    if (!provider) {
+      new import_obsidian8.Notice("\u274C \u672A\u914D\u7F6E\u6539\u5199\u5927\u6A21\u578B\u63D0\u4F9B\u5546");
+      return;
+    }
+    await this.annotationService.rewriteSelection({
+      view,
+      selection,
+      instruction,
+      inlineSteward,
+      provider,
+      inlineRewritePrompt: this.settings.inlineRewriteSystemPromptTemplate
+    });
+  }
+  async handleAIAnnotation(view, selection, command) {
+    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
+    if (!markdownView)
+      return;
+    const editor = markdownView.editor;
+    const steward = this.settings.stewards.find(
+      (s) => s.id === this.settings.activeStewardId
+    ) || this.settings.stewards[0];
+    const provider = this.getProviderForSteward(steward);
+    if (!provider) {
+      new import_obsidian8.Notice("\u274C \u672A\u914D\u7F6E AI \u6A21\u578B\u63D0\u4F9B\u5546\uFF0C\u8BF7\u524D\u5F80\u8BBE\u7F6E\u9875\u9762\u6DFB\u52A0");
+      return;
+    }
+    const result = await this.annotationService.annotateSelection({
+      view,
+      editor,
+      selection,
+      steward,
+      provider,
+      command,
+      settings: this.settings
+    });
+    if (result) {
+      new import_obsidian8.Notice(`\u2705 AI \u6807\u6CE8\u5B8C\u6210: ${result.summary.slice(0, 20)}...`);
+    } else {
+      new import_obsidian8.Notice("\u26A0\uFE0F AI \u6807\u6CE8\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6A21\u578B\u914D\u7F6E\u4E0E API \u8FDE\u901A\u6027");
+    }
+  }
+  async handleFollowUp(nodeId, instruction, currentContent, filePath, options) {
+    const steward = this.settings.stewards.find(
+      (s) => s.id === this.settings.activeStewardId
+    ) || this.settings.stewards[0];
+    const provider = this.getProviderForSteward(steward);
+    if (!provider) {
+      new import_obsidian8.Notice("\u274C \u672A\u914D\u7F6E AI \u6A21\u578B");
+      return null;
+    }
+    const result = await this.annotationService.followUp({
+      nodeId,
+      instruction,
+      currentContent,
+      filePath,
+      steward,
+      provider,
+      settings: this.settings,
+      options
+    });
+    if (result) {
+      new import_obsidian8.Notice("\u2705 AI \u5DF2\u66F4\u65B0\u5185\u5BB9");
+      return result;
+    }
+    new import_obsidian8.Notice("\u26A0\uFE0F AI \u8FFD\u95EE\u5931\u8D25");
+    return null;
+  }
+  async onunload() {
+    console.log("Unloading Marking Note plugin");
+  }
+  async loadSettings() {
+    const loadedData = await this.loadData();
+    const defaults = createDefaultSettings();
+    this.settings = Object.assign({}, defaults, loadedData);
+    if (!this.settings.modelProviders)
+      this.settings.modelProviders = defaults.modelProviders;
+    if (!this.settings.stewards)
+      this.settings.stewards = defaults.stewards;
+    if (!this.settings.inlineSteward)
+      this.settings.inlineSteward = defaults.inlineSteward;
+    if (!this.settings.tags)
+      this.settings.tags = [...DEFAULT_TAGS];
+    if (!this.settings.defaultSummarySystemPromptTemplate)
+      this.settings.defaultSummarySystemPromptTemplate = DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE;
+    if (!this.settings.annotationSystemPromptTemplate)
+      this.settings.annotationSystemPromptTemplate = DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE;
+    if (!this.settings.inlineRewriteSystemPromptTemplate)
+      this.settings.inlineRewriteSystemPromptTemplate = DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE;
+    for (const s of this.settings.stewards) {
+      if (!s.commands)
+        s.commands = [];
+      if (!s.boundModelProviderId)
+        s.boundModelProviderId = this.settings.defaultProviderId || "";
+      for (const cmd of s.commands) {
+        if (!cmd.type)
+          cmd.type = "annotated";
+      }
+      if (!s.commands.find((c) => c.type === "default-summary")) {
+        const legacyPrompt = (loadedData == null ? void 0 : loadedData.defaultSummaryPrompt) || "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
+        s.commands.unshift({
+          id: `def-${s.id}`,
+          name: "\u9ED8\u8BA4\u6807\u6CE8\u6807\u9898",
+          icon: "\u{1FA84}",
+          detailPrompt: legacyPrompt,
+          type: "default-summary"
+        });
+      }
+    }
+  }
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
 };

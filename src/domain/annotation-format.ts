@@ -26,7 +26,7 @@ export interface InlineMarker {
 }
 
 const INLINE_MARKER =
-	/==([\s\S]*?)==<!--\s*marking-note:id=([a-zA-Z0-9_-]+)\s*-->/g;
+	/==([\s\S]*?)==<!--\s*marking-note:id=([^\s]+?)\s*-->/g;
 
 export function parseInlineMarkers(text: string): InlineMarker[] {
 	const resultBlocks = new Map(
@@ -270,7 +270,11 @@ function removeLegacyCallouts(
 
 function appendResults(text: string, blocks: string[]): string {
 	const separator = text.trimEnd();
-	return `${separator}\n\n${RESULTS_HEADING}\n\n${blocks.join("\n\n")}\n`;
+	const hasHeading = new RegExp(
+		`(^|\\n)${escapeRegExp(RESULTS_HEADING)}(?:\\n|$)`,
+	).test(separator);
+	const heading = hasHeading ? "" : `\n\n${RESULTS_HEADING}`;
+	return `${separator}${heading}\n\n${blocks.join("\n\n")}\n`;
 }
 
 function escapeRegExp(value: string): string {
