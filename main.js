@@ -702,7 +702,10 @@ var init_annotation_repository = __esm({
 
 // src/ui/action-surface.ts
 function getDesktopActionPosition(anchorX, anchorY, menuWidth, menuHeight, viewportWidth, viewportHeight, margin = 8) {
-  const left = Math.min(Math.max(anchorX, margin), viewportWidth - menuWidth - margin);
+  const left = Math.min(
+    Math.max(anchorX, margin),
+    viewportWidth - menuWidth - margin
+  );
   let top = anchorY - menuHeight - margin;
   if (top < margin) {
     top = Math.min(anchorY + margin, viewportHeight - menuHeight - margin);
@@ -752,7 +755,10 @@ var init_ui = __esm({
         const isMobile = window.innerWidth <= 600 || window.matchMedia("(pointer: coarse)").matches;
         if (isMobile)
           this.container.addClass("ai-floating-menu-mobile");
-        this.container.addEventListener("mousedown", (event) => event.preventDefault());
+        this.container.addEventListener(
+          "mousedown",
+          (event) => event.preventDefault()
+        );
         const actions = [
           {
             icon: "\u{1F4AC}",
@@ -839,6 +845,22 @@ var init_ui = __esm({
         this.container.style.right = "";
         this.container.style.bottom = "";
       }
+      appendEmptyCommandState(dropdown, message) {
+        const emptyItem = document.createElement("div");
+        emptyItem.addClass("ai-lightning-item");
+        emptyItem.innerText = message;
+        emptyItem.style.color = "var(--text-muted)";
+        dropdown.appendChild(emptyItem);
+        const settingsButton = document.createElement("button");
+        settingsButton.addClass("ai-lightning-item", "ai-lightning-settings-item");
+        settingsButton.innerText = "\u6253\u5F00\u7BA1\u5BB6\u8BBE\u7F6E";
+        settingsButton.onclick = () => {
+          window.dispatchEvent(new CustomEvent("marking-note-open-settings"));
+          dropdown.remove();
+          this.close();
+        };
+        dropdown.appendChild(settingsButton);
+      }
       showCommandDropdown(anchor, operation = "conversation") {
         const existing = document.querySelector(".ai-lightning-dropdown");
         if (existing)
@@ -849,45 +871,44 @@ var init_ui = __esm({
         dropdown.style.left = `${rect.left}px`;
         dropdown.style.top = `${rect.bottom + 4}px`;
         const event = new CustomEvent("marking-note-get-commands", {
-          detail: { operation, callback: (commands) => {
-            if (commands.length === 0) {
-              const emptyItem = document.createElement("div");
-              emptyItem.addClass("ai-lightning-item");
-              emptyItem.innerText = "\u65E0\u5FEB\u6377\u6307\u4EE4";
-              emptyItem.style.color = "var(--text-muted)";
-              dropdown.appendChild(emptyItem);
-            } else {
-              for (const cmd of commands) {
-                const item = document.createElement("div");
-                item.addClass("ai-lightning-item");
-                item.style.display = "flex";
-                item.style.alignItems = "center";
-                item.style.justifyContent = "space-between";
-                const leftPart = document.createElement("span");
-                leftPart.innerText = `${cmd.icon} ${cmd.name}`;
-                const rightPart = document.createElement("span");
-                rightPart.style.display = "flex";
-                rightPart.style.alignItems = "center";
-                rightPart.style.gap = "4px";
-                if (cmd.enableWebSearch) {
-                  const searchBadge = document.createElement("span");
-                  searchBadge.innerText = "\u{1F50D}";
-                  searchBadge.title = "\u7F51\u7EDC\u641C\u7D22\u5DF2\u5F00\u542F";
-                  searchBadge.style.fontSize = "0.85em";
-                  searchBadge.style.opacity = "0.7";
-                  rightPart.appendChild(searchBadge);
+          detail: {
+            operation,
+            callback: (commands) => {
+              if (commands.length === 0) {
+                this.appendEmptyCommandState(dropdown, "\u65E0\u5FEB\u6377\u6307\u4EE4");
+              } else {
+                for (const cmd of commands) {
+                  const item = document.createElement("div");
+                  item.addClass("ai-lightning-item");
+                  item.style.display = "flex";
+                  item.style.alignItems = "center";
+                  item.style.justifyContent = "space-between";
+                  const leftPart = document.createElement("span");
+                  leftPart.innerText = `${cmd.icon} ${cmd.name}`;
+                  const rightPart = document.createElement("span");
+                  rightPart.style.display = "flex";
+                  rightPart.style.alignItems = "center";
+                  rightPart.style.gap = "4px";
+                  if (cmd.enableWebSearch) {
+                    const searchBadge = document.createElement("span");
+                    searchBadge.innerText = "\u{1F50D}";
+                    searchBadge.title = "\u7F51\u7EDC\u641C\u7D22\u5DF2\u5F00\u542F";
+                    searchBadge.style.fontSize = "0.85em";
+                    searchBadge.style.opacity = "0.7";
+                    rightPart.appendChild(searchBadge);
+                  }
+                  item.appendChild(leftPart);
+                  item.appendChild(rightPart);
+                  item.onclick = () => {
+                    this.onCommand(this.currentSelection, cmd);
+                    dropdown.remove();
+                    this.close();
+                  };
+                  dropdown.appendChild(item);
                 }
-                item.appendChild(leftPart);
-                item.appendChild(rightPart);
-                item.onclick = () => {
-                  this.onCommand(this.currentSelection, cmd);
-                  dropdown.remove();
-                  this.close();
-                };
-                dropdown.appendChild(item);
               }
             }
-          } }
+          }
         });
         window.dispatchEvent(event);
         document.body.appendChild(dropdown);
@@ -909,27 +930,25 @@ var init_ui = __esm({
         dropdown.style.left = `${rect.left}px`;
         dropdown.style.top = `${rect.bottom + 4}px`;
         const event = new CustomEvent("marking-note-get-inline-commands", {
-          detail: { callback: (commands) => {
-            if (commands.length === 0) {
-              const emptyItem = document.createElement("div");
-              emptyItem.addClass("ai-lightning-item");
-              emptyItem.innerText = "\u65E0\u6539\u5199\u6307\u4EE4";
-              emptyItem.style.color = "var(--text-muted)";
-              dropdown.appendChild(emptyItem);
-            } else {
-              for (const cmd of commands) {
-                const item = document.createElement("div");
-                item.addClass("ai-lightning-item");
-                item.innerText = `${cmd.icon} ${cmd.name}`;
-                item.onclick = () => {
-                  this.onInlineModify(this.currentSelection, cmd.detailPrompt);
-                  dropdown.remove();
-                  this.close();
-                };
-                dropdown.appendChild(item);
+          detail: {
+            callback: (commands) => {
+              if (commands.length === 0) {
+                this.appendEmptyCommandState(dropdown, "\u65E0\u6539\u5199\u6307\u4EE4");
+              } else {
+                for (const cmd of commands) {
+                  const item = document.createElement("div");
+                  item.addClass("ai-lightning-item");
+                  item.innerText = `${cmd.icon} ${cmd.name}`;
+                  item.onclick = () => {
+                    this.onInlineModify(this.currentSelection, cmd.detailPrompt);
+                    dropdown.remove();
+                    this.close();
+                  };
+                  dropdown.appendChild(item);
+                }
               }
             }
-          } }
+          }
         });
         window.dispatchEvent(event);
         document.body.appendChild(dropdown);
@@ -1033,9 +1052,17 @@ var init_ui = __esm({
         header.appendChild(titleArea);
         const ctrl = document.createElement("div");
         ctrl.addClass("ai-popover-ctrl-group");
-        const toggleBtn = this.createCtrlBtn("\u{1F4DD}", "\u7F16\u8F91\u6A21\u5F0F", () => this.toggleMode());
+        const toggleBtn = this.createCtrlBtn(
+          "\u{1F4DD}",
+          "\u7F16\u8F91\u6A21\u5F0F",
+          () => this.toggleMode()
+        );
         ctrl.appendChild(toggleBtn);
-        const fullscreenBtn = this.createCtrlBtn("\u26F6", "\u94FA\u6EE1\u5168\u5C4F / \u8FD8\u539F", () => this.toggleFullscreen(fullscreenBtn));
+        const fullscreenBtn = this.createCtrlBtn(
+          "\u26F6",
+          "\u94FA\u6EE1\u5168\u5C4F / \u8FD8\u539F",
+          () => this.toggleFullscreen(fullscreenBtn)
+        );
         ctrl.appendChild(fullscreenBtn);
         const copyBtn = this.createCtrlBtn("\u{1F4CB}", "\u590D\u5236\u5185\u5BB9", () => {
           navigator.clipboard.writeText(this.currentContent);
@@ -1122,7 +1149,12 @@ var init_ui = __esm({
           input.placeholder = "\u23F3 AI \u601D\u8003\u4E2D...";
           input.disabled = true;
           sendBtn.disabled = true;
-          const result = await this.ctx.onFollowUp(this.node.id, instruction, this.currentContent, { enableWebSearch: this.webSearchEnabled });
+          const result = await this.ctx.onFollowUp(
+            this.node.id,
+            instruction,
+            this.currentContent,
+            { enableWebSearch: this.webSearchEnabled }
+          );
           input.disabled = false;
           sendBtn.disabled = false;
           input.placeholder = "\u5BF9\u7ED3\u679C\u4E0D\u6EE1\u610F\uFF1F\u7EE7\u7EED\u6307\u6325 AI...";
@@ -1173,7 +1205,9 @@ var init_ui = __esm({
           }
         };
         document.addEventListener("keydown", escHandler);
-        this.registerCleanup(() => document.removeEventListener("keydown", escHandler));
+        this.registerCleanup(
+          () => document.removeEventListener("keydown", escHandler)
+        );
         if (!this.isPinned) {
           this.addOutsideClickHandler();
         }
@@ -1182,7 +1216,9 @@ var init_ui = __esm({
       updateTitleDisplay() {
         if (!this.container)
           return;
-        const titleArea = this.container.querySelector("#ai-popover-title-display");
+        const titleArea = this.container.querySelector(
+          "#ai-popover-title-display"
+        );
         if (!titleArea)
           return;
         titleArea.empty();
@@ -1247,7 +1283,10 @@ var init_ui = __esm({
           return;
         this.viewContainer.empty();
         if (!this.currentContent) {
-          this.viewContainer.createEl("p", { text: "\u6682\u65E0 AI \u751F\u6210\u5185\u5BB9", attr: { style: "color: var(--text-muted); font-style: italic;" } });
+          this.viewContainer.createEl("p", {
+            text: "\u6682\u65E0 AI \u751F\u6210\u5185\u5BB9",
+            attr: { style: "color: var(--text-muted); font-style: italic;" }
+          });
           return;
         }
         try {
@@ -1570,7 +1609,9 @@ var init_ui = __esm({
           }
         };
         document.addEventListener("keydown", escHandler);
-        this.registerCleanup(() => document.removeEventListener("keydown", escHandler));
+        this.registerCleanup(
+          () => document.removeEventListener("keydown", escHandler)
+        );
         this.outsideClickHandler = (e) => {
           if (!this.container)
             return;
@@ -1587,7 +1628,9 @@ var init_ui = __esm({
       updateTitleDisplay() {
         if (!this.container || !this.currentParams)
           return;
-        const titleArea = this.container.querySelector("#ai-viewer-title-display");
+        const titleArea = this.container.querySelector(
+          "#ai-viewer-title-display"
+        );
         if (!titleArea)
           return;
         titleArea.empty();
@@ -1630,7 +1673,9 @@ var init_ui = __esm({
         return btn;
       }
       jumpToSource(nodeId) {
-        const els = document.querySelectorAll(`[data-marking-id="${nodeId}"], .mark-state-0, .mark-state-1, .mark-state-2, .mark-state-3`);
+        const els = document.querySelectorAll(
+          `[data-marking-id="${nodeId}"], .mark-state-0, .mark-state-1, .mark-state-2, .mark-state-3`
+        );
         for (const el of Array.from(els)) {
           if (el.dataset.tagId || el.innerText.includes(nodeId) || el.dataset.markingId === nodeId) {
             el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1739,12 +1784,18 @@ var init_ui = __esm({
         this.container.style.display = "flex";
         const header = this.container.createEl("div", { cls: "mn-butler-header" });
         header.createEl("span", { text: "\u{1F3E0} \u7BA1\u5BB6\u9762\u677F", cls: "mn-butler-title" });
-        const closeBtn = header.createEl("button", { text: "\u2716", cls: "mn-butler-close" });
+        const closeBtn = header.createEl("button", {
+          text: "\u2716",
+          cls: "mn-butler-close"
+        });
         closeBtn.onclick = () => this.hide();
         this.refresh();
         document.body.appendChild(this.container);
         if (this.plugin.settings.enableDebugMode) {
-          console.log("[Marking Note] Butler panel shown, stewards:", (_a = this.plugin.settings.stewards) == null ? void 0 : _a.length);
+          console.log(
+            "[Marking Note] Butler panel shown, stewards:",
+            (_a = this.plugin.settings.stewards) == null ? void 0 : _a.length
+          );
         }
         const savedPos = localStorage.getItem("mn-butler-pos");
         if (savedPos) {
@@ -1809,8 +1860,14 @@ var init_ui = __esm({
         const parsedTop = Number.parseFloat(this.container.style.top || "");
         let left = Number.isFinite(parsedLeft) ? parsedLeft : rect.left;
         let top = Number.isFinite(parsedTop) ? parsedTop : rect.top;
-        left = Math.max(margin, Math.min(left, Math.max(margin, vw - rect.width - margin)));
-        top = Math.max(margin, Math.min(top, Math.max(margin, vh - rect.height - margin)));
+        left = Math.max(
+          margin,
+          Math.min(left, Math.max(margin, vw - rect.width - margin))
+        );
+        top = Math.max(
+          margin,
+          Math.min(top, Math.max(margin, vh - rect.height - margin))
+        );
         this.container.style.left = `${left}px`;
         this.container.style.top = `${top}px`;
         this.container.style.right = "auto";
@@ -1825,19 +1882,30 @@ var init_ui = __esm({
         const settings = this.plugin.settings;
         const stewards = settings.stewards || [];
         const steward = stewards.find((s) => s.id === settings.activeStewardId) || stewards[0];
-        const contentDiv = this.container.createEl("div", { cls: "mn-butler-body" });
+        const contentDiv = this.container.createEl("div", {
+          cls: "mn-butler-body"
+        });
         contentDiv.style.minHeight = "150px";
         contentDiv.style.background = "var(--background-secondary)";
         if (steward) {
-          const currentDiv = contentDiv.createEl("div", { cls: "mn-butler-section" });
+          const currentDiv = contentDiv.createEl("div", {
+            cls: "mn-butler-section"
+          });
           currentDiv.createEl("div", { text: "\u5F53\u524D\u7BA1\u5BB6", cls: "mn-butler-label" });
           const activeDiv = currentDiv.createEl("div", { cls: "mn-butler-active" });
-          activeDiv.createEl("span", { text: `${steward.icon} ${steward.name}`, cls: "mn-butler-active-name" });
+          activeDiv.createEl("span", {
+            text: `${steward.icon} ${steward.name}`,
+            cls: "mn-butler-active-name"
+          });
         }
         if (stewards.length > 0) {
-          const switcherDiv = contentDiv.createEl("div", { cls: "mn-butler-section" });
+          const switcherDiv = contentDiv.createEl("div", {
+            cls: "mn-butler-section"
+          });
           switcherDiv.createEl("div", { text: "\u5207\u6362\u7BA1\u5BB6", cls: "mn-butler-label" });
-          const stewardList = switcherDiv.createEl("div", { cls: "mn-butler-steward-list" });
+          const stewardList = switcherDiv.createEl("div", {
+            cls: "mn-butler-steward-list"
+          });
           for (const s of stewards) {
             const btn = stewardList.createEl("button", {
               text: `${s.icon} ${s.name}`,
@@ -1854,7 +1922,10 @@ var init_ui = __esm({
             };
           }
         } else {
-          contentDiv.createEl("div", { text: "\u26A0\uFE0F \u672A\u914D\u7F6E\u7BA1\u5BB6", attr: { style: "color: var(--text-error); padding: 10px;" } });
+          contentDiv.createEl("div", {
+            text: "\u26A0\uFE0F \u672A\u914D\u7F6E\u7BA1\u5BB6",
+            attr: { style: "color: var(--text-error); padding: 10px;" }
+          });
         }
         if (this.container.isConnected) {
           this.constrainToScreen();
@@ -1878,8 +1949,14 @@ var init_ui = __esm({
           const rect = this.container.getBoundingClientRect();
           let left = clientX - this.dragOffsetX;
           let top = clientY - this.dragOffsetY;
-          left = Math.max(margin, Math.min(left, Math.max(margin, vw - rect.width - margin)));
-          top = Math.max(margin, Math.min(top, Math.max(margin, vh - rect.height - margin)));
+          left = Math.max(
+            margin,
+            Math.min(left, Math.max(margin, vw - rect.width - margin))
+          );
+          top = Math.max(
+            margin,
+            Math.min(top, Math.max(margin, vh - rect.height - margin))
+          );
           this.container.style.left = `${left}px`;
           this.container.style.top = `${top}px`;
           this.container.style.right = "auto";
@@ -1888,10 +1965,13 @@ var init_ui = __esm({
           this.isDragging = false;
           if (this.container) {
             this.constrainToScreen();
-            localStorage.setItem("mn-butler-pos", JSON.stringify({
-              left: this.container.style.left,
-              top: this.container.style.top
-            }));
+            localStorage.setItem(
+              "mn-butler-pos",
+              JSON.stringify({
+                left: this.container.style.left,
+                top: this.container.style.top
+              })
+            );
           }
         };
         handle.addEventListener("mousedown", (e) => {
@@ -1900,21 +1980,32 @@ var init_ui = __esm({
           startDrag(e.clientX, e.clientY);
           e.preventDefault();
         });
-        document.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
+        document.addEventListener(
+          "mousemove",
+          (e) => moveDrag(e.clientX, e.clientY)
+        );
         document.addEventListener("mouseup", () => endDrag());
-        handle.addEventListener("touchstart", (e) => {
-          if (e.target.tagName === "BUTTON")
-            return;
-          if (e.touches.length > 0)
-            startDrag(e.touches[0].clientX, e.touches[0].clientY);
-        }, { passive: true });
-        document.addEventListener("touchmove", (e) => {
-          if (!this.isDragging || !this.container || e.touches.length === 0)
-            return;
-          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
-          if (e.cancelable)
-            e.preventDefault();
-        }, { passive: false });
+        handle.addEventListener(
+          "touchstart",
+          (e) => {
+            if (e.target.tagName === "BUTTON")
+              return;
+            if (e.touches.length > 0)
+              startDrag(e.touches[0].clientX, e.touches[0].clientY);
+          },
+          { passive: true }
+        );
+        document.addEventListener(
+          "touchmove",
+          (e) => {
+            if (!this.isDragging || !this.container || e.touches.length === 0)
+              return;
+            moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+            if (e.cancelable)
+              e.preventDefault();
+          },
+          { passive: false }
+        );
         document.addEventListener("touchend", () => endDrag());
       }
     };
@@ -2036,7 +2127,10 @@ function buildDecorations(text, tags) {
       attrs["style"] = getTagHighlightInlineStyle(tag);
       cssClass = "marking-highlight-region marking-tagged";
     }
-    const highlightDeco = import_view.Decoration.mark({ class: cssClass, attributes: attrs });
+    const highlightDeco = import_view.Decoration.mark({
+      class: cssClass,
+      attributes: attrs
+    });
     const hlStart = node.from;
     const hlEnd = node.highlightEnd;
     if (hlStart < hlEnd && hlEnd <= text.length) {
@@ -2053,68 +2147,83 @@ function buildDecorations(text, tags) {
   return { decos: builder.finish(), nodes };
 }
 function createMarkingExtensions(onCommand, onLink, popoverCtx, plugin) {
-  const mainPlugin = import_view.ViewPlugin.fromClass(class {
-    constructor(view) {
-      this.view = view;
-      this.currentNodes = [];
-      this.menu = null;
-      this.menuTimer = null;
-      const result = buildDecorations(view.state.doc.toString(), plugin.settings.tags || []);
-      this.decorations = result.decos;
-      this.currentNodes = result.nodes;
-    }
-    update(update) {
-      if (update.docChanged || update.viewportChanged) {
-        const result = buildDecorations(update.state.doc.toString(), plugin.settings.tags || []);
+  const mainPlugin = import_view.ViewPlugin.fromClass(
+    class {
+      constructor(view) {
+        this.view = view;
+        this.currentNodes = [];
+        this.menu = null;
+        this.menuTimer = null;
+        const result = buildDecorations(
+          view.state.doc.toString(),
+          plugin.settings.tags || []
+        );
         this.decorations = result.decos;
         this.currentNodes = result.nodes;
       }
-      if (update.selectionSet || update.docChanged) {
-        const sel = update.state.selection.main;
-        if (sel.empty) {
-          if (this.menu) {
-            this.menu.close();
-            this.menu = null;
-          }
-          if (this.menuTimer) {
-            window.clearTimeout(this.menuTimer);
-            this.menuTimer = null;
-          }
-          return;
+      update(update) {
+        if (update.docChanged || update.viewportChanged) {
+          const result = buildDecorations(
+            update.state.doc.toString(),
+            plugin.settings.tags || []
+          );
+          this.decorations = result.decos;
+          this.currentNodes = result.nodes;
         }
-        if (this.menuTimer)
-          window.clearTimeout(this.menuTimer);
-        this.menuTimer = window.setTimeout(() => {
-          if (!plugin.settings.enableFloatingMenu)
-            return;
-          const selection = update.state.sliceDoc(sel.from, sel.to);
-          if (!selection.trim())
-            return;
-          const coords = update.view.coordsAtPos(sel.from);
-          if (coords) {
-            if (!this.menu) {
-              this.menu = new FloatingMenu(
-                (s, cmd) => onCommand(update.view, s, cmd),
-                (s, instruction) => {
-                  window.dispatchEvent(new CustomEvent("marking-note-inline-modify", {
-                    detail: { view: update.view, selection: s, instruction }
-                  }));
-                },
-                onLink
-              );
+        if (update.selectionSet || update.docChanged) {
+          const sel = update.state.selection.main;
+          if (sel.empty) {
+            if (this.menu) {
+              this.menu.close();
+              this.menu = null;
             }
-            this.menu.show(coords.left, coords.top, selection);
+            if (this.menuTimer) {
+              window.clearTimeout(this.menuTimer);
+              this.menuTimer = null;
+            }
+            return;
           }
-        }, 300);
+          if (this.menuTimer)
+            window.clearTimeout(this.menuTimer);
+          this.menuTimer = window.setTimeout(() => {
+            if (!plugin.settings.enableFloatingMenu)
+              return;
+            const selection = update.state.sliceDoc(sel.from, sel.to);
+            if (!selection.trim())
+              return;
+            const coords = update.view.coordsAtPos(sel.from);
+            if (coords) {
+              if (!this.menu) {
+                this.menu = new FloatingMenu(
+                  (s, cmd) => onCommand(update.view, s, cmd),
+                  (s, instruction) => {
+                    window.dispatchEvent(
+                      new CustomEvent("marking-note-inline-modify", {
+                        detail: {
+                          view: update.view,
+                          selection: s,
+                          instruction
+                        }
+                      })
+                    );
+                  },
+                  onLink
+                );
+              }
+              this.menu.show(coords.left, coords.top, selection);
+            }
+          }, 300);
+        }
       }
+      destroy() {
+        if (this.menu)
+          this.menu.close();
+      }
+    },
+    {
+      decorations: (v) => v.decorations
     }
-    destroy() {
-      if (this.menu)
-        this.menu.close();
-    }
-  }, {
-    decorations: (v) => v.decorations
-  });
+  );
   const clickHandler = import_view.EditorView.domEventHandlers({
     mousedown(event, view) {
       const target = event.target;
@@ -5361,7 +5470,9 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         },
         () => {
           var _a;
-          const executed = (_a = this.app.commands) == null ? void 0 : _a.executeCommandById("editor:insert-link");
+          const executed = (_a = this.app.commands) == null ? void 0 : _a.executeCommandById(
+            "editor:insert-link"
+          );
           if (!executed) {
             new import_obsidian8.Notice("\u65E0\u6CD5\u6253\u5F00 Obsidian \u539F\u751F\u94FE\u63A5\u9009\u62E9\u5668");
           }
@@ -5408,6 +5519,19 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
     window.addEventListener("marking-note-get-commands", lightningHandler);
     this.register(
       () => window.removeEventListener("marking-note-get-commands", lightningHandler)
+    );
+    const openSettingsHandler = () => {
+      var _a;
+      const setting = this.app.setting;
+      if (typeof (setting == null ? void 0 : setting.open) === "function") {
+        setting.open();
+        return;
+      }
+      (_a = this.app.commands) == null ? void 0 : _a.executeCommandById("app:open-settings");
+    };
+    window.addEventListener("marking-note-open-settings", openSettingsHandler);
+    this.register(
+      () => window.removeEventListener("marking-note-open-settings", openSettingsHandler)
     );
     const inlineHandler = (e) => {
       var _a, _b;

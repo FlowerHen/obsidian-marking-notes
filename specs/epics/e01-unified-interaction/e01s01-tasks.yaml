@@ -16,7 +16,7 @@ tasks:
   - id: 3
     description: "拆分当前标注弹窗与侧边栏的即时操作和管理职责"
     verify: "npm run build"
-    status: todo
+    status: passing
   - id: 4
     description: "补充边界定位、软键盘、安全区域和空状态处理"
     verify: "npm run build"

@@ -109,7 +109,9 @@ export default class MarkingNotePlugin extends Plugin {
 					this.handleAIAnnotation(view, selection, command);
 				},
 				() => {
-					const executed = (this.app as any).commands?.executeCommandById("editor:insert-link");
+					const executed = (this.app as any).commands?.executeCommandById(
+						"editor:insert-link",
+					);
 					if (!executed) {
 						new Notice("无法打开 Obsidian 原生链接选择器");
 					}
@@ -160,6 +162,19 @@ export default class MarkingNotePlugin extends Plugin {
 		window.addEventListener("marking-note-get-commands", lightningHandler);
 		this.register(() =>
 			window.removeEventListener("marking-note-get-commands", lightningHandler),
+		);
+
+		const openSettingsHandler = (() => {
+			const setting = (this.app as any).setting;
+			if (typeof setting?.open === "function") {
+				setting.open();
+				return;
+			}
+			(this.app as any).commands?.executeCommandById("app:open-settings");
+		}) as EventListener;
+		window.addEventListener("marking-note-open-settings", openSettingsHandler);
+		this.register(() =>
+			window.removeEventListener("marking-note-open-settings", openSettingsHandler),
 		);
 
 		// 6. Listen for inline modify command requests
