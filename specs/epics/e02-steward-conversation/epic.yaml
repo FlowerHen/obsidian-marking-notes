@@ -1,0 +1,13 @@
+---
+id: e02
+title: "管家驱动的对话标注与历史"
+wsjf: 8.4
+total_bcps: 8
+status: todo
+stories:
+  - id: e02s01
+    title: "实现管家指令驱动的持久化对话"
+    bcps: 8
+    status: todo
+    spec: e02s01-steward-conversation.md
+    tasks: e02s01-tasks.yaml

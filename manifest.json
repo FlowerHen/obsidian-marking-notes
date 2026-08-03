@@ -1,0 +1,10 @@
+{
+	"id": "marking-note",
+	"name": "Marking Note",
+	"version": "1.1.5",
+	"minAppVersion": "1.5.0",
+	"description": "Progressive AI knowledge annotation using native Markdown highlights and state machines.",
+	"author": "MJH",
+	"authorUrl": "https://github.com",
+	"isDesktopOnly": false
+}

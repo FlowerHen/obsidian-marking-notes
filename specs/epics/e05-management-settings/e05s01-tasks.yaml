@@ -1,0 +1,26 @@
+---
+story_id: e05s01
+title: "管理标注状态标签和管家指令"
+status: todo
+bcps: 7
+tasks:
+  - id: 1
+    description: "实现四阶段状态推进、退回和跨视图同步"
+    verify: "npm run build"
+    status: todo
+  - id: 2
+    description: "实现标签选择、标签筛选和结果块同步"
+    verify: "npm run build"
+    status: todo
+  - id: 3
+    description: "实现当前文档侧边栏和 Vault 全局入口"
+    verify: "npm run build"
+    status: todo
+  - id: 4
+    description: "实现按管家隔离的快捷指令新增、编辑、排序和删除"
+    verify: "npm run build"
+    status: todo
+  - id: 5
+    description: "完成状态、标签、设置和移动端侧边栏手动验收"
+    verify: "git diff --check -- src styles.css specs"
+    status: todo

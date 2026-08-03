@@ -1,0 +1,27 @@
+story_id: e03s01
+title: "完成改写、增补复制和原生链接流程"
+status: todo
+bcps: 7
+tasks:
+  - id: 1
+    description: "将改写和增补快捷指令接入统一操作栏"
+    verify: >-
+      grep -q '改写、增补和链接'
+      specs/epics/e03-transform-copy-link/e03s01-transform-copy-link.md
+    status: todo
+  - id: 2
+    description: "实现改写立即替换、Notice 撤回和原生 Ctrl+Z"
+    verify: "npm run build"
+    status: todo
+  - id: 3
+    description: "实现增补自动复制、再次复制和剪贴板失败预览"
+    verify: "npm run build"
+    status: todo
+  - id: 4
+    description: "接入 Obsidian 原生文档、标题和块链接选择流程"
+    verify: "npm run build"
+    status: todo
+  - id: 5
+    description: "在桌面和移动端验收改写、复制、撤回和链接取消"
+    verify: "git diff --check -- src styles.css specs"
+    status: todo

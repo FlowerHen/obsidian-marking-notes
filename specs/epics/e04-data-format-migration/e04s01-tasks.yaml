@@ -1,0 +1,63 @@
+---
+story_id: e04s01
+title: "建立新标注结果格式并迁移当前文档"
+status: failing
+bcps: 8
+tasks:
+  - id: 1
+    description: "冻结新行内标记和 fenced result block 的可读字段与版本规则"
+    verify: >-
+      node --experimental-strip-types --test
+      tests/annotation-format.test.ts
+    risk: P0
+    security: low
+    status: passing
+    allure:
+      severity: critical
+      categories:
+        - "Data Contract"
+        - "Migration"
+  - id: 2
+    description: "实现新格式的解析、序列化、更新、删除和稳定 ID 关联"
+    verify: "npm run build"
+    risk: P0
+    security: low
+    status: passing
+    allure:
+      severity: critical
+      categories:
+        - "Data Contract"
+        - "Parser"
+  - id: 3
+    description: "实现当前文档迁移预览、确认、原地提交和失败回滚"
+    verify: "npm run build"
+    risk: P0
+    security: low
+    status: failing
+    allure:
+      severity: critical
+      categories:
+        - "Migration"
+        - "Rollback"
+  - id: 4
+    description: "实现正文标注与结果块的手动编辑同步和孤立记录清理"
+    verify: "npm run build"
+    risk: P1
+    security: low
+    status: failing
+    allure:
+      severity: high
+      categories:
+        - "Reconciliation"
+        - "Data Integrity"
+  - id: 5
+    description: "补充解析、迁移、混合格式和单次撤销的自动化与手动验证"
+    verify: "git diff --check -- src specs"
+    risk: P1
+    security: low
+    status: failing
+    allure:
+      severity: high
+      categories:
+        - "Regression"
+        - "Obsidian UAT"

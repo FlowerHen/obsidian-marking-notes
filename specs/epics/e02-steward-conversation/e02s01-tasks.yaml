@@ -1,0 +1,27 @@
+story_id: e02s01
+title: "实现管家指令驱动的持久化对话"
+status: todo
+bcps: 8
+tasks:
+  - id: 1
+    description: "定义按管家隔离的对话指令和历史记录模型"
+    verify: >-
+      grep -q '每个管家独立拥有快捷指令'
+      specs/epics/e02-steward-conversation/e02s01-steward-conversation.md
+    status: todo
+  - id: 2
+    description: "实现对话标注创建、结果写入和已标注状态推进"
+    verify: "npm run build"
+    status: todo
+  - id: 3
+    description: "实现 data.json 历史保存、加载、删除和重启恢复"
+    verify: "npm run build"
+    status: todo
+  - id: 4
+    description: "实现追问、历史快照、撤回、失败重试和删除联动"
+    verify: "npm run build"
+    status: todo
+  - id: 5
+    description: "完成编辑模式、阅读模式和 Obsidian 重启后的手动验收"
+    verify: "git diff --check -- src specs"
+    status: todo

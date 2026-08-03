@@ -1,0 +1,13 @@
+---
+id: e04
+title: "新标注数据格式与当前文档迁移"
+wsjf: 9.2
+total_bcps: 8
+status: todo
+stories:
+  - id: e04s01
+    title: "建立新标注结果格式并迁移当前文档"
+    bcps: 8
+    status: todo
+    spec: e04s01-data-format-migration.md
+    tasks: e04s01-tasks.yaml
