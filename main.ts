@@ -39,6 +39,28 @@ import type {
 } from "./src/domain/types";
 import { type MarkingNode, parseMarkingNodes } from "./src/state";
 
+async function copyTextToClipboard(text: string): Promise<void> {
+	try {
+		if (navigator.clipboard?.writeText) {
+			await navigator.clipboard.writeText(text);
+			return;
+		}
+	} catch {
+		// Fall back to the synchronous editor command below.
+	}
+
+	const textarea = document.createElement("textarea");
+	textarea.value = text;
+	textarea.setAttribute("readonly", "true");
+	textarea.style.position = "fixed";
+	textarea.style.opacity = "0";
+	document.body.appendChild(textarea);
+	textarea.select();
+	const copied = document.execCommand("copy");
+	textarea.remove();
+	if (!copied) throw new Error("Clipboard write was rejected");
+}
+
 // --- Plugin Class ---
 
 export default class MarkingNotePlugin extends Plugin {
@@ -116,13 +138,27 @@ export default class MarkingNotePlugin extends Plugin {
 				(view: EditorView, selection: string, command: LightningCommand) => {
 					this.handleAIAugment(view, selection, command);
 				},
-				() => {
-					const executed = (this.app as any).commands?.executeCommandById(
-						"editor:insert-link",
-					);
-					if (!executed) {
-						new Notice("无法打开 Obsidian 原生链接选择器");
+				(view: EditorView) => {
+					const selection = view.state.selection.main;
+					if (selection.empty) {
+						new Notice("请先选择要添加链接的文字");
+						return;
 					}
+
+					// The action bar lives outside CodeMirror. Restore the selection
+					// before asking Obsidian to open its native link picker.
+					view.dispatch({
+						selection: { anchor: selection.from, head: selection.to },
+					});
+					view.focus();
+					window.setTimeout(() => {
+						const executed = (this.app as any).commands?.executeCommandById(
+							"editor:insert-link",
+						);
+						if (!executed) {
+							new Notice("无法打开 Obsidian 原生链接选择器");
+						}
+					}, 0);
 				},
 				this.popoverCtx,
 				this,
@@ -160,7 +196,10 @@ export default class MarkingNotePlugin extends Plugin {
 				render();
 				return;
 			}
-			return this.app.vault.cachedRead(file as any).then(render).catch(() => render());
+			return this.app.vault
+				.cachedRead(file as any)
+				.then(render)
+				.catch(() => render());
 		});
 
 		// 5. Listen for lightning command requests from the UI
@@ -170,12 +209,18 @@ export default class MarkingNotePlugin extends Plugin {
 					(s) => s.id === this.settings.activeStewardId,
 				) || this.settings.stewards[0];
 			if (e.detail?.callback) {
-				const operation = e.detail.operation === "augment" ? "augment" : "conversation";
-				const source = operation === "augment"
-					? steward?.augmentCommands || []
-					: steward?.commands || [];
+				const operation =
+					e.detail.operation === "augment" ? "augment" : "conversation";
+				const source =
+					operation === "augment"
+						? steward?.augmentCommands || []
+						: steward?.commands || [];
 				const commands = source.filter(
-					(c) => c.enabled !== false && (operation === "augment" ? c.type === "augment" : c.type === "conversation" || c.type === "annotated"),
+					(c) =>
+						c.enabled !== false &&
+						(operation === "augment"
+							? c.type === "augment"
+							: c.type === "conversation" || c.type === "annotated"),
 				);
 				e.detail.callback(commands);
 			}
@@ -202,23 +247,38 @@ export default class MarkingNotePlugin extends Plugin {
 		);
 
 		const getStewardsHandler = ((e: CustomEvent) => {
-			e.detail?.callback?.(this.settings.stewards, this.settings.activeStewardId);
+			e.detail?.callback?.(
+				this.settings.stewards,
+				this.settings.activeStewardId,
+			);
 		}) as EventListener;
 		window.addEventListener("marking-note-get-stewards", getStewardsHandler);
 		this.register(() =>
-			window.removeEventListener("marking-note-get-stewards", getStewardsHandler),
+			window.removeEventListener(
+				"marking-note-get-stewards",
+				getStewardsHandler,
+			),
 		);
 
 		const selectStewardHandler = (async (e: CustomEvent) => {
 			const id = e.detail?.id;
-			if (!id || !this.settings.stewards.some((steward) => steward.id === id)) return;
+			if (!id || !this.settings.stewards.some((steward) => steward.id === id))
+				return;
 			this.settings.activeStewardId = id;
 			await this.saveSettings();
-			new Notice(`已切换到管家：${this.settings.stewards.find((steward) => steward.id === id)?.name || id}`);
+			new Notice(
+				`已切换到管家：${this.settings.stewards.find((steward) => steward.id === id)?.name || id}`,
+			);
 		}) as EventListener;
-		window.addEventListener("marking-note-select-steward", selectStewardHandler);
+		window.addEventListener(
+			"marking-note-select-steward",
+			selectStewardHandler,
+		);
 		this.register(() =>
-			window.removeEventListener("marking-note-select-steward", selectStewardHandler),
+			window.removeEventListener(
+				"marking-note-select-steward",
+				selectStewardHandler,
+			),
 		);
 
 		// 6. Listen for inline modify command requests
@@ -445,7 +505,8 @@ export default class MarkingNotePlugin extends Plugin {
 			fileContent = await this.app.vault.read(activeFile);
 		}
 
-		const richText = annotationRepository.getCalloutContent(fileContent, nodeId) || "";
+		const richText =
+			annotationRepository.getCalloutContent(fileContent, nodeId) || "";
 
 		if (!this.popoverViewer) {
 			this.popoverViewer = new PopoverViewer(this.popoverCtx);
@@ -604,6 +665,7 @@ export default class MarkingNotePlugin extends Plugin {
 			return;
 		}
 
+		new Notice("正在生成增补内容…");
 		try {
 			const richText = await this.annotationService.augmentSelection({
 				view,
@@ -618,8 +680,8 @@ export default class MarkingNotePlugin extends Plugin {
 				new Notice("⚠️ 增补生成失败，请检查模型配置与 API 连通性");
 				return;
 			}
-			await navigator.clipboard.writeText(richText);
-			new Notice("✅ 增补内容已复制到剪贴板");
+			await copyTextToClipboard(richText);
+			new Notice(`✅ 增补内容已复制到剪贴板（${richText.length} 字）`);
 		} catch (error) {
 			console.error(error);
 			new Notice("⚠️ 增补内容复制失败");

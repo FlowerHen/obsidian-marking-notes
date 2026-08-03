@@ -1018,7 +1018,11 @@ var init_ui = __esm({
                 if (steward.id === activeId)
                   item.addClass("is-active");
                 item.onclick = () => {
-                  window.dispatchEvent(new CustomEvent("marking-note-select-steward", { detail: { id: steward.id } }));
+                  window.dispatchEvent(
+                    new CustomEvent("marking-note-select-steward", {
+                      detail: { id: steward.id }
+                    })
+                  );
                   dropdown.remove();
                   this.close();
                 };
@@ -1315,7 +1319,10 @@ var init_ui = __esm({
         footer.appendChild(inputRow);
         this.container.appendChild(footer);
         document.body.appendChild(this.container);
-        const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+        const mobileViewportCleanup = bindMobilePopoverViewport(
+          this.container,
+          isMobile
+        );
         if (mobileViewportCleanup)
           this.registerCleanup(mobileViewportCleanup);
         this.updateTitleDisplay();
@@ -1724,7 +1731,10 @@ var init_ui = __esm({
         body.appendChild(viewContainer);
         this.container.appendChild(body);
         document.body.appendChild(this.container);
-        const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+        const mobileViewportCleanup = bindMobilePopoverViewport(
+          this.container,
+          isMobile
+        );
         if (mobileViewportCleanup)
           this.registerCleanup(mobileViewportCleanup);
         this.makeDraggable(header);
@@ -2333,7 +2343,7 @@ function createMarkingExtensions(onCommand, onAugment, onLink, popoverCtx, plugi
                       })
                     );
                   },
-                  onLink
+                  () => onLink(update.view)
                 );
               }
               this.menu.show(coords.left, coords.top, selection);
@@ -2900,7 +2910,10 @@ var AnnotationService = class {
     if (effectiveContextLen > 0) {
       const halfLen = Math.floor(effectiveContextLen / 2);
       contextBefore = fullText.slice(Math.max(0, from - halfLen), from);
-      contextAfter = fullText.slice(to, Math.min(fullText.length, to + halfLen));
+      contextAfter = fullText.slice(
+        to,
+        Math.min(fullText.length, to + halfLen)
+      );
     }
     let userPrompt = `\u3010\u5904\u7406\u8981\u6C42\u3011\uFF1A
 ${input.instruction}
@@ -2924,14 +2937,17 @@ ${input.instruction}`;
         ],
         temperature: (_a = input.inlineSteward.temperature) != null ? _a : 0.3
       };
-      const response = await fetch(`${input.provider.baseURL}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${input.provider.apiKey}`
-        },
-        body: JSON.stringify(body)
-      });
+      const response = await fetch(
+        `${input.provider.baseURL}/chat/completions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${input.provider.apiKey}`
+          },
+          body: JSON.stringify(body)
+        }
+      );
       if (!response.ok) {
         throw new Error("API Request Failed");
       }
@@ -3089,7 +3105,10 @@ ${input.instruction}`;
     const query = `${nodeText}
 
 \u8FFD\u95EE\u9700\u6C42\uFF1A${input.instruction}`.trim();
-    const results = await TavilyClient.search(input.settings.tavilyApiKey, query);
+    const results = await TavilyClient.search(
+      input.settings.tavilyApiKey,
+      query
+    );
     const formatted = TavilyClient.formatSearchResults(results);
     return formatted || void 0;
   }
@@ -3201,7 +3220,11 @@ var CONVERSATION_PRESETS = [
   ["\u6838\u5FC3\u89E3\u91CA", "\u{1F50D}", "\u89E3\u91CA\u9009\u4E2D\u6587\u672C\u7684\u6838\u5FC3\u542B\u4E49\u3001\u5173\u952E\u6982\u5FF5\u548C\u6210\u7ACB\u6761\u4EF6\u3002"],
   ["\u903B\u8F91\u68B3\u7406", "\u{1F5FA}\uFE0F", "\u68B3\u7406\u9009\u4E2D\u6587\u672C\u7684\u8BBA\u8BC1\u7ED3\u6784\u3001\u56E0\u679C\u5173\u7CFB\u548C\u5173\u952E\u6B65\u9AA4\u3002"],
   ["\u4E3E\u4F8B\u8BF4\u660E", "\u{1F4A1}", "\u4E3A\u9009\u4E2D\u6587\u672C\u63D0\u4F9B\u7531\u6D45\u5165\u6DF1\u7684\u5177\u4F53\u4F8B\u5B50\uFF0C\u5E2E\u52A9\u7406\u89E3\u5176\u5B9E\u9645\u542B\u4E49\u3002"],
-  ["\u8054\u7CFB\u4E0A\u4E0B\u6587", "\u{1F517}", "\u8BF4\u660E\u9009\u4E2D\u6587\u672C\u4E0E\u4E0A\u4E0B\u6587\u7684\u5173\u7CFB\uFF0C\u4EE5\u53CA\u5B83\u5728\u6574\u4F53\u5185\u5BB9\u4E2D\u7684\u4F5C\u7528\u3002"],
+  [
+    "\u8054\u7CFB\u4E0A\u4E0B\u6587",
+    "\u{1F517}",
+    "\u8BF4\u660E\u9009\u4E2D\u6587\u672C\u4E0E\u4E0A\u4E0B\u6587\u7684\u5173\u7CFB\uFF0C\u4EE5\u53CA\u5B83\u5728\u6574\u4F53\u5185\u5BB9\u4E2D\u7684\u4F5C\u7528\u3002"
+  ],
   ["\u6279\u5224\u6027\u9605\u8BFB", "\u2696\uFE0F", "\u6307\u51FA\u9009\u4E2D\u6587\u672C\u7684\u524D\u63D0\u3001\u8BC1\u636E\u3001\u5C40\u9650\u548C\u53EF\u80FD\u7684\u53CD\u4F8B\u3002"],
   ["\u751F\u6210\u7EC3\u4E60", "\u270F\uFE0F", "\u56F4\u7ED5\u9009\u4E2D\u6587\u672C\u751F\u6210\u4E00\u9053\u7406\u89E3\u6027\u7EC3\u4E60\uFF0C\u5E76\u63D0\u4F9B\u7B54\u6848\u548C\u89E3\u6790\u3002"]
 ];
@@ -3269,10 +3292,7 @@ function normalizeStewardCommands(steward) {
   steward.commands = fillCommands(steward.id, conversation, "conversation");
   steward.augmentCommands = fillCommands(steward.id, augment, "augment");
   if (overflow.length > 0) {
-    steward.legacyCommands = [
-      ...steward.legacyCommands || [],
-      ...overflow
-    ];
+    steward.legacyCommands = [...steward.legacyCommands || [], ...overflow];
   }
 }
 function normalizeInlineCommands(steward) {
@@ -3318,12 +3338,21 @@ var LightningCommandEditModal = class extends import_obsidian5.Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h3", { text: `${UI_ICONS.actionRewrite} \u7F16\u8F91\u6307\u4EE4: ${this.cmd.icon} ${this.cmd.name}` });
-    new import_obsidian5.Setting(contentEl).setName("\u540D\u79F0").addText((text) => text.setValue(this.cmd.name).onChange((value) => {
-      this.cmd.name = value;
-    }));
+    contentEl.createEl("h3", {
+      text: `${UI_ICONS.actionRewrite} \u7F16\u8F91\u6307\u4EE4: ${this.cmd.icon} ${this.cmd.name}`
+    });
+    new import_obsidian5.Setting(contentEl).setName("\u540D\u79F0").addText(
+      (text) => text.setValue(this.cmd.name).onChange((value) => {
+        this.cmd.name = value;
+      })
+    );
     const iconSetting = new import_obsidian5.Setting(contentEl).setName("\u56FE\u6807");
-    const iconBtn = iconSetting.controlEl.createEl("button", { text: this.cmd.icon, attr: { style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;" } });
+    const iconBtn = iconSetting.controlEl.createEl("button", {
+      text: this.cmd.icon,
+      attr: {
+        style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;"
+      }
+    });
     iconBtn.onclick = () => {
       showEmojiGrid(iconBtn, (emoji) => {
         this.cmd.icon = emoji;
@@ -3331,17 +3360,25 @@ var LightningCommandEditModal = class extends import_obsidian5.Modal {
       });
     };
     if (this.cmd.type === "default-summary") {
-      new import_obsidian5.Setting(contentEl).setName("\u4E00\u53E5\u8BDD\u603B\u7ED3\u7EA6\u675F").setDesc("\u9ED8\u8BA4\u5904\u7406\u9AD8\u4EAE\u65F6\u7684\u4E00\u53E5\u8BDD\u7EA6\u675F").addTextArea((text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
-        this.cmd.detailPrompt = value;
-      }));
+      new import_obsidian5.Setting(contentEl).setName("\u4E00\u53E5\u8BDD\u603B\u7ED3\u7EA6\u675F").setDesc("\u9ED8\u8BA4\u5904\u7406\u9AD8\u4EAE\u65F6\u7684\u4E00\u53E5\u8BDD\u7EA6\u675F").addTextArea(
+        (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+          this.cmd.detailPrompt = value;
+        })
+      );
     } else if (this.cmd.type === "inline-modify") {
-      new import_obsidian5.Setting(contentEl).setName("\u5904\u7406\u547D\u4EE4").setDesc("\u544A\u8BC9\u5927\u6A21\u578B\u4F60\u60F3\u5982\u4F55\u5904\u7406\u6216\u6539\u5199\u8FD9\u6BB5\u539F\u6587\uFF08\u4E0D\u8981\u6709\u4EFB\u4F55\u8FD4\u56DE\u7ED3\u679C\u5916\u7684\u6807\u9898\u5185\u5BB9\uFF09").addTextArea((text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
-        this.cmd.detailPrompt = value;
-      }));
+      new import_obsidian5.Setting(contentEl).setName("\u5904\u7406\u547D\u4EE4").setDesc(
+        "\u544A\u8BC9\u5927\u6A21\u578B\u4F60\u60F3\u5982\u4F55\u5904\u7406\u6216\u6539\u5199\u8FD9\u6BB5\u539F\u6587\uFF08\u4E0D\u8981\u6709\u4EFB\u4F55\u8FD4\u56DE\u7ED3\u679C\u5916\u7684\u6807\u9898\u5185\u5BB9\uFF09"
+      ).addTextArea(
+        (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+          this.cmd.detailPrompt = value;
+        })
+      );
     } else {
-      new import_obsidian5.Setting(contentEl).setName("\u8BE6\u7EC6\u5185\u5BB9\u6307\u4EE4").setDesc("\u5B9A\u4E49 AI \u7B2C\u4E8C\u90E8\u5206\uFF08\u5411\u4E0B\u8FFD\u95EE\u89D2\u6CE8\u6DF1\u5C42\u5185\u5BB9\uFF09\u7684\u8F93\u51FA\u5185\u5BB9").addTextArea((text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
-        this.cmd.detailPrompt = value;
-      }));
+      new import_obsidian5.Setting(contentEl).setName("\u8BE6\u7EC6\u5185\u5BB9\u6307\u4EE4").setDesc("\u5B9A\u4E49 AI \u7B2C\u4E8C\u90E8\u5206\uFF08\u5411\u4E0B\u8FFD\u95EE\u89D2\u6CE8\u6DF1\u5C42\u5185\u5BB9\uFF09\u7684\u8F93\u51FA\u5185\u5BB9").addTextArea(
+        (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+          this.cmd.detailPrompt = value;
+        })
+      );
       new import_obsidian5.Setting(contentEl).setName("\u7BA1\u5BB6\u63D0\u793A\u8BCD\u5E94\u7528\u8303\u56F4").setDesc("\u51B3\u5B9A\u8BE5\u547D\u4EE4\u6267\u884C\u65F6\uFF0C\u662F\u5426\u6CBF\u7528\u9605\u8BFB\u7BA1\u5BB6\u7684\u8BBE\u5B9A\u3002").addDropdown((dropdown) => {
         dropdown.addOption("full", "\u5E94\u7528\u9605\u8BFB\u7406\u89E3 + \u5199\u4F5C\u98CE\u683C (\u63A8\u8350)");
         dropdown.addOption("writingOnly", "\u4EC5\u5E94\u7528\u5199\u4F5C\u98CE\u683C");
@@ -3365,23 +3402,38 @@ var LightningCommandEditModal = class extends import_obsidian5.Modal {
         });
       });
     }
-    contentEl.createEl("h5", { text: `${UI_ICONS.advanced} \u9AD8\u7EA7\u8986\u76D6 (Overrides)` });
-    new import_obsidian5.Setting(contentEl).setName("Temperature \u8986\u5199").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u63A8\u8350\u6781\u4F4E\u6E29 0-0.3 \u786E\u4FDD\u4E25\u8C28\u3002").addText((text) => {
-      var _a, _b;
-      return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.temperature) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
-        this.cmd.temperature = value ? parseFloat(value) : void 0;
-      });
+    contentEl.createEl("h5", {
+      text: `${UI_ICONS.advanced} \u9AD8\u7EA7\u8986\u76D6 (Overrides)`
     });
-    new import_obsidian5.Setting(contentEl).setName("\u4E0A\u4E0B\u6587\u957F\u5EA6").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u6700\u5927 8192\u3002").addText((text) => {
-      var _a, _b;
-      return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.contextLength) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
-        this.cmd.contextLength = value ? parseInt(value) : void 0;
-      });
+    new import_obsidian5.Setting(contentEl).setName("Temperature \u8986\u5199").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u63A8\u8350\u6781\u4F4E\u6E29 0-0.3 \u786E\u4FDD\u4E25\u8C28\u3002").addText(
+      (text) => {
+        var _a, _b;
+        return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.temperature) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
+          this.cmd.temperature = value ? parseFloat(value) : void 0;
+        });
+      }
+    );
+    new import_obsidian5.Setting(contentEl).setName("\u4E0A\u4E0B\u6587\u957F\u5EA6").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u6700\u5927 8192\u3002").addText(
+      (text) => {
+        var _a, _b;
+        return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.contextLength) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
+          this.cmd.contextLength = value ? parseInt(value) : void 0;
+        });
+      }
+    );
+    const btnDiv = contentEl.createEl("div", {
+      attr: {
+        style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;"
+      }
     });
-    const btnDiv = contentEl.createEl("div", { attr: { style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;" } });
-    const cancelBtn = btnDiv.createEl("button", { text: `${UI_ICONS.cancel} \u53D6\u6D88` });
+    const cancelBtn = btnDiv.createEl("button", {
+      text: `${UI_ICONS.cancel} \u53D6\u6D88`
+    });
     cancelBtn.onclick = () => this.close();
-    const saveBtn = btnDiv.createEl("button", { text: `${UI_ICONS.save} \u4FDD\u5B58`, cls: "mod-cta" });
+    const saveBtn = btnDiv.createEl("button", {
+      text: `${UI_ICONS.save} \u4FDD\u5B58`,
+      cls: "mod-cta"
+    });
     saveBtn.onclick = () => {
       this.onSave(this.cmd);
       this.close();
@@ -3403,15 +3455,33 @@ var TagEditModal = class extends import_obsidian5.Modal {
   renderContent() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h3", { text: `${UI_ICONS.tags} \u7F16\u8F91\u6807\u7B7E: ${this.tag.emoji} ${this.tag.name}` });
-    const previewRow = contentEl.createEl("div", { attr: { style: "margin-bottom: 16px; padding: 12px; background: var(--background-primary); border-radius: 8px; text-align: center;" } });
-    const previewEl = previewRow.createEl("span", { text: `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`, attr: { style: "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;" } });
+    contentEl.createEl("h3", {
+      text: `${UI_ICONS.tags} \u7F16\u8F91\u6807\u7B7E: ${this.tag.emoji} ${this.tag.name}`
+    });
+    const previewRow = contentEl.createEl("div", {
+      attr: {
+        style: "margin-bottom: 16px; padding: 12px; background: var(--background-primary); border-radius: 8px; text-align: center;"
+      }
+    });
+    const previewEl = previewRow.createEl("span", {
+      text: `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`,
+      attr: {
+        style: "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;"
+      }
+    });
     this.applyPreviewStyle(previewEl);
-    new import_obsidian5.Setting(contentEl).setName("\u6807\u7B7E\u540D\u79F0").addText((text) => text.setValue(this.tag.name).onChange((value) => {
-      this.tag.name = value;
-    }));
+    new import_obsidian5.Setting(contentEl).setName("\u6807\u7B7E\u540D\u79F0").addText(
+      (text) => text.setValue(this.tag.name).onChange((value) => {
+        this.tag.name = value;
+      })
+    );
     const emojiSetting = new import_obsidian5.Setting(contentEl).setName("\u56FE\u6807");
-    const emojiBtn = emojiSetting.controlEl.createEl("button", { text: this.tag.emoji, attr: { style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;" } });
+    const emojiBtn = emojiSetting.controlEl.createEl("button", {
+      text: this.tag.emoji,
+      attr: {
+        style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;"
+      }
+    });
     emojiBtn.onclick = () => {
       showEmojiGrid(emojiBtn, (emoji) => {
         this.tag.emoji = emoji;
@@ -3420,20 +3490,41 @@ var TagEditModal = class extends import_obsidian5.Modal {
         previewEl.innerText = `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`;
       });
     };
-    contentEl.createEl("h5", { text: "\u5E95\u8272", attr: { style: "margin-bottom: 4px;" } });
-    const bgGrid = contentEl.createEl("div", { cls: "mn-palette-grid", attr: { style: "margin-bottom: 12px;" } });
+    contentEl.createEl("h5", {
+      text: "\u5E95\u8272",
+      attr: { style: "margin-bottom: 4px;" }
+    });
+    const bgGrid = contentEl.createEl("div", {
+      cls: "mn-palette-grid",
+      attr: { style: "margin-bottom: 12px;" }
+    });
     for (const color of COLOR_PALETTE) {
-      const swatch = bgGrid.createEl("div", { cls: `mn-palette-swatch ${color.value === this.tag.color ? "mn-swatch-active" : ""}`, attr: { style: `background: ${color.value};`, title: color.name } });
+      const swatch = bgGrid.createEl("div", {
+        cls: `mn-palette-swatch ${color.value === this.tag.color ? "mn-swatch-active" : ""}`,
+        attr: { style: `background: ${color.value};`, title: color.name }
+      });
       swatch.onclick = () => {
         this.tag.color = color.value;
         this.applyPreviewStyle(previewEl);
         this.renderContent();
       };
     }
-    contentEl.createEl("h5", { text: "\u6587\u5B57\u989C\u8272", attr: { style: "margin-bottom: 4px;" } });
-    const txtGrid = contentEl.createEl("div", { cls: "mn-palette-grid", attr: { style: "margin-bottom: 12px;" } });
+    contentEl.createEl("h5", {
+      text: "\u6587\u5B57\u989C\u8272",
+      attr: { style: "margin-bottom: 4px;" }
+    });
+    const txtGrid = contentEl.createEl("div", {
+      cls: "mn-palette-grid",
+      attr: { style: "margin-bottom: 12px;" }
+    });
     for (const color of TEXT_COLOR_PALETTE) {
-      const swatch = txtGrid.createEl("div", { cls: `mn-palette-swatch ${color.value === this.tag.textColor ? "mn-swatch-active" : ""}`, attr: { style: `background: ${color.value === "inherit" ? "var(--text-normal)" : color.value};`, title: color.name } });
+      const swatch = txtGrid.createEl("div", {
+        cls: `mn-palette-swatch ${color.value === this.tag.textColor ? "mn-swatch-active" : ""}`,
+        attr: {
+          style: `background: ${color.value === "inherit" ? "var(--text-normal)" : color.value};`,
+          title: color.name
+        }
+      });
       swatch.onclick = () => {
         this.tag.textColor = color.value;
         this.applyPreviewStyle(previewEl);
@@ -3451,10 +3542,19 @@ var TagEditModal = class extends import_obsidian5.Modal {
         this.applyPreviewStyle(previewEl);
       });
     });
-    const btnDiv = contentEl.createEl("div", { attr: { style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;" } });
-    const cancelBtn = btnDiv.createEl("button", { text: `${UI_ICONS.cancel} \u53D6\u6D88` });
+    const btnDiv = contentEl.createEl("div", {
+      attr: {
+        style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;"
+      }
+    });
+    const cancelBtn = btnDiv.createEl("button", {
+      text: `${UI_ICONS.cancel} \u53D6\u6D88`
+    });
     cancelBtn.onclick = () => this.close();
-    const saveBtn = btnDiv.createEl("button", { text: `${UI_ICONS.save} \u4FDD\u5B58`, cls: "mod-cta" });
+    const saveBtn = btnDiv.createEl("button", {
+      text: `${UI_ICONS.save} \u4FDD\u5B58`,
+      cls: "mod-cta"
+    });
     saveBtn.onclick = () => {
       this.onSave(this.tag);
       this.close();
@@ -3482,7 +3582,9 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h2", { text: "Marking Note \u8BBE\u7F6E" });
     const tabsEl = containerEl.createDiv({ cls: "mn-settings-tabs" });
-    const settingsContentEl = containerEl.createDiv({ cls: "mn-settings-content" });
+    const settingsContentEl = containerEl.createDiv({
+      cls: "mn-settings-content"
+    });
     const sectionEls = {
       general: settingsContentEl.createDiv(),
       tags: settingsContentEl.createDiv(),
@@ -3501,7 +3603,10 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       }
     };
     const createTab = (tab, label) => {
-      const btn = tabsEl.createEl("button", { text: label, cls: "mn-settings-tab" });
+      const btn = tabsEl.createEl("button", {
+        text: label,
+        cls: "mn-settings-tab"
+      });
       btn.onclick = () => switchTab(tab);
       tabButtons[tab] = btn;
     };
@@ -3523,11 +3628,18 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
     switchTab(this.activeTab);
   }
   renderGeneralSettings(container) {
-    container.createEl("h3", { text: `${UI_ICONS.general} \u901A\u7528\u8BBE\u7F6E`, cls: "mn-settings-section-title" });
-    new import_obsidian6.Setting(container).setName("\u542F\u7528 AI \u539F\u6587\u6539\u5199\u9762\u677F").setDesc("\u5728\u60AC\u6D6E\u83DC\u5355\u4E2D\u589E\u52A0\u4E00\u4E2A\u6309\u94AE\uFF0C\u7528\u4E8E\u5C31\u5730\u4FEE\u6539\u539F\u6587\uFF08\u65E0\u9700\u751F\u6210\u9AD8\u4EAE\u548C\u811A\u6807\uFF09\u3002").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableInlineModification).onChange(async (value) => {
-      this.plugin.settings.enableInlineModification = value;
-      await this.plugin.saveSettings();
-    }));
+    container.createEl("h3", {
+      text: `${UI_ICONS.general} \u901A\u7528\u8BBE\u7F6E`,
+      cls: "mn-settings-section-title"
+    });
+    new import_obsidian6.Setting(container).setName("\u542F\u7528 AI \u539F\u6587\u6539\u5199\u9762\u677F").setDesc(
+      "\u5728\u60AC\u6D6E\u83DC\u5355\u4E2D\u589E\u52A0\u4E00\u4E2A\u6309\u94AE\uFF0C\u7528\u4E8E\u5C31\u5730\u4FEE\u6539\u539F\u6587\uFF08\u65E0\u9700\u751F\u6210\u9AD8\u4EAE\u548C\u811A\u6807\uFF09\u3002"
+    ).addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.enableInlineModification).onChange(async (value) => {
+        this.plugin.settings.enableInlineModification = value;
+        await this.plugin.saveSettings();
+      })
+    );
     new import_obsidian6.Setting(container).setName("\u5F53\u524D\u6FC0\u6D3B\u7684\u9605\u8BFB\u7BA1\u5BB6").setDesc("\u5FEB\u901F\u5207\u6362\u60AC\u6D6E\u9762\u677F\u3001\u6807\u6CE8\u548C\u5408\u5E76\u65F6\u9ED8\u8BA4\u4F7F\u7528\u7684\u7BA1\u5BB6\u3002").addDropdown((dropdown) => {
       for (const steward of this.plugin.settings.stewards) {
         dropdown.addOption(steward.id, `${steward.icon} ${steward.name}`);
@@ -3539,15 +3651,26 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       });
     });
     const generalHint = container.createEl("div", { cls: "mn-settings-card" });
-    generalHint.createEl("div", { text: `${UI_ICONS.actionChat} \u60AC\u6D6E\u83DC\u5355\u8BF4\u660E`, attr: { style: "font-weight: 600; margin-bottom: 6px;" } });
-    generalHint.createEl("div", { text: "\u6807\u6CE8\u60AC\u6D6E\u83DC\u5355\u5F00\u5173\u5DF2\u4ECE\u8BBE\u7F6E\u9875\u79FB\u9664\uFF0C\u53EF\u901A\u8FC7\u547D\u4EE4\u9762\u677F\u4E2D\u7684\u201C\u6253\u5F00/\u5173\u95ED\u6807\u6CE8\u60AC\u6D6E\u7A97\u201D\u8FDB\u884C\u63A7\u5236\u3002", cls: "setting-item-description" });
+    generalHint.createEl("div", {
+      text: `${UI_ICONS.actionChat} \u60AC\u6D6E\u83DC\u5355\u8BF4\u660E`,
+      attr: { style: "font-weight: 600; margin-bottom: 6px;" }
+    });
+    generalHint.createEl("div", {
+      text: "\u6807\u6CE8\u60AC\u6D6E\u83DC\u5355\u5F00\u5173\u5DF2\u4ECE\u8BBE\u7F6E\u9875\u79FB\u9664\uFF0C\u53EF\u901A\u8FC7\u547D\u4EE4\u9762\u677F\u4E2D\u7684\u201C\u6253\u5F00/\u5173\u95ED\u6807\u6CE8\u60AC\u6D6E\u7A97\u201D\u8FDB\u884C\u63A7\u5236\u3002",
+      cls: "setting-item-description"
+    });
   }
   renderAdvancedSettings(container) {
-    container.createEl("h3", { text: `${UI_ICONS.advanced} \u5F00\u53D1`, cls: "mn-settings-section-title" });
-    new import_obsidian6.Setting(container).setName("\u8C03\u8BD5\u6A21\u5F0F").setDesc("\u5F00\u542F\u540E\u5C06\u5728\u63A7\u5236\u53F0\u8F93\u51FA\u8BE6\u7EC6\u7684\u8C03\u8BD5\u65E5\u5FD7\u4FE1\u606F\u3002").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableDebugMode).onChange(async (value) => {
-      this.plugin.settings.enableDebugMode = value;
-      await this.plugin.saveSettings();
-    }));
+    container.createEl("h3", {
+      text: `${UI_ICONS.advanced} \u5F00\u53D1`,
+      cls: "mn-settings-section-title"
+    });
+    new import_obsidian6.Setting(container).setName("\u8C03\u8BD5\u6A21\u5F0F").setDesc("\u5F00\u542F\u540E\u5C06\u5728\u63A7\u5236\u53F0\u8F93\u51FA\u8BE6\u7EC6\u7684\u8C03\u8BD5\u65E5\u5FD7\u4FE1\u606F\u3002").addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.enableDebugMode).onChange(async (value) => {
+        this.plugin.settings.enableDebugMode = value;
+        await this.plugin.saveSettings();
+      })
+    );
     new import_obsidian6.Setting(container).setName("Tavily API Key").setDesc("\u7528\u4E8E\u8FFD\u95EE\u65F6\u7684\u53EF\u9009\u7F51\u7EDC\u641C\u7D22\u589E\u5F3A\uFF1B\u7559\u7A7A\u5219\u7981\u7528\u7F51\u7EDC\u641C\u7D22\u3002").addText((text) => {
       text.setPlaceholder("tvly-...").setValue(this.plugin.settings.tavilyApiKey || "").onChange(async (value) => {
         this.plugin.settings.tavilyApiKey = value.trim();
@@ -3555,33 +3678,58 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       });
       text.inputEl.type = "password";
     });
-    new import_obsidian6.Setting(container).setName("\u5F00\u53D1\u8005\u6A21\u5F0F").setDesc("\u5F00\u542F\u540E\u53EF\u7F16\u8F91\u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F\uFF08\u542B\u6458\u8981\u3001\u6DF1\u5EA6\u5206\u6790\u4E0E\u539F\u6587\u6539\u5199\u5F15\u64CE\u63D0\u793A\u8BCD\uFF09\u3002").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableDeveloperMode).onChange(async (value) => {
-      this.plugin.settings.enableDeveloperMode = value;
-      await this.plugin.saveSettings();
-      this.display();
-    }));
+    new import_obsidian6.Setting(container).setName("\u5F00\u53D1\u8005\u6A21\u5F0F").setDesc(
+      "\u5F00\u542F\u540E\u53EF\u7F16\u8F91\u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F\uFF08\u542B\u6458\u8981\u3001\u6DF1\u5EA6\u5206\u6790\u4E0E\u539F\u6587\u6539\u5199\u5F15\u64CE\u63D0\u793A\u8BCD\uFF09\u3002"
+    ).addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.enableDeveloperMode).onChange(async (value) => {
+        this.plugin.settings.enableDeveloperMode = value;
+        await this.plugin.saveSettings();
+        this.display();
+      })
+    );
     if (!this.plugin.settings.enableDeveloperMode)
       return;
     const promptCard = container.createEl("div", { cls: "mn-settings-card" });
-    promptCard.createEl("h4", { text: `${UI_ICONS.prompt} \u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F`, attr: { style: "margin: 0 0 8px 0;" } });
-    promptCard.createEl("p", { text: "\u8FD9\u4E9B\u6A21\u677F\u4F1A\u76F4\u63A5\u5F71\u54CD\u5F15\u64CE\u7EA7\u8F93\u51FA\u683C\u5F0F\u3002\u8BF7\u4FDD\u7559\u5360\u4F4D\u7B26\uFF0C\u4F8B\u5982 __FOOTNOTE_ID__\u3001__DEFAULT_SUMMARY_PROMPT__\u3001__TARGET_LANGUAGE__\u3002", cls: "setting-item-description" });
-    new import_obsidian6.Setting(promptCard).setName("\u9ED8\u8BA4\u6458\u8981\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u751F\u6210\u5355\u884C\u6458\u8981\u6807\u9898\u3002").addTextArea((text) => text.setValue(this.plugin.settings.defaultSummarySystemPromptTemplate).onChange(async (value) => {
-      this.plugin.settings.defaultSummarySystemPromptTemplate = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(promptCard).setName("\u8BE6\u7EC6\u5206\u6790\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u6807\u51C6\u6807\u6CE8\u3001\u8FFD\u95EE\u548C\u5408\u5E76\u65F6\u7684\u53CC\u6BB5\u5F0F\u8F93\u51FA\u6A21\u677F\u3002").addTextArea((text) => text.setValue(this.plugin.settings.annotationSystemPromptTemplate).onChange(async (value) => {
-      this.plugin.settings.annotationSystemPromptTemplate = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(promptCard).setName("\u539F\u6587\u6539\u5199\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u76F4\u63A5\u8986\u76D6\u539F\u6587\u7684\u6539\u5199\u5F15\u64CE\u3002").addTextArea((text) => text.setValue(this.plugin.settings.inlineRewriteSystemPromptTemplate).onChange(async (value) => {
-      this.plugin.settings.inlineRewriteSystemPromptTemplate = value;
-      await this.plugin.saveSettings();
-    }));
+    promptCard.createEl("h4", {
+      text: `${UI_ICONS.prompt} \u7CFB\u7EDF\u7EA7\u63D0\u793A\u8BCD\u6A21\u677F`,
+      attr: { style: "margin: 0 0 8px 0;" }
+    });
+    promptCard.createEl("p", {
+      text: "\u8FD9\u4E9B\u6A21\u677F\u4F1A\u76F4\u63A5\u5F71\u54CD\u5F15\u64CE\u7EA7\u8F93\u51FA\u683C\u5F0F\u3002\u8BF7\u4FDD\u7559\u5360\u4F4D\u7B26\uFF0C\u4F8B\u5982 __FOOTNOTE_ID__\u3001__DEFAULT_SUMMARY_PROMPT__\u3001__TARGET_LANGUAGE__\u3002",
+      cls: "setting-item-description"
+    });
+    new import_obsidian6.Setting(promptCard).setName("\u9ED8\u8BA4\u6458\u8981\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u751F\u6210\u5355\u884C\u6458\u8981\u6807\u9898\u3002").addTextArea(
+      (text) => text.setValue(this.plugin.settings.defaultSummarySystemPromptTemplate).onChange(async (value) => {
+        this.plugin.settings.defaultSummarySystemPromptTemplate = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(promptCard).setName("\u8BE6\u7EC6\u5206\u6790\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u6807\u51C6\u6807\u6CE8\u3001\u8FFD\u95EE\u548C\u5408\u5E76\u65F6\u7684\u53CC\u6BB5\u5F0F\u8F93\u51FA\u6A21\u677F\u3002").addTextArea(
+      (text) => text.setValue(this.plugin.settings.annotationSystemPromptTemplate).onChange(async (value) => {
+        this.plugin.settings.annotationSystemPromptTemplate = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(promptCard).setName("\u539F\u6587\u6539\u5199\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u76F4\u63A5\u8986\u76D6\u539F\u6587\u7684\u6539\u5199\u5F15\u64CE\u3002").addTextArea(
+      (text) => text.setValue(this.plugin.settings.inlineRewriteSystemPromptTemplate).onChange(async (value) => {
+        this.plugin.settings.inlineRewriteSystemPromptTemplate = value;
+        await this.plugin.saveSettings();
+      })
+    );
   }
   renderTagSettings(container) {
-    container.createEl("h3", { text: `${UI_ICONS.tags} \u6807\u6CE8\u6807\u7B7E (Tags)`, cls: "mn-settings-section-title" });
-    container.createEl("p", { text: "\u70B9\u51FB\u6807\u7B7E\u5361\u7247\u8FDB\u5165\u7F16\u8F91\u3002\u6807\u6CE8\u65F6\u53EF\u9009\u62E9\u6216\u81EA\u52A8\u5173\u8054\u6807\u7B7E\u3002", cls: "setting-item-description" });
-    const addButton = container.createEl("button", { text: "\u2795 \u65B0\u5EFA\u6807\u7B7E", cls: "mod-cta" });
+    container.createEl("h3", {
+      text: `${UI_ICONS.tags} \u6807\u6CE8\u6807\u7B7E (Tags)`,
+      cls: "mn-settings-section-title"
+    });
+    container.createEl("p", {
+      text: "\u70B9\u51FB\u6807\u7B7E\u5361\u7247\u8FDB\u5165\u7F16\u8F91\u3002\u6807\u6CE8\u65F6\u53EF\u9009\u62E9\u6216\u81EA\u52A8\u5173\u8054\u6807\u7B7E\u3002",
+      cls: "setting-item-description"
+    });
+    const addButton = container.createEl("button", {
+      text: "\u2795 \u65B0\u5EFA\u6807\u7B7E",
+      cls: "mod-cta"
+    });
     addButton.onclick = async () => {
       const newTag = {
         id: `tag-${Date.now()}`,
@@ -3599,17 +3747,52 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
         this.display();
       }).open();
     };
-    const tagListDiv = container.createEl("div", { attr: { style: "display: flex; flex-direction: column; gap: 8px; margin-top: 12px;" } });
+    const tagListDiv = container.createEl("div", {
+      attr: {
+        style: "display: flex; flex-direction: column; gap: 8px; margin-top: 12px;"
+      }
+    });
     this.plugin.settings.tags.forEach((tag, index) => {
-      const styleLabels = { highlight: "\u9AD8\u4EAE", underline: "\u4E0B\u5212\u7EBF", dashed: "\u865A\u7EBF", "semi-transparent": "\u534A\u900F\u660E" };
-      const tagCard = tagListDiv.createEl("div", { cls: "marking-tag-card", attr: { style: "cursor: pointer; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--background-modifier-border); background: var(--background-secondary); transition: all 0.15s;" } });
-      const cardRow = tagCard.createEl("div", { attr: { style: "display: flex; align-items: center; gap: 10px;" } });
-      cardRow.createEl("span", { text: tag.emoji, attr: { style: "font-size: 1.3em;" } });
-      cardRow.createEl("span", { text: tag.name, attr: { style: "font-weight: 600; flex: 1;" } });
-      const previewEl = cardRow.createEl("span", { text: "\u793A\u4F8B\u6587\u672C", attr: { style: "font-size: 0.85em; padding: 2px 10px; border-radius: 4px;" } });
+      const styleLabels = {
+        highlight: "\u9AD8\u4EAE",
+        underline: "\u4E0B\u5212\u7EBF",
+        dashed: "\u865A\u7EBF",
+        "semi-transparent": "\u534A\u900F\u660E"
+      };
+      const tagCard = tagListDiv.createEl("div", {
+        cls: "marking-tag-card",
+        attr: {
+          style: "cursor: pointer; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--background-modifier-border); background: var(--background-secondary); transition: all 0.15s;"
+        }
+      });
+      const cardRow = tagCard.createEl("div", {
+        attr: { style: "display: flex; align-items: center; gap: 10px;" }
+      });
+      cardRow.createEl("span", {
+        text: tag.emoji,
+        attr: { style: "font-size: 1.3em;" }
+      });
+      cardRow.createEl("span", {
+        text: tag.name,
+        attr: { style: "font-weight: 600; flex: 1;" }
+      });
+      const previewEl = cardRow.createEl("span", {
+        text: "\u793A\u4F8B\u6587\u672C",
+        attr: {
+          style: "font-size: 0.85em; padding: 2px 10px; border-radius: 4px;"
+        }
+      });
       applyTagHighlightStyle(previewEl, tag);
-      cardRow.createEl("span", { text: styleLabels[tag.style] || tag.style, attr: { style: "font-size: 0.75em; color: var(--text-muted);" } });
-      const delBtn = cardRow.createEl("button", { text: "\u2716", attr: { style: "font-size: 0.8em; padding: 2px 8px; background: transparent; border: none; cursor: pointer; color: var(--text-muted);" } });
+      cardRow.createEl("span", {
+        text: styleLabels[tag.style] || tag.style,
+        attr: { style: "font-size: 0.75em; color: var(--text-muted);" }
+      });
+      const delBtn = cardRow.createEl("button", {
+        text: "\u2716",
+        attr: {
+          style: "font-size: 0.8em; padding: 2px 8px; background: transparent; border: none; cursor: pointer; color: var(--text-muted);"
+        }
+      });
       delBtn.onclick = async (event) => {
         event.stopPropagation();
         this.plugin.settings.tags.splice(index, 1);
@@ -3626,9 +3809,18 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
     });
   }
   renderModelSettings(container) {
-    container.createEl("h3", { text: `${UI_ICONS.models} \u6A21\u578B\u63D0\u4F9B\u5546 (Model Providers)`, cls: "mn-settings-section-title" });
-    container.createEl("p", { text: "\u652F\u6301\u4EFB\u4F55 OpenAI \u517C\u5BB9\u7684 API\uFF08OpenAI / DeepSeek / Ollama / LM Studio \u7B49\uFF09", cls: "setting-item-description" });
-    const addButton = container.createEl("button", { text: "\u2795 \u6DFB\u52A0\u6A21\u578B\u63D0\u4F9B\u5546", cls: "mod-cta" });
+    container.createEl("h3", {
+      text: `${UI_ICONS.models} \u6A21\u578B\u63D0\u4F9B\u5546 (Model Providers)`,
+      cls: "mn-settings-section-title"
+    });
+    container.createEl("p", {
+      text: "\u652F\u6301\u4EFB\u4F55 OpenAI \u517C\u5BB9\u7684 API\uFF08OpenAI / DeepSeek / Ollama / LM Studio \u7B49\uFF09",
+      cls: "setting-item-description"
+    });
+    const addButton = container.createEl("button", {
+      text: "\u2795 \u6DFB\u52A0\u6A21\u578B\u63D0\u4F9B\u5546",
+      cls: "mod-cta"
+    });
     addButton.onclick = async () => {
       const newProvider = {
         id: `provider-${Date.now()}`,
@@ -3644,14 +3836,35 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
     for (let index = 0; index < this.plugin.settings.modelProviders.length; index++) {
       const provider = this.plugin.settings.modelProviders[index];
       const isDefault = provider.id === this.plugin.settings.defaultProviderId;
-      const providerDiv = container.createEl("div", { cls: "steward-card", attr: { style: `border: 1px solid ${isDefault ? "var(--interactive-accent)" : "var(--background-modifier-border)"}; padding: 15px; margin: 10px 0; border-radius: 8px;` } });
-      const header = providerDiv.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;" } });
-      const titleArea = header.createEl("div", { attr: { style: "display: flex; align-items: center; gap: 8px;" } });
-      titleArea.createEl("h4", { text: provider.name, attr: { style: "margin: 0;" } });
+      const providerDiv = container.createEl("div", {
+        cls: "steward-card",
+        attr: {
+          style: `border: 1px solid ${isDefault ? "var(--interactive-accent)" : "var(--background-modifier-border)"}; padding: 15px; margin: 10px 0; border-radius: 8px;`
+        }
+      });
+      const header = providerDiv.createEl("div", {
+        attr: {
+          style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"
+        }
+      });
+      const titleArea = header.createEl("div", {
+        attr: { style: "display: flex; align-items: center; gap: 8px;" }
+      });
+      titleArea.createEl("h4", {
+        text: provider.name,
+        attr: { style: "margin: 0;" }
+      });
       if (isDefault) {
-        titleArea.createEl("span", { text: "\u9ED8\u8BA4", attr: { style: "font-size: 0.75em; background: var(--interactive-accent); color: white; padding: 2px 6px; border-radius: 4px;" } });
+        titleArea.createEl("span", {
+          text: "\u9ED8\u8BA4",
+          attr: {
+            style: "font-size: 0.75em; background: var(--interactive-accent); color: white; padding: 2px 6px; border-radius: 4px;"
+          }
+        });
       }
-      const btnGroup = header.createEl("div", { attr: { style: "display: flex; gap: 4px;" } });
+      const btnGroup = header.createEl("div", {
+        attr: { style: "display: flex; gap: 4px;" }
+      });
       if (!isDefault) {
         const btnDefault = btnGroup.createEl("button", { text: "\u8BBE\u4E3A\u9ED8\u8BA4" });
         btnDefault.onclick = async () => {
@@ -3673,20 +3886,27 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
           btnTest.innerText = "\u2194 \u6D4B\u8BD5\u8FDE\u901A";
         }, 3e3);
       };
-      const btnDel = btnGroup.createEl("button", { text: "\u{1F5D1}\uFE0F", cls: "mod-warning" });
+      const btnDel = btnGroup.createEl("button", {
+        text: "\u{1F5D1}\uFE0F",
+        cls: "mod-warning"
+      });
       btnDel.onclick = async () => {
         this.plugin.settings.modelProviders.splice(index, 1);
         await this.plugin.saveSettings();
         this.display();
       };
-      new import_obsidian6.Setting(providerDiv).setName("\u540D\u79F0").addText((text) => text.setValue(provider.name).onChange(async (value) => {
-        this.plugin.settings.modelProviders[index].name = value;
-        await this.plugin.saveSettings();
-      }));
-      new import_obsidian6.Setting(providerDiv).setName("Base URL").addText((text) => text.setPlaceholder("https://api.openai.com/v1").setValue(provider.baseURL).onChange(async (value) => {
-        this.plugin.settings.modelProviders[index].baseURL = value;
-        await this.plugin.saveSettings();
-      }));
+      new import_obsidian6.Setting(providerDiv).setName("\u540D\u79F0").addText(
+        (text) => text.setValue(provider.name).onChange(async (value) => {
+          this.plugin.settings.modelProviders[index].name = value;
+          await this.plugin.saveSettings();
+        })
+      );
+      new import_obsidian6.Setting(providerDiv).setName("Base URL").addText(
+        (text) => text.setPlaceholder("https://api.openai.com/v1").setValue(provider.baseURL).onChange(async (value) => {
+          this.plugin.settings.modelProviders[index].baseURL = value;
+          await this.plugin.saveSettings();
+        })
+      );
       new import_obsidian6.Setting(providerDiv).setName("API Key").addText((text) => {
         text.setPlaceholder("sk-...").setValue(provider.apiKey).onChange(async (value) => {
           this.plugin.settings.modelProviders[index].apiKey = value;
@@ -3694,15 +3914,23 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
         });
         text.inputEl.type = "password";
       });
-      new import_obsidian6.Setting(providerDiv).setName("Model ID").addText((text) => text.setPlaceholder("gpt-4o").setValue(provider.modelId).onChange(async (value) => {
-        this.plugin.settings.modelProviders[index].modelId = value;
-        await this.plugin.saveSettings();
-      }));
+      new import_obsidian6.Setting(providerDiv).setName("Model ID").addText(
+        (text) => text.setPlaceholder("gpt-4o").setValue(provider.modelId).onChange(async (value) => {
+          this.plugin.settings.modelProviders[index].modelId = value;
+          await this.plugin.saveSettings();
+        })
+      );
     }
   }
   renderStewardSettings(container, switchTab) {
-    container.createEl("h3", { text: `${UI_ICONS.steward} \u5207\u6362\u5F53\u524D\u7BA1\u5BB6`, cls: "mn-settings-section-title" });
-    container.createEl("p", { text: "\u9009\u62E9\u5728 Marking Note \u4E2D\u60AC\u6D6E\u7A97\u548C\u5FEB\u6377\u6307\u4EE4\u4F7F\u7528\u7684\u7BA1\u5BB6\u3002", cls: "setting-item-description" });
+    container.createEl("h3", {
+      text: `${UI_ICONS.steward} \u5207\u6362\u5F53\u524D\u7BA1\u5BB6`,
+      cls: "mn-settings-section-title"
+    });
+    container.createEl("p", {
+      text: "\u9009\u62E9\u5728 Marking Note \u4E2D\u60AC\u6D6E\u7A97\u548C\u5FEB\u6377\u6307\u4EE4\u4F7F\u7528\u7684\u7BA1\u5BB6\u3002",
+      cls: "setting-item-description"
+    });
     new import_obsidian6.Setting(container).setName("\u5F53\u524D\u6FC0\u6D3B\u7684\u9605\u8BFB\u7BA1\u5BB6").addDropdown((dropdown) => {
       for (const steward of this.plugin.settings.stewards) {
         dropdown.addOption(steward.id, `${steward.icon} ${steward.name}`);
@@ -3717,32 +3945,58 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
     this.renderEditableStewardSettings(container, switchTab);
   }
   renderInlineStewardSettings(container) {
-    container.createEl("h3", { text: `${UI_ICONS.actionRewrite} \u5168\u5C40\u6539\u5199\u7BA1\u5BB6 (Inline Steward)`, cls: "mn-settings-section-title", attr: { style: "margin-top: 30px;" } });
-    container.createEl("p", { text: "\u8FD9\u662F\u4E13\u7528\u4E8E\u5728\u9009\u4E2D\u6587\u672C\u60AC\u6D6E\u83DC\u5355\u5904\u76F4\u63A5\u64E6\u9664\u65E7\u6587\u672C\u5E76\u8986\u76D6\u539F\u6587\u7684\u7BA1\u5BB6\uFF0C\u65E0\u9700\u8BBE\u7F6E\u6807\u9898\u548C\u683C\u5F0F\uFF0C\u76F4\u63A5\u8D77\u6548\u3002", cls: "setting-item-description" });
-    const inlineDiv = container.createEl("div", { cls: "steward-card", attr: { style: "border: 1px solid var(--text-muted); padding: 15px; margin-bottom: 20px; border-radius: 8px;" } });
+    container.createEl("h3", {
+      text: `${UI_ICONS.actionRewrite} \u5168\u5C40\u6539\u5199\u7BA1\u5BB6 (Inline Steward)`,
+      cls: "mn-settings-section-title",
+      attr: { style: "margin-top: 30px;" }
+    });
+    container.createEl("p", {
+      text: "\u8FD9\u662F\u4E13\u7528\u4E8E\u5728\u9009\u4E2D\u6587\u672C\u60AC\u6D6E\u83DC\u5355\u5904\u76F4\u63A5\u64E6\u9664\u65E7\u6587\u672C\u5E76\u8986\u76D6\u539F\u6587\u7684\u7BA1\u5BB6\uFF0C\u65E0\u9700\u8BBE\u7F6E\u6807\u9898\u548C\u683C\u5F0F\uFF0C\u76F4\u63A5\u8D77\u6548\u3002",
+      cls: "setting-item-description"
+    });
+    const inlineDiv = container.createEl("div", {
+      cls: "steward-card",
+      attr: {
+        style: "border: 1px solid var(--text-muted); padding: 15px; margin-bottom: 20px; border-radius: 8px;"
+      }
+    });
     new import_obsidian6.Setting(inlineDiv).setName("\u6539\u5199\u6240\u7528\u7684\u5927\u6A21\u578B").addDropdown((dropdown) => {
       dropdown.addOption("default-provider", "\u4F7F\u7528\u9ED8\u8BA4");
       for (const provider of this.plugin.settings.modelProviders) {
         dropdown.addOption(provider.id, provider.name);
       }
-      dropdown.setValue(this.plugin.settings.inlineSteward.boundModelProviderId || "default-provider");
+      dropdown.setValue(
+        this.plugin.settings.inlineSteward.boundModelProviderId || "default-provider"
+      );
       dropdown.onChange(async (value) => {
         this.plugin.settings.inlineSteward.boundModelProviderId = value;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian6.Setting(inlineDiv).setName("Temperature (\u6539\u5199\u6E29\u5EA6)").setDesc("\u6539\u5199\u4EFB\u52A1\u63A8\u8350\u8C03\u4F4E\u6E29\u5EA6(\u5982 0.2-0.3)\u4EE5\u4FDD\u6301\u4E25\u8C28\uFF0C\u907F\u514D AI \u53D1\u6563\u521B\u4F5C\u3002").addSlider((slider) => slider.setLimits(0, 1, 0.1).setValue(this.plugin.settings.inlineSteward.temperature).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.inlineSteward.temperature = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(inlineDiv).setName("\u8BC6\u522B\u4E0A\u4E0B\u6587\u957F\u5EA6\u754C\u9650").addSlider((slider) => slider.setLimits(0, 8192, 128).setValue(this.plugin.settings.inlineSteward.contextLength).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.inlineSteward.contextLength = value;
-      await this.plugin.saveSettings();
-    }));
-    const inlineCmdSection = inlineDiv.createEl("div", { attr: { style: "margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);" } });
-    inlineCmdSection.createEl("h5", { text: `${UI_ICONS.actionRewrite} \u6539\u5199\u6307\u4EE4 (Inline Commands)` });
+    new import_obsidian6.Setting(inlineDiv).setName("Temperature (\u6539\u5199\u6E29\u5EA6)").setDesc("\u6539\u5199\u4EFB\u52A1\u63A8\u8350\u8C03\u4F4E\u6E29\u5EA6(\u5982 0.2-0.3)\u4EE5\u4FDD\u6301\u4E25\u8C28\uFF0C\u907F\u514D AI \u53D1\u6563\u521B\u4F5C\u3002").addSlider(
+      (slider) => slider.setLimits(0, 1, 0.1).setValue(this.plugin.settings.inlineSteward.temperature).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.inlineSteward.temperature = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(inlineDiv).setName("\u8BC6\u522B\u4E0A\u4E0B\u6587\u957F\u5EA6\u754C\u9650").addSlider(
+      (slider) => slider.setLimits(0, 8192, 128).setValue(this.plugin.settings.inlineSteward.contextLength).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.inlineSteward.contextLength = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    const inlineCmdSection = inlineDiv.createEl("div", {
+      attr: {
+        style: "margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);"
+      }
+    });
+    inlineCmdSection.createEl("h5", {
+      text: `${UI_ICONS.actionRewrite} \u6539\u5199\u6307\u4EE4 (Inline Commands)`
+    });
     const inlineCommands = this.plugin.settings.inlineSteward.commands;
-    const btnAddInlineCmd = inlineCmdSection.createEl("button", { text: `${UI_ICONS.add} \u6DFB\u52A0\u6539\u5199\u6307\u4EE4 (${inlineCommands.length}/${MAX_STEWARD_COMMANDS})` });
+    const btnAddInlineCmd = inlineCmdSection.createEl("button", {
+      text: `${UI_ICONS.add} \u6DFB\u52A0\u6539\u5199\u6307\u4EE4 (${inlineCommands.length}/${MAX_STEWARD_COMMANDS})`
+    });
     btnAddInlineCmd.disabled = inlineCommands.length >= MAX_STEWARD_COMMANDS;
     btnAddInlineCmd.onclick = async () => {
       if (inlineCommands.length >= MAX_STEWARD_COMMANDS)
@@ -3758,13 +4012,26 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       await this.plugin.saveSettings();
       this.display();
     };
-    const inlineListDiv = inlineCmdSection.createEl("div", { cls: "mn-command-list" });
+    const inlineListDiv = inlineCmdSection.createEl("div", {
+      cls: "mn-command-list"
+    });
     inlineCommands.forEach((cmd, index) => {
-      const cmdCard = inlineListDiv.createEl("div", { cls: "marking-cmd-card" });
-      const cardHeader = cmdCard.createEl("div", { cls: "mn-command-card-header" });
-      cardHeader.createEl("div", { text: `${cmd.icon} ${cmd.name}`, attr: { style: "font-weight: 600;" } });
-      const controls = cardHeader.createEl("div", { cls: "mn-command-card-controls" });
-      const checkbox = controls.createEl("input", { attr: { type: "checkbox" } });
+      const cmdCard = inlineListDiv.createEl("div", {
+        cls: "marking-cmd-card"
+      });
+      const cardHeader = cmdCard.createEl("div", {
+        cls: "mn-command-card-header"
+      });
+      cardHeader.createEl("div", {
+        text: `${cmd.icon} ${cmd.name}`,
+        attr: { style: "font-weight: 600;" }
+      });
+      const controls = cardHeader.createEl("div", {
+        cls: "mn-command-card-controls"
+      });
+      const checkbox = controls.createEl("input", {
+        attr: { type: "checkbox" }
+      });
       checkbox.checked = cmd.enabled !== false;
       checkbox.title = "\u662F\u5426\u663E\u793A\u5728\u6539\u5199\u64CD\u4F5C\u4E2D";
       checkbox.onclick = async (event) => {
@@ -3772,7 +4039,10 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
         cmd.enabled = checkbox.checked;
         await this.plugin.saveSettings();
       };
-      const cmdDel = controls.createEl("button", { text: "\u2716", attr: { title: "\u5220\u9664\u6307\u4EE4" } });
+      const cmdDel = controls.createEl("button", {
+        text: "\u2716",
+        attr: { title: "\u5220\u9664\u6307\u4EE4" }
+      });
       cmdDel.onclick = async (event) => {
         event.stopPropagation();
         inlineCommands.splice(index, 1);
@@ -3780,27 +4050,55 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
         this.display();
       };
       const descPreview = cmd.detailPrompt.slice(0, 60) + (cmd.detailPrompt.length > 60 ? "..." : "");
-      cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", cls: "mn-command-preview" });
+      cmdCard.createEl("div", {
+        text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD",
+        cls: "mn-command-preview"
+      });
       cmdCard.onclick = () => {
-        new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
-          inlineCommands[index] = { ...updatedCmd, type: "inline-modify", enabled: cmd.enabled !== false };
-          await this.plugin.saveSettings();
-          this.display();
-        }).open();
+        new LightningCommandEditModal(
+          this.app,
+          cmd,
+          this.plugin.settings.tags,
+          async (updatedCmd) => {
+            inlineCommands[index] = {
+              ...updatedCmd,
+              type: "inline-modify",
+              enabled: cmd.enabled !== false
+            };
+            await this.plugin.saveSettings();
+            this.display();
+          }
+        ).open();
       };
     });
   }
   renderEditableStewardSettings(container, switchTab) {
-    container.createEl("h3", { text: `${UI_ICONS.steward} \u7BA1\u5BB6\u7EF4\u62A4\u4E0E\u914D\u7F6E`, cls: "mn-settings-section-title", attr: { style: "margin-top: 30px;" } });
-    container.createEl("p", { text: "\u9009\u62E9\u4E00\u4E2A\u7BA1\u5BB6\u8FDB\u884C\u4FEE\u6539\uFF0C\u6216\u521B\u5EFA\u65B0\u7BA1\u5BB6\u3002", cls: "setting-item-description" });
+    container.createEl("h3", {
+      text: `${UI_ICONS.steward} \u7BA1\u5BB6\u7EF4\u62A4\u4E0E\u914D\u7F6E`,
+      cls: "mn-settings-section-title",
+      attr: { style: "margin-top: 30px;" }
+    });
+    container.createEl("p", {
+      text: "\u9009\u62E9\u4E00\u4E2A\u7BA1\u5BB6\u8FDB\u884C\u4FEE\u6539\uFF0C\u6216\u521B\u5EFA\u65B0\u7BA1\u5BB6\u3002",
+      cls: "setting-item-description"
+    });
     if (!this.editingStewardId && this.plugin.settings.stewards.length > 0) {
       this.editingStewardId = this.plugin.settings.stewards[0].id;
     }
-    const editSelectorDiv = container.createEl("div", { attr: { style: "display: flex; gap: 10px; align-items: center; margin-bottom: 20px;" } });
+    const editSelectorDiv = container.createEl("div", {
+      attr: {
+        style: "display: flex; gap: 10px; align-items: center; margin-bottom: 20px;"
+      }
+    });
     switchTab(this.activeTab);
-    const stewardDropdown = editSelectorDiv.createEl("select", { cls: "dropdown" });
+    const stewardDropdown = editSelectorDiv.createEl("select", {
+      cls: "dropdown"
+    });
     for (const steward2 of this.plugin.settings.stewards) {
-      const option = stewardDropdown.createEl("option", { value: steward2.id, text: `${steward2.icon} ${steward2.name}` });
+      const option = stewardDropdown.createEl("option", {
+        value: steward2.id,
+        text: `${steward2.icon} ${steward2.name}`
+      });
       if (steward2.id === this.editingStewardId)
         option.selected = true;
     }
@@ -3808,7 +4106,9 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       this.editingStewardId = stewardDropdown.value;
       this.display();
     };
-    const btnAddSteward = editSelectorDiv.createEl("button", { text: "\u2795 \u65B0\u5EFA\u7BA1\u5BB6" });
+    const btnAddSteward = editSelectorDiv.createEl("button", {
+      text: "\u2795 \u65B0\u5EFA\u7BA1\u5BB6"
+    });
     btnAddSteward.onclick = async () => {
       const newId = `steward-${Date.now()}`;
       const newSteward = {
@@ -3830,14 +4130,31 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       await this.plugin.saveSettings();
       this.display();
     };
-    const index = this.plugin.settings.stewards.findIndex((steward2) => steward2.id === this.editingStewardId);
+    const index = this.plugin.settings.stewards.findIndex(
+      (steward2) => steward2.id === this.editingStewardId
+    );
     if (index === -1)
       return;
     const steward = this.plugin.settings.stewards[index];
-    const stewardDiv = container.createEl("div", { cls: "steward-card", attr: { style: "border: 1px solid var(--interactive-accent); padding: 15px; margin-bottom: 20px; border-radius: 8px;" } });
-    const header = stewardDiv.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center;" } });
-    header.createEl("h4", { text: `\u7F16\u8F91\u4E2D: ${steward.icon} ${steward.name}`, attr: { style: "margin: 0; color: var(--interactive-accent);" } });
-    const btnDelete = header.createEl("button", { text: "\u{1F5D1}\uFE0F \u5220\u9664\u6B64\u7BA1\u5BB6", cls: "mod-warning" });
+    const stewardDiv = container.createEl("div", {
+      cls: "steward-card",
+      attr: {
+        style: "border: 1px solid var(--interactive-accent); padding: 15px; margin-bottom: 20px; border-radius: 8px;"
+      }
+    });
+    const header = stewardDiv.createEl("div", {
+      attr: {
+        style: "display: flex; justify-content: space-between; align-items: center;"
+      }
+    });
+    header.createEl("h4", {
+      text: `\u7F16\u8F91\u4E2D: ${steward.icon} ${steward.name}`,
+      attr: { style: "margin: 0; color: var(--interactive-accent);" }
+    });
+    const btnDelete = header.createEl("button", {
+      text: "\u{1F5D1}\uFE0F \u5220\u9664\u6B64\u7BA1\u5BB6",
+      cls: "mod-warning"
+    });
     btnDelete.onclick = async () => {
       if (!confirm(`\u786E\u5B9A\u8981\u5220\u9664\u914D\u7F6E "${steward.name}" \u5417\uFF1F`))
         return;
@@ -3846,19 +4163,23 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       await this.plugin.saveSettings();
       this.display();
     };
-    new import_obsidian6.Setting(stewardDiv).setName("\u540D\u79F0").addText((text) => text.setValue(steward.name).onChange(async (value) => {
-      this.plugin.settings.stewards[index].name = value;
-      await this.plugin.saveSettings();
-      stewardDropdown.options[stewardDropdown.selectedIndex].text = `${steward.icon} ${value}`;
-    }));
-    new import_obsidian6.Setting(stewardDiv).setName("\u56FE\u6807 (Emoji)").addButton((btn) => btn.setButtonText(steward.icon).onClick(() => {
-      showEmojiGrid(btn.buttonEl, async (emoji) => {
-        this.plugin.settings.stewards[index].icon = emoji;
+    new import_obsidian6.Setting(stewardDiv).setName("\u540D\u79F0").addText(
+      (text) => text.setValue(steward.name).onChange(async (value) => {
+        this.plugin.settings.stewards[index].name = value;
         await this.plugin.saveSettings();
-        stewardDropdown.options[stewardDropdown.selectedIndex].text = `${emoji} ${steward.name}`;
-        this.display();
-      });
-    }));
+        stewardDropdown.options[stewardDropdown.selectedIndex].text = `${steward.icon} ${value}`;
+      })
+    );
+    new import_obsidian6.Setting(stewardDiv).setName("\u56FE\u6807 (Emoji)").addButton(
+      (btn) => btn.setButtonText(steward.icon).onClick(() => {
+        showEmojiGrid(btn.buttonEl, async (emoji) => {
+          this.plugin.settings.stewards[index].icon = emoji;
+          await this.plugin.saveSettings();
+          stewardDropdown.options[stewardDropdown.selectedIndex].text = `${emoji} ${steward.name}`;
+          this.display();
+        });
+      })
+    );
     new import_obsidian6.Setting(stewardDiv).setName("\u7ED1\u5B9A\u6A21\u578B\u63D0\u4F9B\u5546").addDropdown((dropdown) => {
       dropdown.addOption("", "\u4F7F\u7528\u9ED8\u8BA4");
       for (const provider of this.plugin.settings.modelProviders) {
@@ -3870,26 +4191,36 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian6.Setting(stewardDiv).setName("\u9605\u8BFB\u7406\u89E3\u63D0\u793A\u8BCD").setDesc('\u5B9A\u4E49\u8BE5\u7BA1\u5BB6\u5982\u4F55"\u770B"\u5F85\u6587\u672C\u3002\u5982\uFF1A\u603B\u7ED3\u6838\u5FC3\u3001\u5206\u6790\u6280\u672F\u70B9\u3002').addTextArea((text) => text.setValue(steward.systemPrompt).onChange(async (value) => {
-      this.plugin.settings.stewards[index].systemPrompt = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(stewardDiv).setName("\u5199\u4F5C\u98CE\u683C\u63D0\u793A\u8BCD").setDesc("\u5B9A\u4E49\u5927\u6A21\u578B\u8FD4\u56DE\u7ED3\u679C\uFF08\u5BCC\u6587\u672C\u533A\u57DF\uFF09\u7684\u8BED\u6C14\u4E0E\u6392\u7248\u7279\u5F81\u3002").addTextArea((text) => text.setValue(steward.writingStyle).onChange(async (value) => {
-      this.plugin.settings.stewards[index].writingStyle = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(stewardDiv).setName("Temperature (\u6E29\u5EA6)").addSlider((slider) => slider.setLimits(0, 1, 0.1).setValue(steward.temperature).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.stewards[index].temperature = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(stewardDiv).setName("TopP").addSlider((slider) => slider.setLimits(0, 1, 0.05).setValue(steward.topP).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.stewards[index].topP = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(stewardDiv).setName("\u4E0A\u4E0B\u6587\u622A\u65AD\u957F\u5EA6 (\u5B57\u7B26)").addSlider((slider) => slider.setLimits(0, 8192, 128).setValue(steward.contextLength).setDynamicTooltip().onChange(async (value) => {
-      this.plugin.settings.stewards[index].contextLength = value;
-      await this.plugin.saveSettings();
-    }));
+    new import_obsidian6.Setting(stewardDiv).setName("\u9605\u8BFB\u7406\u89E3\u63D0\u793A\u8BCD").setDesc('\u5B9A\u4E49\u8BE5\u7BA1\u5BB6\u5982\u4F55"\u770B"\u5F85\u6587\u672C\u3002\u5982\uFF1A\u603B\u7ED3\u6838\u5FC3\u3001\u5206\u6790\u6280\u672F\u70B9\u3002').addTextArea(
+      (text) => text.setValue(steward.systemPrompt).onChange(async (value) => {
+        this.plugin.settings.stewards[index].systemPrompt = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(stewardDiv).setName("\u5199\u4F5C\u98CE\u683C\u63D0\u793A\u8BCD").setDesc("\u5B9A\u4E49\u5927\u6A21\u578B\u8FD4\u56DE\u7ED3\u679C\uFF08\u5BCC\u6587\u672C\u533A\u57DF\uFF09\u7684\u8BED\u6C14\u4E0E\u6392\u7248\u7279\u5F81\u3002").addTextArea(
+      (text) => text.setValue(steward.writingStyle).onChange(async (value) => {
+        this.plugin.settings.stewards[index].writingStyle = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(stewardDiv).setName("Temperature (\u6E29\u5EA6)").addSlider(
+      (slider) => slider.setLimits(0, 1, 0.1).setValue(steward.temperature).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.stewards[index].temperature = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(stewardDiv).setName("TopP").addSlider(
+      (slider) => slider.setLimits(0, 1, 0.05).setValue(steward.topP).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.stewards[index].topP = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(stewardDiv).setName("\u4E0A\u4E0B\u6587\u622A\u65AD\u957F\u5EA6 (\u5B57\u7B26)").addSlider(
+      (slider) => slider.setLimits(0, 8192, 128).setValue(steward.contextLength).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.stewards[index].contextLength = value;
+        await this.plugin.saveSettings();
+      })
+    );
     new import_obsidian6.Setting(stewardDiv).setName("\u601D\u8003\u9884\u7B97 (Thinking Budget)").setDesc("\u9488\u5BF9\u601D\u7EF4\u94FE\u6A21\u578B\uFF08\u5982 DeepSeek R1\uFF09\uFF0C\u8BBE\u5B9A\u601D\u8003\u6DF1\u5EA6\u3002").addDropdown((dropdown) => {
       dropdown.addOption("0", "\u65E0 (\u5173\u95ED\u601D\u7EF4\u94FE)");
       dropdown.addOption("500", "\u6781\u4F4E (500 Tokens)");
@@ -3902,13 +4233,20 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian6.Setting(stewardDiv).setName("\u811A\u6CE8\u6587\u672C\u957F\u5EA6\u9650\u5236").setDesc("\u7B2C\u4E00\u90E8\u5206\uFF08\u7B80\u4ECB\uFF09\u7684\u4E25\u82DB\u9650\u5236\u3002").addText((text) => text.setValue(steward.footnoteLength.toString()).onChange(async (value) => {
-      this.plugin.settings.stewards[index].footnoteLength = parseInt(value) || 30;
-      await this.plugin.saveSettings();
-    }));
-    const cmdSection = stewardDiv.createEl("div", { cls: "mn-command-section" });
+    new import_obsidian6.Setting(stewardDiv).setName("\u811A\u6CE8\u6587\u672C\u957F\u5EA6\u9650\u5236").setDesc("\u7B2C\u4E00\u90E8\u5206\uFF08\u7B80\u4ECB\uFF09\u7684\u4E25\u82DB\u9650\u5236\u3002").addText(
+      (text) => text.setValue(steward.footnoteLength.toString()).onChange(async (value) => {
+        this.plugin.settings.stewards[index].footnoteLength = parseInt(value) || 30;
+        await this.plugin.saveSettings();
+      })
+    );
+    const cmdSection = stewardDiv.createEl("div", {
+      cls: "mn-command-section"
+    });
     cmdSection.createEl("h5", { text: `${UI_ICONS.actionChat} \u5FEB\u6377\u6307\u4EE4` });
-    cmdSection.createEl("p", { text: "\u6BCF\u7C7B\u6700\u591A 8 \u6761\uFF0C\u53D6\u6D88\u52FE\u9009\u540E\u4E0D\u4F1A\u51FA\u73B0\u5728\u9009\u533A\u64CD\u4F5C\u680F\u3002\u9ED8\u8BA4\u6458\u8981\u5DF2\u6539\u4E3A\u5168\u5C40\u63D0\u793A\u8BCD\u3002", cls: "setting-item-description" });
+    cmdSection.createEl("p", {
+      text: "\u6BCF\u7C7B\u6700\u591A 8 \u6761\uFF0C\u53D6\u6D88\u52FE\u9009\u540E\u4E0D\u4F1A\u51FA\u73B0\u5728\u9009\u533A\u64CD\u4F5C\u680F\u3002\u9ED8\u8BA4\u6458\u8981\u5DF2\u6539\u4E3A\u5168\u5C40\u63D0\u793A\u8BCD\u3002",
+      cls: "setting-item-description"
+    });
     const tabBar = cmdSection.createEl("div", { cls: "mn-command-tabs" });
     const panelHost = cmdSection.createEl("div", { cls: "mn-command-panels" });
     const panels = {
@@ -3925,8 +4263,14 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
         (_a = tabButtons[key]) == null ? void 0 : _a.toggleClass("mn-command-tab-active", key === category);
       }
     };
-    for (const [category, label] of [["conversation", `${UI_ICONS.actionChat} \u5BF9\u8BDD\u6307\u4EE4`], ["augment", `${UI_ICONS.actionAugment} \u589E\u8865\u6307\u4EE4`]]) {
-      const button = tabBar.createEl("button", { text: label, cls: "mn-command-tab" });
+    for (const [category, label] of [
+      ["conversation", `${UI_ICONS.actionChat} \u5BF9\u8BDD\u6307\u4EE4`],
+      ["augment", `${UI_ICONS.actionAugment} \u589E\u8865\u6307\u4EE4`]
+    ]) {
+      const button = tabBar.createEl("button", {
+        text: label,
+        cls: "mn-command-tab"
+      });
       button.onclick = () => switchCategory(category);
       tabButtons[category] = button;
     }
@@ -3934,7 +4278,9 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       const panel = panels[category];
       panel.empty();
       const commands = category === "conversation" ? steward.commands : steward.augmentCommands || (steward.augmentCommands = []);
-      const addButton = panel.createEl("button", { text: `${UI_ICONS.add} \u6DFB\u52A0\u6307\u4EE4 (${commands.length}/${MAX_STEWARD_COMMANDS})` });
+      const addButton = panel.createEl("button", {
+        text: `${UI_ICONS.add} \u6DFB\u52A0\u6307\u4EE4 (${commands.length}/${MAX_STEWARD_COMMANDS})`
+      });
       addButton.disabled = commands.length >= MAX_STEWARD_COMMANDS;
       addButton.title = addButton.disabled ? `\u6700\u591A ${MAX_STEWARD_COMMANDS} \u6761` : "\u6DFB\u52A0\u5FEB\u6377\u6307\u4EE4";
       addButton.onclick = async () => {
@@ -3955,10 +4301,19 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       const listDiv = panel.createEl("div", { cls: "mn-command-list" });
       commands.forEach((cmd, cmdIndex) => {
         const cmdCard = listDiv.createEl("div", { cls: "marking-cmd-card" });
-        const cardHeader = cmdCard.createEl("div", { cls: "mn-command-card-header" });
-        cardHeader.createEl("div", { text: `${cmd.icon} ${cmd.name}`, attr: { style: "font-weight: 600;" } });
-        const rightControls = cardHeader.createEl("div", { cls: "mn-command-card-controls" });
-        const checkbox = rightControls.createEl("input", { attr: { type: "checkbox" } });
+        const cardHeader = cmdCard.createEl("div", {
+          cls: "mn-command-card-header"
+        });
+        cardHeader.createEl("div", {
+          text: `${cmd.icon} ${cmd.name}`,
+          attr: { style: "font-weight: 600;" }
+        });
+        const rightControls = cardHeader.createEl("div", {
+          cls: "mn-command-card-controls"
+        });
+        const checkbox = rightControls.createEl("input", {
+          attr: { type: "checkbox" }
+        });
         checkbox.checked = cmd.enabled !== false;
         checkbox.title = "\u662F\u5426\u663E\u793A\u5728\u64CD\u4F5C\u680F";
         checkbox.onclick = async (event) => {
@@ -3966,7 +4321,10 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
           cmd.enabled = checkbox.checked;
           await this.plugin.saveSettings();
         };
-        const cmdDel = rightControls.createEl("button", { text: "\u2716", attr: { title: "\u5220\u9664\u6307\u4EE4" } });
+        const cmdDel = rightControls.createEl("button", {
+          text: "\u2716",
+          attr: { title: "\u5220\u9664\u6307\u4EE4" }
+        });
         cmdDel.onclick = async (event) => {
           event.stopPropagation();
           commands.splice(cmdIndex, 1);
@@ -3974,13 +4332,25 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
           this.display();
         };
         const descPreview = cmd.detailPrompt.slice(0, 60) + (cmd.detailPrompt.length > 60 ? "..." : "");
-        cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", cls: "mn-command-preview" });
+        cmdCard.createEl("div", {
+          text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD",
+          cls: "mn-command-preview"
+        });
         cmdCard.onclick = () => {
-          new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
-            commands[cmdIndex] = { ...updatedCmd, type: category, enabled: cmd.enabled !== false };
-            await this.plugin.saveSettings();
-            this.display();
-          }).open();
+          new LightningCommandEditModal(
+            this.app,
+            cmd,
+            this.plugin.settings.tags,
+            async (updatedCmd) => {
+              commands[cmdIndex] = {
+                ...updatedCmd,
+                type: category,
+                enabled: cmd.enabled !== false
+              };
+              await this.plugin.saveSettings();
+              this.display();
+            }
+          ).open();
         };
       });
     };
@@ -4393,7 +4763,9 @@ var MarkingSidebarView = class extends import_obsidian7.ItemView {
     const previousScroll = container.scrollTop;
     container.empty();
     const headerDiv = container.createEl("div", { cls: "mn-sidebar-header" });
-    headerDiv.createEl("h4", { text: `${UI_ICONS.actionRewrite} Marking Note` });
+    headerDiv.createEl("h4", {
+      text: `${UI_ICONS.actionRewrite} Marking Note`
+    });
     const refreshBtn = headerDiv.createEl("button", {
       text: UI_ICONS.refresh,
       cls: "mn-sidebar-refresh"
@@ -4481,7 +4853,10 @@ var MarkingSidebarView = class extends import_obsidian7.ItemView {
       return true;
     });
     const orderedItems = [
-      ...visibleAnnotations.map((node) => ({ kind: "annotation", node })),
+      ...visibleAnnotations.map((node) => ({
+        kind: "annotation",
+        node
+      })),
       ...mergedNotes.map((node) => ({ kind: "merged", node }))
     ].sort((left, right) => left.node.from - right.node.from);
     for (const item of orderedItems) {
@@ -4739,8 +5114,14 @@ var MarkingSidebarView = class extends import_obsidian7.ItemView {
       const chatContainer = container.createEl("div", {
         cls: "mn-accordion-chat-row"
       });
-      chatContainer.addEventListener("mousedown", (event) => event.stopPropagation());
-      chatContainer.addEventListener("click", (event) => event.stopPropagation());
+      chatContainer.addEventListener(
+        "mousedown",
+        (event) => event.stopPropagation()
+      );
+      chatContainer.addEventListener(
+        "click",
+        (event) => event.stopPropagation()
+      );
       const input = chatContainer.createEl("input", {
         type: "text",
         placeholder: "\u7EE7\u7EED\u8FFD\u95EE...",
@@ -5713,6 +6094,27 @@ var GuidedMergeModal = class extends import_obsidian7.Modal {
 init_ui();
 init_annotation_format();
 init_state();
+async function copyTextToClipboard(text) {
+  var _a;
+  try {
+    if ((_a = navigator.clipboard) == null ? void 0 : _a.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch (e) {
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied)
+    throw new Error("Clipboard write was rejected");
+}
 var MarkingNotePlugin = class extends import_obsidian8.Plugin {
   constructor() {
     super(...arguments);
@@ -5776,14 +6178,25 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         (view, selection, command) => {
           this.handleAIAugment(view, selection, command);
         },
-        () => {
-          var _a;
-          const executed = (_a = this.app.commands) == null ? void 0 : _a.executeCommandById(
-            "editor:insert-link"
-          );
-          if (!executed) {
-            new import_obsidian8.Notice("\u65E0\u6CD5\u6253\u5F00 Obsidian \u539F\u751F\u94FE\u63A5\u9009\u62E9\u5668");
+        (view) => {
+          const selection = view.state.selection.main;
+          if (selection.empty) {
+            new import_obsidian8.Notice("\u8BF7\u5148\u9009\u62E9\u8981\u6DFB\u52A0\u94FE\u63A5\u7684\u6587\u5B57");
+            return;
           }
+          view.dispatch({
+            selection: { anchor: selection.from, head: selection.to }
+          });
+          view.focus();
+          window.setTimeout(() => {
+            var _a;
+            const executed = (_a = this.app.commands) == null ? void 0 : _a.executeCommandById(
+              "editor:insert-link"
+            );
+            if (!executed) {
+              new import_obsidian8.Notice("\u65E0\u6CD5\u6253\u5F00 Obsidian \u539F\u751F\u94FE\u63A5\u9009\u62E9\u5668");
+            }
+          }, 0);
         },
         this.popoverCtx,
         this
@@ -5857,11 +6270,18 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
     );
     const getStewardsHandler = (e) => {
       var _a, _b;
-      (_b = (_a = e.detail) == null ? void 0 : _a.callback) == null ? void 0 : _b.call(_a, this.settings.stewards, this.settings.activeStewardId);
+      (_b = (_a = e.detail) == null ? void 0 : _a.callback) == null ? void 0 : _b.call(
+        _a,
+        this.settings.stewards,
+        this.settings.activeStewardId
+      );
     };
     window.addEventListener("marking-note-get-stewards", getStewardsHandler);
     this.register(
-      () => window.removeEventListener("marking-note-get-stewards", getStewardsHandler)
+      () => window.removeEventListener(
+        "marking-note-get-stewards",
+        getStewardsHandler
+      )
     );
     const selectStewardHandler = async (e) => {
       var _a, _b;
@@ -5870,11 +6290,19 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         return;
       this.settings.activeStewardId = id;
       await this.saveSettings();
-      new import_obsidian8.Notice(`\u5DF2\u5207\u6362\u5230\u7BA1\u5BB6\uFF1A${((_b = this.settings.stewards.find((steward) => steward.id === id)) == null ? void 0 : _b.name) || id}`);
+      new import_obsidian8.Notice(
+        `\u5DF2\u5207\u6362\u5230\u7BA1\u5BB6\uFF1A${((_b = this.settings.stewards.find((steward) => steward.id === id)) == null ? void 0 : _b.name) || id}`
+      );
     };
-    window.addEventListener("marking-note-select-steward", selectStewardHandler);
+    window.addEventListener(
+      "marking-note-select-steward",
+      selectStewardHandler
+    );
     this.register(
-      () => window.removeEventListener("marking-note-select-steward", selectStewardHandler)
+      () => window.removeEventListener(
+        "marking-note-select-steward",
+        selectStewardHandler
+      )
     );
     const inlineHandler = (e) => {
       var _a, _b;
@@ -6202,6 +6630,7 @@ ${explanation}
       new import_obsidian8.Notice("\u274C \u672A\u914D\u7F6E AI \u6A21\u578B\u63D0\u4F9B\u5546\uFF0C\u8BF7\u524D\u5F80\u8BBE\u7F6E\u9875\u9762\u6DFB\u52A0");
       return;
     }
+    new import_obsidian8.Notice("\u6B63\u5728\u751F\u6210\u589E\u8865\u5185\u5BB9\u2026");
     try {
       const richText = await this.annotationService.augmentSelection({
         view,
@@ -6216,8 +6645,8 @@ ${explanation}
         new import_obsidian8.Notice("\u26A0\uFE0F \u589E\u8865\u751F\u6210\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6A21\u578B\u914D\u7F6E\u4E0E API \u8FDE\u901A\u6027");
         return;
       }
-      await navigator.clipboard.writeText(richText);
-      new import_obsidian8.Notice("\u2705 \u589E\u8865\u5185\u5BB9\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F");
+      await copyTextToClipboard(richText);
+      new import_obsidian8.Notice(`\u2705 \u589E\u8865\u5185\u5BB9\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F\uFF08${richText.length} \u5B57\uFF09`);
     } catch (error) {
       console.error(error);
       new import_obsidian8.Notice("\u26A0\uFE0F \u589E\u8865\u5185\u5BB9\u590D\u5236\u5931\u8D25");

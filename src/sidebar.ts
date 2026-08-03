@@ -121,7 +121,9 @@ export class MarkingSidebarView extends ItemView {
 
 		// Header
 		const headerDiv = container.createEl("div", { cls: "mn-sidebar-header" });
-		headerDiv.createEl("h4", { text: `${UI_ICONS.actionRewrite} Marking Note` });
+		headerDiv.createEl("h4", {
+			text: `${UI_ICONS.actionRewrite} Marking Note`,
+		});
 		const refreshBtn = headerDiv.createEl("button", {
 			text: UI_ICONS.refresh,
 			cls: "mn-sidebar-refresh",
@@ -175,7 +177,9 @@ export class MarkingSidebarView extends ItemView {
 			"3": "✓ 已归档",
 		};
 		const stageBtnText =
-			this.stateFilter !== null ? stateLabels[this.stateFilter] : `${UI_ICONS.filter} 全部阶段`;
+			this.stateFilter !== null
+				? stateLabels[this.stateFilter]
+				: `${UI_ICONS.filter} 全部阶段`;
 		const stageBtn = filterBar.createEl("div", {
 			cls: `mn-filter-dropdown-btn ${this.stateFilter !== null ? "mn-filter-active" : ""}`,
 		});
@@ -217,13 +221,22 @@ export class MarkingSidebarView extends ItemView {
 		// Node list is one document-order stream, including merged notes.
 		const list = container.createEl("div", { cls: "mn-sidebar-list" });
 		const visibleAnnotations = annotatedNodes.filter((node) => {
-			if (this.stateFilter !== null && node.state !== this.stateFilter) return false;
+			if (this.stateFilter !== null && node.state !== this.stateFilter)
+				return false;
 			if (this.tagFilter === "__none__" && node.tagId) return false;
-			if (this.tagFilter !== null && this.tagFilter !== "__none__" && node.tagId !== this.tagFilter) return false;
+			if (
+				this.tagFilter !== null &&
+				this.tagFilter !== "__none__" &&
+				node.tagId !== this.tagFilter
+			)
+				return false;
 			return true;
 		});
 		const orderedItems = [
-			...visibleAnnotations.map((node) => ({ kind: "annotation" as const, node })),
+			...visibleAnnotations.map((node) => ({
+				kind: "annotation" as const,
+				node,
+			})),
 			...mergedNotes.map((node) => ({ kind: "merged" as const, node })),
 		].sort((left, right) => left.node.from - right.node.from);
 
@@ -543,8 +556,12 @@ export class MarkingSidebarView extends ItemView {
 			const chatContainer = container.createEl("div", {
 				cls: "mn-accordion-chat-row",
 			});
-			chatContainer.addEventListener("mousedown", (event) => event.stopPropagation());
-			chatContainer.addEventListener("click", (event) => event.stopPropagation());
+			chatContainer.addEventListener("mousedown", (event) =>
+				event.stopPropagation(),
+			);
+			chatContainer.addEventListener("click", (event) =>
+				event.stopPropagation(),
+			);
 			const input = chatContainer.createEl("input", {
 				type: "text",
 				placeholder: "继续追问...",

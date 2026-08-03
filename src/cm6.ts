@@ -118,7 +118,7 @@ export function createMarkingExtensions(
 		selection: string,
 		command: LightningCommand,
 	) => void,
-	onLink: () => void,
+	onLink: (view: EditorView) => void,
 	popoverCtx: PopoverContext,
 	plugin: MarkingNotePlugin,
 ): Extension[] {
@@ -192,7 +192,7 @@ export function createMarkingExtensions(
 											}),
 										);
 									},
-									onLink,
+									() => onLink(update.view),
 								);
 							}
 							this.menu.show(coords.left, coords.top, selection);

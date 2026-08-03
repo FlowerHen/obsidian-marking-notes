@@ -277,6 +277,20 @@
 	border-left: 1px solid var(--background-modifier-border);
 }
 
+.ai-steward-dropdown {
+	width: min(220px, calc(100vw - 16px));
+	min-width: 0;
+	max-width: calc(100vw - 16px);
+}
+
+.ai-steward-dropdown .ai-lightning-item {
+	box-sizing: border-box;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .ai-steward-dropdown .is-active {
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
@@ -292,6 +306,12 @@
 	max-width: calc(100vw - 16px);
 	max-height: calc(100vh - 100px);
 	overflow-y: auto;
+}
+
+.ai-floating-menu-mobile + .ai-steward-dropdown {
+	left: auto !important;
+	right: 8px !important;
+	width: min(220px, calc(100vw - 16px));
 }
 
 .ai-floating-menu-mobile + .ai-lightning-dropdown .ai-lightning-item {

@@ -24,7 +24,10 @@ export interface PopoverContext {
 	webSearchEnabled?: boolean;
 }
 
-function bindMobilePopoverViewport(container: HTMLElement, isMobile: boolean): (() => void) | null {
+function bindMobilePopoverViewport(
+	container: HTMLElement,
+	isMobile: boolean,
+): (() => void) | null {
 	const viewport = window.visualViewport;
 	if (!isMobile || !viewport) return null;
 
@@ -239,7 +242,8 @@ export class FloatingMenu {
 							item.appendChild(leftPart);
 							item.appendChild(rightPart);
 							item.onclick = () => {
-								if (operation === "augment") this.onAugment(this.currentSelection, cmd);
+								if (operation === "augment")
+									this.onAugment(this.currentSelection, cmd);
 								else this.onCommand(this.currentSelection, cmd);
 								dropdown.remove();
 								this.close();
@@ -287,7 +291,11 @@ export class FloatingMenu {
 						item.style.textAlign = "left";
 						if (steward.id === activeId) item.addClass("is-active");
 						item.onclick = () => {
-							window.dispatchEvent(new CustomEvent("marking-note-select-steward", { detail: { id: steward.id } }));
+							window.dispatchEvent(
+								new CustomEvent("marking-note-select-steward", {
+									detail: { id: steward.id },
+								}),
+							);
 							dropdown.remove();
 							this.close();
 						};
@@ -644,7 +652,10 @@ export class PopoverEditor {
 		this.container.appendChild(footer);
 
 		document.body.appendChild(this.container);
-		const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+		const mobileViewportCleanup = bindMobilePopoverViewport(
+			this.container,
+			isMobile,
+		);
 		if (mobileViewportCleanup) this.registerCleanup(mobileViewportCleanup);
 
 		// Render title and markdown
@@ -1132,7 +1143,10 @@ export class PopoverViewer {
 		this.container.appendChild(body);
 
 		document.body.appendChild(this.container);
-		const mobileViewportCleanup = bindMobilePopoverViewport(this.container, isMobile);
+		const mobileViewportCleanup = bindMobilePopoverViewport(
+			this.container,
+			isMobile,
+		);
 		if (mobileViewportCleanup) this.registerCleanup(mobileViewportCleanup);
 
 		// Draggable
