@@ -1,5 +1,5 @@
-import { EditorView } from '@codemirror/view';
-import { App, Editor, MarkdownView, Notice, TFile } from 'obsidian';
+import type { EditorView } from '@codemirror/view';
+import { type App, type Editor, type MarkdownView, Notice, TFile } from 'obsidian';
 
 import { AIClient } from '../ai';
 import { generateAnnotationId } from '../domain/ids';
@@ -13,6 +13,10 @@ import type {
 import { TavilyClient } from '../tavily';
 import { MarkState } from '../state';
 import { annotationRepository } from '../repository/annotation-repository';
+import {
+    dispatchEditorChangePreservingViewport,
+    setEditorValuePreservingViewport,
+} from '../editor-viewport';
 
 interface PromptTemplates {
     defaultSummary: string;
@@ -113,7 +117,7 @@ export class AnnotationService {
                 newText = newText.slice(3, -3).trim();
             }
 
-            input.view.dispatch({
+            dispatchEditorChangePreservingViewport(input.view, {
                 changes: { from, to, insert: newText },
             });
 
@@ -142,15 +146,14 @@ export class AnnotationService {
             state: MarkState.Unprocessed,
         });
 
-        input.editor.setValue(pending.text);
+        setEditorValuePreservingViewport(input.editor, pending.text);
 
         const effectiveContextLen = input.command?.contextLength ?? input.steward.contextLength;
         const halfLen = Math.floor(effectiveContextLen / 2);
         const fullText = input.view.state.doc.toString();
         const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, from - halfLen), from) : '';
         const contextAfter = effectiveContextLen > 0 ? fullText.slice(to, Math.min(fullText.length, to + halfLen)) : '';
-        const defaultSummaryCmd = input.steward.commands.find(command => command.type === 'default-summary');
-        const defaultSummaryPrompt = defaultSummaryCmd?.detailPrompt || '用一句话高度概括结论';
+        const defaultSummaryPrompt = '用一句话高度概括结论';
 
         const result = await AIClient.generateAnnotation({
             text: input.selection,
@@ -160,7 +163,7 @@ export class AnnotationService {
             provider: input.provider,
             footnoteId: newId,
             defaultSummaryPrompt,
-            command: input.command || defaultSummaryCmd,
+            command: input.command,
             promptTemplates: this.promptTemplates(input.settings),
         });
 
@@ -175,9 +178,30 @@ export class AnnotationService {
             summary: result.summary,
             richText: result.richText,
         });
-        input.editor.setValue(applied.text);
+        setEditorValuePreservingViewport(input.editor, applied.text);
 
         return { id: newId, summary: result.summary };
+    }
+
+    async augmentSelection(input: AnnotateSelectionInput): Promise<string | null> {
+        const { from, to } = input.view.state.selection.main;
+        const effectiveContextLen = input.command?.contextLength ?? input.steward.contextLength;
+        const halfLen = Math.floor(effectiveContextLen / 2);
+        const fullText = input.view.state.doc.toString();
+        const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, from - halfLen), from) : '';
+        const contextAfter = effectiveContextLen > 0 ? fullText.slice(to, Math.min(fullText.length, to + halfLen)) : '';
+        const result = await AIClient.generateAnnotation({
+            text: input.selection,
+            contextBefore,
+            contextAfter,
+            steward: input.steward,
+            provider: input.provider,
+            footnoteId: generateAnnotationId(),
+            defaultSummaryPrompt: '用一句话高度概括结论',
+            command: input.command,
+            promptTemplates: this.promptTemplates(input.settings),
+        });
+        return result?.richText || null;
     }
 
     async followUp(input: FollowUpInput): Promise<{ summary: string; richText: string } | null> {
@@ -197,7 +221,7 @@ export class AnnotationService {
         const halfLen = Math.floor(effectiveContextLen / 2);
         const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, node.from - halfLen), node.from) : '';
         const contextAfter = effectiveContextLen > 0 ? fullText.slice(node.to, node.to + halfLen) : '';
-        const defaultSummaryPrompt = input.steward.commands.find(command => command.type === 'default-summary')?.detailPrompt || '用一句话高度概括结论';
+        const defaultSummaryPrompt = '用一句话高度概括结论';
         const searchContext = await this.buildSearchContext(input, node.text);
 
         try {

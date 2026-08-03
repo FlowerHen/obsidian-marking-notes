@@ -56,7 +56,7 @@ class CapsuleWidget extends WidgetType {
 		return span;
 	}
 
-	ignoreEvent(event: Event): boolean {
+	ignoreEvent(_event: Event): boolean {
 		return false;
 	}
 }
@@ -109,6 +109,11 @@ function buildDecorations(
 
 export function createMarkingExtensions(
 	onCommand: (
+		view: EditorView,
+		selection: string,
+		command: LightningCommand,
+	) => void,
+	onAugment: (
 		view: EditorView,
 		selection: string,
 		command: LightningCommand,
@@ -174,6 +179,8 @@ export function createMarkingExtensions(
 								this.menu = new FloatingMenu(
 									(s: string, cmd: LightningCommand) =>
 										onCommand(update.view, s, cmd),
+									(s: string, cmd: LightningCommand) =>
+										onAugment(update.view, s, cmd),
 									(s: string, instruction: string) => {
 										window.dispatchEvent(
 											new CustomEvent("marking-note-inline-modify", {
@@ -205,7 +212,7 @@ export function createMarkingExtensions(
 
 	// Click handler for capsules → show popover
 	const clickHandler = EditorView.domEventHandlers({
-		mousedown(event: MouseEvent, view: EditorView) {
+		mousedown(event: MouseEvent, _view: EditorView) {
 			const target = event.target as HTMLElement;
 			if (
 				target.closest('.callout[data-callout="ai-footnote"]') ||

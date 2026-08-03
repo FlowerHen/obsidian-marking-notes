@@ -1,8 +1,9 @@
 import type { EditorView } from "@codemirror/view";
 import type { MarkingNode } from "./state";
-import type { LightningCommand } from "./domain/types";
+import type { LightningCommand, StewardConfig } from "./domain/types";
 import { type App, Component, MarkdownRenderer } from "obsidian";
 import { annotationRepository } from "./repository/annotation-repository";
+import { dispatchEditorChangePreservingViewport } from "./editor-viewport";
 import {
 	getDesktopActionPosition,
 	getMobileActionBottom,
@@ -32,6 +33,7 @@ export class FloatingMenu {
 
 	constructor(
 		private onCommand: (selection: string, command: LightningCommand) => void,
+		private onAugment: (selection: string, command: LightningCommand) => void,
 		private onInlineModify: (selection: string, instruction: string) => void,
 		private onLink: () => void,
 	) {}
@@ -96,6 +98,16 @@ export class FloatingMenu {
 			};
 			this.container.appendChild(button);
 		}
+
+		const stewardButton = document.createElement("button");
+		stewardButton.addClass("ai-floating-btn", "ai-floating-steward-btn");
+		stewardButton.innerText = "🤖";
+		stewardButton.title = "切换当前管家";
+		stewardButton.onclick = (event) => {
+			event.stopPropagation();
+			this.showStewardDropdown(stewardButton);
+		};
+		this.container.appendChild(stewardButton);
 
 		document.body.appendChild(this.container);
 		this.position(x, y, isMobile);
@@ -208,7 +220,8 @@ export class FloatingMenu {
 							item.appendChild(leftPart);
 							item.appendChild(rightPart);
 							item.onclick = () => {
-								this.onCommand(this.currentSelection, cmd);
+								if (operation === "augment") this.onAugment(this.currentSelection, cmd);
+								else this.onCommand(this.currentSelection, cmd);
 								dropdown.remove();
 								this.close();
 							};
@@ -224,6 +237,50 @@ export class FloatingMenu {
 
 		const closeHandler = (e: MouseEvent) => {
 			if (!dropdown.contains(e.target as Node)) {
+				dropdown.remove();
+				document.removeEventListener("click", closeHandler);
+			}
+		};
+		setTimeout(() => document.addEventListener("click", closeHandler), 10);
+	}
+
+	private showStewardDropdown(anchor: HTMLElement) {
+		const existing = document.querySelector(".ai-steward-dropdown");
+		if (existing) existing.remove();
+		const dropdown = document.createElement("div");
+		dropdown.addClass("ai-lightning-dropdown", "ai-steward-dropdown");
+		const rect = anchor.getBoundingClientRect();
+		dropdown.style.left = `${rect.left}px`;
+		dropdown.style.top = `${rect.bottom + 4}px`;
+
+		const event = new CustomEvent("marking-note-get-stewards", {
+			detail: {
+				callback: (stewards: StewardConfig[], activeId: string) => {
+					if (stewards.length === 0) {
+						this.appendEmptyCommandState(dropdown, "没有可用管家");
+						return;
+					}
+					for (const steward of stewards) {
+						const item = document.createElement("button");
+						item.addClass("ai-lightning-item");
+						item.innerText = `${steward.icon} ${steward.name}`;
+						item.style.width = "100%";
+						item.style.textAlign = "left";
+						if (steward.id === activeId) item.addClass("is-active");
+						item.onclick = () => {
+							window.dispatchEvent(new CustomEvent("marking-note-select-steward", { detail: { id: steward.id } }));
+							dropdown.remove();
+							this.close();
+						};
+						dropdown.appendChild(item);
+					}
+				},
+			},
+		});
+		window.dispatchEvent(event);
+		document.body.appendChild(dropdown);
+		const closeHandler = (event: MouseEvent) => {
+			if (!dropdown.contains(event.target as Node)) {
 				dropdown.remove();
 				document.removeEventListener("click", closeHandler);
 			}
@@ -461,6 +518,8 @@ export class PopoverEditor {
 		const input = document.createElement("input");
 		input.type = "text";
 		input.placeholder = "对结果不满意？继续指挥 AI...";
+		input.addEventListener("mousedown", (event) => event.stopPropagation());
+		input.addEventListener("click", (event) => event.stopPropagation());
 
 		const sendBtn = document.createElement("button");
 		sendBtn.addClass("ai-floating-btn", "ai-floating-btn-primary");
@@ -774,7 +833,7 @@ export class PopoverEditor {
 		});
 
 		if (mutation.text !== text) {
-			this.editorView.dispatch({
+			dispatchEditorChangePreservingViewport(this.editorView, {
 				changes: {
 					from: 0,
 					to: text.length,
@@ -794,7 +853,7 @@ export class PopoverEditor {
 		});
 
 		if (mutation.text !== text) {
-			this.editorView.dispatch({
+			dispatchEditorChangePreservingViewport(this.editorView, {
 				changes: {
 					from: 0,
 					to: text.length,
@@ -901,7 +960,7 @@ export class PopoverEditor {
 		const mutation = annotationRepository.deleteAnnotation(text, this.node.id);
 		if (mutation.text === text) return;
 
-		this.editorView.dispatch({
+		dispatchEditorChangePreservingViewport(this.editorView, {
 			changes: {
 				from: 0,
 				to: text.length,

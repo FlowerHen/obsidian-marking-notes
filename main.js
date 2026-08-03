@@ -700,6 +700,47 @@ var init_annotation_repository = __esm({
   }
 });
 
+// src/editor-viewport.ts
+function setEditorValuePreservingViewport(editor, text) {
+  var _a, _b;
+  const cursor = (_a = editor.getCursor) == null ? void 0 : _a.call(editor);
+  const scrollInfo = (_b = editor.getScrollInfo) == null ? void 0 : _b.call(editor);
+  editor.setValue(text);
+  if (cursor && editor.setCursor)
+    editor.setCursor(cursor);
+  restoreEditorScroll(editor, scrollInfo);
+}
+function dispatchEditorChangePreservingViewport(view, transaction) {
+  var _a, _b;
+  const scrollDom = view.scrollDOM;
+  const scrollTop = (_a = scrollDom == null ? void 0 : scrollDom.scrollTop) != null ? _a : 0;
+  const scrollLeft = (_b = scrollDom == null ? void 0 : scrollDom.scrollLeft) != null ? _b : 0;
+  view.dispatch(transaction);
+  const restore = () => {
+    if (!scrollDom)
+      return;
+    scrollDom.scrollTop = scrollTop;
+    scrollDom.scrollLeft = scrollLeft;
+  };
+  if (typeof requestAnimationFrame === "function")
+    requestAnimationFrame(restore);
+  else
+    setTimeout(restore, 0);
+}
+function restoreEditorScroll(editor, scrollInfo) {
+  if (!scrollInfo || typeof editor.scrollTo !== "function")
+    return;
+  const restore = () => editor.scrollTo(scrollInfo.left || 0, scrollInfo.top || 0);
+  if (typeof requestAnimationFrame === "function")
+    requestAnimationFrame(restore);
+  else
+    setTimeout(restore, 0);
+}
+var init_editor_viewport = __esm({
+  "src/editor-viewport.ts"() {
+  }
+});
+
 // src/ui/action-surface.ts
 function getDesktopActionPosition(anchorX, anchorY, menuWidth, menuHeight, viewportWidth, viewportHeight, margin = 8) {
   const left = Math.min(
@@ -737,10 +778,12 @@ var init_ui = __esm({
   "src/ui.ts"() {
     import_obsidian = require("obsidian");
     init_annotation_repository();
+    init_editor_viewport();
     init_action_surface();
     FloatingMenu = class {
-      constructor(onCommand, onInlineModify, onLink) {
+      constructor(onCommand, onAugment, onInlineModify, onLink) {
         this.onCommand = onCommand;
+        this.onAugment = onAugment;
         this.onInlineModify = onInlineModify;
         this.onLink = onLink;
         this.container = null;
@@ -801,6 +844,15 @@ var init_ui = __esm({
           };
           this.container.appendChild(button);
         }
+        const stewardButton = document.createElement("button");
+        stewardButton.addClass("ai-floating-btn", "ai-floating-steward-btn");
+        stewardButton.innerText = "\u{1F916}";
+        stewardButton.title = "\u5207\u6362\u5F53\u524D\u7BA1\u5BB6";
+        stewardButton.onclick = (event) => {
+          event.stopPropagation();
+          this.showStewardDropdown(stewardButton);
+        };
+        this.container.appendChild(stewardButton);
         document.body.appendChild(this.container);
         this.position(x, y, isMobile);
         const viewport = window.visualViewport;
@@ -900,7 +952,10 @@ var init_ui = __esm({
                   item.appendChild(leftPart);
                   item.appendChild(rightPart);
                   item.onclick = () => {
-                    this.onCommand(this.currentSelection, cmd);
+                    if (operation === "augment")
+                      this.onAugment(this.currentSelection, cmd);
+                    else
+                      this.onCommand(this.currentSelection, cmd);
                     dropdown.remove();
                     this.close();
                   };
@@ -914,6 +969,50 @@ var init_ui = __esm({
         document.body.appendChild(dropdown);
         const closeHandler = (e) => {
           if (!dropdown.contains(e.target)) {
+            dropdown.remove();
+            document.removeEventListener("click", closeHandler);
+          }
+        };
+        setTimeout(() => document.addEventListener("click", closeHandler), 10);
+      }
+      showStewardDropdown(anchor) {
+        const existing = document.querySelector(".ai-steward-dropdown");
+        if (existing)
+          existing.remove();
+        const dropdown = document.createElement("div");
+        dropdown.addClass("ai-lightning-dropdown", "ai-steward-dropdown");
+        const rect = anchor.getBoundingClientRect();
+        dropdown.style.left = `${rect.left}px`;
+        dropdown.style.top = `${rect.bottom + 4}px`;
+        const event = new CustomEvent("marking-note-get-stewards", {
+          detail: {
+            callback: (stewards, activeId) => {
+              if (stewards.length === 0) {
+                this.appendEmptyCommandState(dropdown, "\u6CA1\u6709\u53EF\u7528\u7BA1\u5BB6");
+                return;
+              }
+              for (const steward of stewards) {
+                const item = document.createElement("button");
+                item.addClass("ai-lightning-item");
+                item.innerText = `${steward.icon} ${steward.name}`;
+                item.style.width = "100%";
+                item.style.textAlign = "left";
+                if (steward.id === activeId)
+                  item.addClass("is-active");
+                item.onclick = () => {
+                  window.dispatchEvent(new CustomEvent("marking-note-select-steward", { detail: { id: steward.id } }));
+                  dropdown.remove();
+                  this.close();
+                };
+                dropdown.appendChild(item);
+              }
+            }
+          }
+        });
+        window.dispatchEvent(event);
+        document.body.appendChild(dropdown);
+        const closeHandler = (event2) => {
+          if (!dropdown.contains(event2.target)) {
             dropdown.remove();
             document.removeEventListener("click", closeHandler);
           }
@@ -1105,6 +1204,8 @@ var init_ui = __esm({
         const input = document.createElement("input");
         input.type = "text";
         input.placeholder = "\u5BF9\u7ED3\u679C\u4E0D\u6EE1\u610F\uFF1F\u7EE7\u7EED\u6307\u6325 AI...";
+        input.addEventListener("mousedown", (event) => event.stopPropagation());
+        input.addEventListener("click", (event) => event.stopPropagation());
         const sendBtn = document.createElement("button");
         sendBtn.addClass("ai-floating-btn", "ai-floating-btn-primary");
         sendBtn.innerText = "\u53D1\u9001";
@@ -1368,7 +1469,7 @@ var init_ui = __esm({
           richText: newText
         });
         if (mutation.text !== text) {
-          this.editorView.dispatch({
+          dispatchEditorChangePreservingViewport(this.editorView, {
             changes: {
               from: 0,
               to: text.length,
@@ -1387,7 +1488,7 @@ var init_ui = __esm({
           summary: newSummary
         });
         if (mutation.text !== text) {
-          this.editorView.dispatch({
+          dispatchEditorChangePreservingViewport(this.editorView, {
             changes: {
               from: 0,
               to: text.length,
@@ -1493,7 +1594,7 @@ var init_ui = __esm({
         const mutation = annotationRepository.deleteAnnotation(text, this.node.id);
         if (mutation.text === text)
           return;
-        this.editorView.dispatch({
+        dispatchEditorChangePreservingViewport(this.editorView, {
           changes: {
             from: 0,
             to: text.length,
@@ -2112,7 +2213,7 @@ var CapsuleWidget = class extends import_view.WidgetType {
     span.setAttribute("data-marking-id", this.node.id);
     return span;
   }
-  ignoreEvent(event) {
+  ignoreEvent(_event) {
     return false;
   }
 };
@@ -2146,7 +2247,7 @@ function buildDecorations(text, tags) {
   }
   return { decos: builder.finish(), nodes };
 }
-function createMarkingExtensions(onCommand, onLink, popoverCtx, plugin) {
+function createMarkingExtensions(onCommand, onAugment, onLink, popoverCtx, plugin) {
   const mainPlugin = import_view.ViewPlugin.fromClass(
     class {
       constructor(view) {
@@ -2196,6 +2297,7 @@ function createMarkingExtensions(onCommand, onLink, popoverCtx, plugin) {
               if (!this.menu) {
                 this.menu = new FloatingMenu(
                   (s, cmd) => onCommand(update.view, s, cmd),
+                  (s, cmd) => onAugment(update.view, s, cmd),
                   (s, instruction) => {
                     window.dispatchEvent(
                       new CustomEvent("marking-note-inline-modify", {
@@ -2225,7 +2327,7 @@ function createMarkingExtensions(onCommand, onLink, popoverCtx, plugin) {
     }
   );
   const clickHandler = import_view.EditorView.domEventHandlers({
-    mousedown(event, view) {
+    mousedown(event, _view) {
       const target = event.target;
       if (target.closest('.callout[data-callout="ai-footnote"]') || target.closest(".marking-capsule")) {
         event.preventDefault();
@@ -2275,72 +2377,37 @@ function createMarkingExtensions(onCommand, onLink, popoverCtx, plugin) {
 
 // main.ts
 init_annotation_repository();
+init_editor_viewport();
 
 // src/renderers/reading-mode-renderer.ts
 function renderReadingModeAnnotations(input) {
-  const marks = input.container.querySelectorAll("mark");
-  marks.forEach((mark) => {
-    var _a, _b, _c, _d;
+  const marks = Array.from(input.container.querySelectorAll("mark"));
+  const sourceNodes = input.nodes || [];
+  marks.forEach((mark, index) => {
+    var _a;
+    const node = sourceNodes[index];
     mark.classList.add("marking-highlight-region");
-    mark.style.cursor = "pointer";
-    let state = "0";
-    let id = "";
-    let tagId = "";
-    let summary = "";
-    let hasFootprint = false;
-    let currentNode = mark.nextSibling;
-    let buffer = "";
-    const nodesToRemove = [];
-    let foundMatch = null;
-    while (currentNode && nodesToRemove.length < 15 && buffer.length < 300) {
-      nodesToRemove.push(currentNode);
-      buffer += currentNode.textContent || "";
-      const match = /^\s*(?:\[\^\[|\[)([0-3])(?:\]\s*\[|\s*\[)\s*(#[a-zA-Z0-9_-]+)\s*\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]([\s\S]*)/.exec(buffer);
-      if (match) {
-        foundMatch = match;
-        break;
-      }
-      const trimmed = buffer.trimLeft();
-      if (!trimmed.startsWith("[") && !trimmed.startsWith("^")) {
-        break;
-      }
-      currentNode = currentNode.nextSibling;
-    }
-    if (foundMatch) {
-      hasFootprint = true;
-      state = foundMatch[1];
-      id = foundMatch[2];
-      tagId = foundMatch[3] || "";
-      summary = (foundMatch[4] || "").trim();
-      const parent = mark.parentNode;
-      if (parent) {
-        const insertBeforeNode = (_b = (_a = nodesToRemove[nodesToRemove.length - 1]) == null ? void 0 : _a.nextSibling) != null ? _b : null;
-        nodesToRemove.forEach((node) => {
-          parent.removeChild(node);
-        });
-        if (foundMatch[5]) {
-          parent.insertBefore(document.createTextNode(foundMatch[5]), insertBeforeNode);
-        }
-      }
-    }
-    if (!hasFootprint) {
+    mark.style.cursor = node && !node.isPlain ? "pointer" : "default";
+    if (!node || node.isPlain) {
       mark.classList.add("mark-state-0");
       return;
     }
+    const state = node.state;
+    const tagId = node.tagId || "";
+    const summary = node.summary || "";
+    mark.dataset.markingId = node.id;
     mark.classList.add(`mark-state-${state}`);
-    if (tagId) {
-      const tag = input.tags.find((candidate) => candidate.id === tagId);
-      if (tag) {
-        mark.classList.add("marking-tagged");
-        applyTagHighlightStyle(mark, tag);
-      }
+    const tag = tagId ? input.tags.find((candidate) => candidate.id === tagId) : void 0;
+    if (tag) {
+      mark.classList.add("marking-tagged");
+      applyTagHighlightStyle(mark, tag);
     }
     const badge = document.createElement("span");
     badge.addClass("marking-capsule", `marking-capsule-${state}`);
-    if (tagId) {
+    badge.dataset.markingId = node.id;
+    if (tagId)
       badge.dataset.tagId = tagId;
-    }
-    const emoji = ((_c = input.tags.find((candidate) => candidate.id === tagId)) == null ? void 0 : _c.emoji) || (state === "0" ? "\u{1FA84}" : state === "1" ? "\u26A1" : state === "2" ? "\u{1F464}" : "\u{1F4E6}");
+    const emoji = (tag == null ? void 0 : tag.emoji) || (state === "0" ? "\u{1FA84}" : state === "1" ? "\u26A1" : state === "2" ? "\u{1F464}" : "\u{1F4E6}");
     const iconSpan = document.createElement("span");
     iconSpan.innerText = emoji;
     badge.appendChild(iconSpan);
@@ -2350,11 +2417,11 @@ function renderReadingModeAnnotations(input) {
       summarySpan.style.marginLeft = "3px";
       badge.appendChild(summarySpan);
     }
-    (_d = mark.parentNode) == null ? void 0 : _d.insertBefore(badge, mark.nextSibling);
+    (_a = mark.parentNode) == null ? void 0 : _a.insertBefore(badge, mark.nextSibling);
     const openPopover = (target) => {
       const rect = target.getBoundingClientRect();
       input.onOpenPopover({
-        nodeId: id,
+        nodeId: node.id,
         summary,
         state,
         tagId,
@@ -2368,11 +2435,9 @@ function renderReadingModeAnnotations(input) {
       openPopover(badge);
     });
     mark.addEventListener("click", (event) => {
-      if (state !== "0") {
-        event.preventDefault();
-        event.stopPropagation();
-        openPopover(mark);
-      }
+      event.preventDefault();
+      event.stopPropagation();
+      openPopover(mark);
     });
   });
 }
@@ -2795,6 +2860,7 @@ var TavilyClient = class {
 // src/services/annotation-service.ts
 init_state();
 init_annotation_repository();
+init_editor_viewport();
 var AnnotationService = class {
   constructor(app) {
     this.app = app;
@@ -2852,7 +2918,7 @@ ${input.instruction}`;
       } else if (newText.startsWith("```") && newText.endsWith("```")) {
         newText = newText.slice(3, -3).trim();
       }
-      input.view.dispatch({
+      dispatchEditorChangePreservingViewport(input.view, {
         changes: { from, to, insert: newText }
       });
       notice.hide();
@@ -2879,14 +2945,13 @@ ${input.instruction}`;
       tagId,
       state: MarkState.Unprocessed
     });
-    input.editor.setValue(pending.text);
+    setEditorValuePreservingViewport(input.editor, pending.text);
     const effectiveContextLen = (_c = (_b = input.command) == null ? void 0 : _b.contextLength) != null ? _c : input.steward.contextLength;
     const halfLen = Math.floor(effectiveContextLen / 2);
     const fullText = input.view.state.doc.toString();
     const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, from - halfLen), from) : "";
     const contextAfter = effectiveContextLen > 0 ? fullText.slice(to, Math.min(fullText.length, to + halfLen)) : "";
-    const defaultSummaryCmd = input.steward.commands.find((command) => command.type === "default-summary");
-    const defaultSummaryPrompt = (defaultSummaryCmd == null ? void 0 : defaultSummaryCmd.detailPrompt) || "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
+    const defaultSummaryPrompt = "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
     const result = await AIClient.generateAnnotation({
       text: input.selection,
       contextBefore,
@@ -2895,7 +2960,7 @@ ${input.instruction}`;
       provider: input.provider,
       footnoteId: newId,
       defaultSummaryPrompt,
-      command: input.command || defaultSummaryCmd,
+      command: input.command,
       promptTemplates: this.promptTemplates(input.settings)
     });
     if (!result) {
@@ -2908,11 +2973,31 @@ ${input.instruction}`;
       summary: result.summary,
       richText: result.richText
     });
-    input.editor.setValue(applied.text);
+    setEditorValuePreservingViewport(input.editor, applied.text);
     return { id: newId, summary: result.summary };
   }
+  async augmentSelection(input) {
+    var _a, _b;
+    const { from, to } = input.view.state.selection.main;
+    const effectiveContextLen = (_b = (_a = input.command) == null ? void 0 : _a.contextLength) != null ? _b : input.steward.contextLength;
+    const halfLen = Math.floor(effectiveContextLen / 2);
+    const fullText = input.view.state.doc.toString();
+    const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, from - halfLen), from) : "";
+    const contextAfter = effectiveContextLen > 0 ? fullText.slice(to, Math.min(fullText.length, to + halfLen)) : "";
+    const result = await AIClient.generateAnnotation({
+      text: input.selection,
+      contextBefore,
+      contextAfter,
+      steward: input.steward,
+      provider: input.provider,
+      footnoteId: generateAnnotationId(),
+      defaultSummaryPrompt: "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA",
+      command: input.command,
+      promptTemplates: this.promptTemplates(input.settings)
+    });
+    return (result == null ? void 0 : result.richText) || null;
+  }
   async followUp(input) {
-    var _a;
     const fullText = await this.loadDocumentText(input.filePath);
     if (!fullText) {
       new import_obsidian4.Notice("\u274C \u672A\u627E\u5230\u5173\u8054\u6587\u6863\uFF0C\u8BF7\u786E\u4FDD\u76F8\u5173\u6587\u6863\u5728\u6807\u7B7E\u9875\u4E2D\u5DF2\u6253\u5F00");
@@ -2927,7 +3012,7 @@ ${input.instruction}`;
     const halfLen = Math.floor(effectiveContextLen / 2);
     const contextBefore = effectiveContextLen > 0 ? fullText.slice(Math.max(0, node.from - halfLen), node.from) : "";
     const contextAfter = effectiveContextLen > 0 ? fullText.slice(node.to, node.to + halfLen) : "";
-    const defaultSummaryPrompt = ((_a = input.steward.commands.find((command) => command.type === "default-summary")) == null ? void 0 : _a.detailPrompt) || "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
+    const defaultSummaryPrompt = "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
     const searchContext = await this.buildSearchContext(input, node.text);
     try {
       const result = await AIClient.generateAnnotation({
@@ -3052,6 +3137,118 @@ function showEmojiGrid(anchor, onSelect) {
     }
   };
   setTimeout(() => document.addEventListener("click", closeHandler), 10);
+}
+
+// src/settings/command-presets.ts
+var MAX_STEWARD_COMMANDS = 8;
+var DEFAULT_STEWARD_COMMANDS = 6;
+var CONVERSATION_PRESETS = [
+  ["\u6838\u5FC3\u89E3\u91CA", "\u{1F50D}", "\u89E3\u91CA\u9009\u4E2D\u6587\u672C\u7684\u6838\u5FC3\u542B\u4E49\u3001\u5173\u952E\u6982\u5FF5\u548C\u6210\u7ACB\u6761\u4EF6\u3002"],
+  ["\u903B\u8F91\u68B3\u7406", "\u{1F5FA}\uFE0F", "\u68B3\u7406\u9009\u4E2D\u6587\u672C\u7684\u8BBA\u8BC1\u7ED3\u6784\u3001\u56E0\u679C\u5173\u7CFB\u548C\u5173\u952E\u6B65\u9AA4\u3002"],
+  ["\u4E3E\u4F8B\u8BF4\u660E", "\u{1F4A1}", "\u4E3A\u9009\u4E2D\u6587\u672C\u63D0\u4F9B\u7531\u6D45\u5165\u6DF1\u7684\u5177\u4F53\u4F8B\u5B50\uFF0C\u5E2E\u52A9\u7406\u89E3\u5176\u5B9E\u9645\u542B\u4E49\u3002"],
+  ["\u8054\u7CFB\u4E0A\u4E0B\u6587", "\u{1F517}", "\u8BF4\u660E\u9009\u4E2D\u6587\u672C\u4E0E\u4E0A\u4E0B\u6587\u7684\u5173\u7CFB\uFF0C\u4EE5\u53CA\u5B83\u5728\u6574\u4F53\u5185\u5BB9\u4E2D\u7684\u4F5C\u7528\u3002"],
+  ["\u6279\u5224\u6027\u9605\u8BFB", "\u2696\uFE0F", "\u6307\u51FA\u9009\u4E2D\u6587\u672C\u7684\u524D\u63D0\u3001\u8BC1\u636E\u3001\u5C40\u9650\u548C\u53EF\u80FD\u7684\u53CD\u4F8B\u3002"],
+  ["\u751F\u6210\u7EC3\u4E60", "\u270F\uFE0F", "\u56F4\u7ED5\u9009\u4E2D\u6587\u672C\u751F\u6210\u4E00\u9053\u7406\u89E3\u6027\u7EC3\u4E60\uFF0C\u5E76\u63D0\u4F9B\u7B54\u6848\u548C\u89E3\u6790\u3002"]
+];
+var INLINE_PRESETS = [
+  ["\u63D0\u53D6\u8981\u70B9", "\u{1F3AF}", "\u63D0\u53D6\u539F\u6587\u6700\u91CD\u8981\u7684 3-5 \u4E2A\u8981\u70B9\uFF0C\u4FDD\u6301\u539F\u610F\u5E76\u4F7F\u7528\u7B80\u6D01\u6761\u76EE\u3002"],
+  ["\u7CBE\u70BC\u603B\u7ED3", "\u{1F4DD}", "\u5C06\u539F\u6587\u7CBE\u70BC\u4E3A\u6838\u5FC3\u7ED3\u8BBA\uFF0C\u5220\u9664\u91CD\u590D\u548C\u65E0\u5173\u8868\u8FBE\u3002"],
+  ["\u903B\u8F91\u6574\u7406", "\u{1F504}", "\u4F18\u5316\u539F\u6587\u7684\u903B\u8F91\u987A\u5E8F\u548C\u8854\u63A5\uFF0C\u4E0D\u6539\u53D8\u539F\u59CB\u542B\u4E49\u3002"],
+  ["\u901A\u4FD7\u8F6C\u6362", "\u{1F5E3}\uFE0F", "\u5C06\u539F\u6587\u6539\u5199\u4E3A\u975E\u4E13\u4E1A\u8BFB\u8005\u4E5F\u80FD\u7406\u89E3\u7684\u81EA\u7136\u8868\u8FBE\u3002"],
+  ["Markdown\u7ED3\u6784\u5316", "\u24C2\uFE0F", "\u5C06\u539F\u6587\u6574\u7406\u4E3A\u6E05\u6670\u7684 Markdown \u6807\u9898\u3001\u5217\u8868\u548C\u91CD\u70B9\u7ED3\u6784\u3002"],
+  ["\u601D\u7EF4\u5BFC\u56FE", "\u{1F4CA}", "\u5C06\u539F\u6587\u63D0\u70BC\u4E3A Mermaid mindmap \u4EE3\u7801\uFF0C\u53EA\u8F93\u51FA\u53EF\u6267\u884C\u4EE3\u7801\u3002"]
+];
+var AUGMENT_PRESETS = [
+  ["\u8865\u5145\u80CC\u666F", "\u{1F310}", "\u8865\u5145\u7406\u89E3\u8FD9\u6BB5\u5185\u5BB9\u6240\u9700\u7684\u5386\u53F2\u3001\u9886\u57DF\u6216\u4E0A\u4E0B\u6587\u80CC\u666F\u3002"],
+  ["\u8865\u5145\u5B9A\u4E49", "\u{1F4D6}", "\u8865\u5145\u6587\u4E2D\u5173\u952E\u672F\u8BED\u3001\u4EBA\u7269\u3001\u673A\u6784\u6216\u6982\u5FF5\u7684\u51C6\u786E\u91CA\u4E49\u3002"],
+  ["\u8865\u5145\u4F8B\u5B50", "\u{1F4A1}", "\u8865\u5145\u4E0E\u539F\u6587\u89C2\u70B9\u76F8\u5173\u7684\u5177\u4F53\u6848\u4F8B\u3001\u7C7B\u6BD4\u6216\u5E94\u7528\u573A\u666F\u3002"],
+  ["\u8865\u5145\u6B65\u9AA4", "\u{1F9ED}", "\u5C06\u539F\u6587\u9690\u542B\u7684\u65B9\u6CD5\u3001\u6D41\u7A0B\u6216\u884C\u52A8\u6B65\u9AA4\u8865\u5145\u5B8C\u6574\u3002"],
+  ["\u8865\u5145\u53CD\u4F8B", "\u2696\uFE0F", "\u8865\u5145\u53EF\u80FD\u4E0D\u6210\u7ACB\u7684\u8FB9\u754C\u6761\u4EF6\u3001\u53CD\u4F8B\u548C\u9700\u8981\u6CE8\u610F\u7684\u4F8B\u5916\u3002"],
+  ["\u8865\u5145\u5EF6\u4F38", "\u{1F4DA}", "\u8865\u5145\u503C\u5F97\u7EE7\u7EED\u9605\u8BFB\u3001\u7EC3\u4E60\u6216\u63A2\u7D22\u7684\u76F8\u5173\u65B9\u5411\u3002"]
+];
+function createPresetCommands(stewardId, type) {
+  const presets = type === "conversation" ? CONVERSATION_PRESETS : AUGMENT_PRESETS;
+  return presets.map(([name, icon, detailPrompt], index) => ({
+    id: `${stewardId}-${type}-${index + 1}`,
+    name,
+    icon,
+    detailPrompt,
+    type,
+    enabled: true,
+    contextMode: "full"
+  }));
+}
+function normalizeCommand(command, type) {
+  return {
+    ...command,
+    type,
+    enabled: command.enabled !== false
+  };
+}
+function fillCommands(stewardId, commands, type) {
+  const byId = /* @__PURE__ */ new Map();
+  for (const command of commands) {
+    if (!byId.has(command.id))
+      byId.set(command.id, normalizeCommand(command, type));
+  }
+  for (const preset of createPresetCommands(stewardId, type)) {
+    if (byId.size >= DEFAULT_STEWARD_COMMANDS)
+      break;
+    if (!byId.has(preset.id))
+      byId.set(preset.id, preset);
+  }
+  return Array.from(byId.values()).slice(0, MAX_STEWARD_COMMANDS);
+}
+function normalizeStewardCommands(steward) {
+  const legacyChat = Array.isArray(steward.commands) ? steward.commands : [];
+  const conversation = legacyChat.filter(
+    (command) => command.type !== "default-summary" && command.type !== "inline-modify" && command.type !== "augment"
+  );
+  const augment = [
+    ...Array.isArray(steward.augmentCommands) ? steward.augmentCommands : [],
+    ...legacyChat.filter((command) => command.type === "augment")
+  ];
+  const overflow = legacyChat.filter(
+    (command) => command.type !== "default-summary" && command.type !== "inline-modify"
+  ).slice(MAX_STEWARD_COMMANDS);
+  steward.commands = fillCommands(steward.id, conversation, "conversation");
+  steward.augmentCommands = fillCommands(steward.id, augment, "augment");
+  if (overflow.length > 0) {
+    steward.legacyCommands = [
+      ...steward.legacyCommands || [],
+      ...overflow
+    ];
+  }
+}
+function normalizeInlineCommands(steward) {
+  const commands = Array.isArray(steward.commands) ? steward.commands : [];
+  const byId = /* @__PURE__ */ new Map();
+  for (const command of commands) {
+    if (!byId.has(command.id)) {
+      byId.set(command.id, {
+        ...command,
+        type: "inline-modify",
+        enabled: command.enabled !== false
+      });
+    }
+  }
+  for (const [index, [name, icon, detailPrompt]] of INLINE_PRESETS.entries()) {
+    if (byId.size >= DEFAULT_STEWARD_COMMANDS)
+      break;
+    const id = `inline-default-${index + 1}`;
+    if (!byId.has(id)) {
+      byId.set(id, {
+        id,
+        name,
+        icon,
+        detailPrompt,
+        type: "inline-modify",
+        enabled: true,
+        contextMode: "writingOnly"
+      });
+    }
+  }
+  steward.commands = Array.from(byId.values()).slice(0, MAX_STEWARD_COMMANDS);
 }
 
 // src/settings/modals.ts
@@ -3489,36 +3686,49 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
     }));
     const inlineCmdSection = inlineDiv.createEl("div", { attr: { style: "margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);" } });
     inlineCmdSection.createEl("h5", { text: "\u270F\uFE0F \u6539\u5199\u6307\u4EE4 (Inline Commands)" });
-    const btnAddInlineCmd = inlineCmdSection.createEl("button", { text: "\u2795 \u6DFB\u52A0\u6539\u5199\u6307\u4EE4" });
+    const inlineCommands = this.plugin.settings.inlineSteward.commands;
+    const btnAddInlineCmd = inlineCmdSection.createEl("button", { text: `\u2795 \u6DFB\u52A0\u6539\u5199\u6307\u4EE4 (${inlineCommands.length}/${MAX_STEWARD_COMMANDS})` });
+    btnAddInlineCmd.disabled = inlineCommands.length >= MAX_STEWARD_COMMANDS;
     btnAddInlineCmd.onclick = async () => {
-      const newCmd = {
+      if (inlineCommands.length >= MAX_STEWARD_COMMANDS)
+        return;
+      inlineCommands.push({
         id: `inline-cmd-${Date.now()}`,
         name: "\u65B0\u6539\u5199",
         icon: "\u270F\uFE0F",
         detailPrompt: "",
-        type: "inline-modify"
-      };
-      this.plugin.settings.inlineSteward.commands.push(newCmd);
+        type: "inline-modify",
+        enabled: true
+      });
       await this.plugin.saveSettings();
       this.display();
     };
-    const inlineListDiv = inlineCmdSection.createEl("div", { attr: { style: "display: flex; flex-direction: column; gap: 8px; margin-top: 8px;" } });
-    this.plugin.settings.inlineSteward.commands.forEach((cmd, index) => {
-      const cmdCard = inlineListDiv.createEl("div", { cls: "marking-cmd-card", attr: { style: "cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;" } });
-      const cardHeader = cmdCard.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center;" } });
+    const inlineListDiv = inlineCmdSection.createEl("div", { cls: "mn-command-list" });
+    inlineCommands.forEach((cmd, index) => {
+      const cmdCard = inlineListDiv.createEl("div", { cls: "marking-cmd-card" });
+      const cardHeader = cmdCard.createEl("div", { cls: "mn-command-card-header" });
       cardHeader.createEl("div", { text: `${cmd.icon} ${cmd.name}`, attr: { style: "font-weight: 600;" } });
-      const cmdDel = cardHeader.createEl("button", { text: "\u2716", attr: { style: "font-size: 0.8em; padding: 2px 8px;" } });
+      const controls = cardHeader.createEl("div", { cls: "mn-command-card-controls" });
+      const checkbox = controls.createEl("input", { attr: { type: "checkbox" } });
+      checkbox.checked = cmd.enabled !== false;
+      checkbox.title = "\u662F\u5426\u663E\u793A\u5728\u6539\u5199\u64CD\u4F5C\u4E2D";
+      checkbox.onclick = async (event) => {
+        event.stopPropagation();
+        cmd.enabled = checkbox.checked;
+        await this.plugin.saveSettings();
+      };
+      const cmdDel = controls.createEl("button", { text: "\u2716", attr: { title: "\u5220\u9664\u6307\u4EE4" } });
       cmdDel.onclick = async (event) => {
         event.stopPropagation();
-        this.plugin.settings.inlineSteward.commands.splice(index, 1);
+        inlineCommands.splice(index, 1);
         await this.plugin.saveSettings();
         this.display();
       };
-      const descPreview = cmd.detailPrompt.slice(0, 45) + (cmd.detailPrompt.length > 45 ? "..." : "");
-      cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", attr: { style: "font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;" } });
+      const descPreview = cmd.detailPrompt.slice(0, 60) + (cmd.detailPrompt.length > 60 ? "..." : "");
+      cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", cls: "mn-command-preview" });
       cmdCard.onclick = () => {
         new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
-          this.plugin.settings.inlineSteward.commands[index] = updatedCmd;
+          inlineCommands[index] = { ...updatedCmd, type: "inline-modify", enabled: cmd.enabled !== false };
           await this.plugin.saveSettings();
           this.display();
         }).open();
@@ -3641,47 +3851,87 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
       this.plugin.settings.stewards[index].footnoteLength = parseInt(value) || 30;
       await this.plugin.saveSettings();
     }));
-    const cmdSection = stewardDiv.createEl("div", { attr: { style: "margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);" } });
-    cmdSection.createEl("h5", { text: "\u26A1 \u7BA1\u5BB6\u6307\u4EE4 (Steward Commands)" });
-    const btnAddCmd = cmdSection.createEl("button", { text: "\u2795 \u6DFB\u52A0\u5FEB\u6377\u6307\u4EE4" });
-    btnAddCmd.onclick = async () => {
-      const newCmd = {
-        id: `cmd-${Date.now()}`,
-        name: "\u65B0\u6307\u4EE4",
-        icon: "\u26A1",
-        detailPrompt: "",
-        type: "annotated",
-        contextMode: "full"
-      };
-      this.plugin.settings.stewards[index].commands.push(newCmd);
-      await this.plugin.saveSettings();
-      this.display();
+    const cmdSection = stewardDiv.createEl("div", { cls: "mn-command-section" });
+    cmdSection.createEl("h5", { text: "\u26A1 \u5FEB\u6377\u6307\u4EE4" });
+    cmdSection.createEl("p", { text: "\u6BCF\u7C7B\u6700\u591A 8 \u6761\uFF0C\u53D6\u6D88\u52FE\u9009\u540E\u4E0D\u4F1A\u51FA\u73B0\u5728\u9009\u533A\u64CD\u4F5C\u680F\u3002\u9ED8\u8BA4\u6458\u8981\u5DF2\u6539\u4E3A\u5168\u5C40\u63D0\u793A\u8BCD\u3002", cls: "setting-item-description" });
+    const tabBar = cmdSection.createEl("div", { cls: "mn-command-tabs" });
+    const panelHost = cmdSection.createEl("div", { cls: "mn-command-panels" });
+    const panels = {
+      conversation: panelHost.createDiv({ cls: "mn-command-panel" }),
+      augment: panelHost.createDiv({ cls: "mn-command-panel" })
     };
-    const listDiv = cmdSection.createEl("div", { attr: { style: "display: flex; flex-direction: column; gap: 8px; margin-top: 8px;" } });
-    steward.commands.forEach((cmd, cmdIndex) => {
-      const cmdCard = listDiv.createEl("div", { cls: "marking-cmd-card", attr: { style: "cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;" } });
-      const cardHeader = cmdCard.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center;" } });
-      const typeBadge = cmd.type === "default-summary" ? "\u2705 \u9ED8\u8BA4" : "\u26A1 \u6302\u8F7D";
-      cardHeader.createEl("div", { text: `${cmd.icon} ${cmd.name}`, attr: { style: "font-weight: 600;" } });
-      const rightControls = cardHeader.createEl("div", { attr: { style: "display: flex; align-items: center; gap: 8px;" } });
-      rightControls.createEl("span", { text: typeBadge, attr: { style: "font-size: 0.75em; padding: 2px 6px; background: var(--interactive-accent); color: var(--text-on-accent); border-radius: 4px;" } });
-      const cmdDel = rightControls.createEl("button", { text: "\u2716", attr: { style: "font-size: 0.8em; padding: 2px 8px;" } });
-      cmdDel.onclick = async (event) => {
-        event.stopPropagation();
-        this.plugin.settings.stewards[index].commands.splice(cmdIndex, 1);
+    const tabButtons = {};
+    let activeCategory = "conversation";
+    const switchCategory = (category) => {
+      var _a;
+      activeCategory = category;
+      for (const key of ["conversation", "augment"]) {
+        panels[key].style.display = key === category ? "" : "none";
+        (_a = tabButtons[key]) == null ? void 0 : _a.toggleClass("mn-command-tab-active", key === category);
+      }
+    };
+    for (const [category, label] of [["conversation", "\u{1F4AC} \u5BF9\u8BDD\u6307\u4EE4"], ["augment", "\u2795 \u589E\u8865\u6307\u4EE4"]]) {
+      const button = tabBar.createEl("button", { text: label, cls: "mn-command-tab" });
+      button.onclick = () => switchCategory(category);
+      tabButtons[category] = button;
+    }
+    const renderCommandList = (category) => {
+      const panel = panels[category];
+      panel.empty();
+      const commands = category === "conversation" ? steward.commands : steward.augmentCommands || (steward.augmentCommands = []);
+      const addButton = panel.createEl("button", { text: `\u2795 \u6DFB\u52A0\u6307\u4EE4 (${commands.length}/${MAX_STEWARD_COMMANDS})` });
+      addButton.disabled = commands.length >= MAX_STEWARD_COMMANDS;
+      addButton.title = addButton.disabled ? `\u6700\u591A ${MAX_STEWARD_COMMANDS} \u6761` : "\u6DFB\u52A0\u5FEB\u6377\u6307\u4EE4";
+      addButton.onclick = async () => {
+        if (commands.length >= MAX_STEWARD_COMMANDS)
+          return;
+        commands.push({
+          id: `cmd-${category}-${Date.now()}`,
+          name: category === "augment" ? "\u65B0\u589E\u8865\u6307\u4EE4" : "\u65B0\u5BF9\u8BDD\u6307\u4EE4",
+          icon: category === "augment" ? "\u2795" : "\u{1F4AC}",
+          detailPrompt: "",
+          type: category,
+          enabled: true,
+          contextMode: "full"
+        });
         await this.plugin.saveSettings();
         this.display();
       };
-      const descPreview = cmd.detailPrompt.slice(0, 45) + (cmd.detailPrompt.length > 45 ? "..." : "");
-      cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", attr: { style: "font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;" } });
-      cmdCard.onclick = () => {
-        new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
-          this.plugin.settings.stewards[index].commands[cmdIndex] = updatedCmd;
+      const listDiv = panel.createEl("div", { cls: "mn-command-list" });
+      commands.forEach((cmd, cmdIndex) => {
+        const cmdCard = listDiv.createEl("div", { cls: "marking-cmd-card" });
+        const cardHeader = cmdCard.createEl("div", { cls: "mn-command-card-header" });
+        cardHeader.createEl("div", { text: `${cmd.icon} ${cmd.name}`, attr: { style: "font-weight: 600;" } });
+        const rightControls = cardHeader.createEl("div", { cls: "mn-command-card-controls" });
+        const checkbox = rightControls.createEl("input", { attr: { type: "checkbox" } });
+        checkbox.checked = cmd.enabled !== false;
+        checkbox.title = "\u662F\u5426\u663E\u793A\u5728\u64CD\u4F5C\u680F";
+        checkbox.onclick = async (event) => {
+          event.stopPropagation();
+          cmd.enabled = checkbox.checked;
+          await this.plugin.saveSettings();
+        };
+        const cmdDel = rightControls.createEl("button", { text: "\u2716", attr: { title: "\u5220\u9664\u6307\u4EE4" } });
+        cmdDel.onclick = async (event) => {
+          event.stopPropagation();
+          commands.splice(cmdIndex, 1);
           await this.plugin.saveSettings();
           this.display();
-        }).open();
-      };
-    });
+        };
+        const descPreview = cmd.detailPrompt.slice(0, 60) + (cmd.detailPrompt.length > 60 ? "..." : "");
+        cmdCard.createEl("div", { text: descPreview || "\u672A\u8BBE\u7F6E\u63D0\u793A\u8BCD", cls: "mn-command-preview" });
+        cmdCard.onclick = () => {
+          new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
+            commands[cmdIndex] = { ...updatedCmd, type: category, enabled: cmd.enabled !== false };
+            await this.plugin.saveSettings();
+            this.display();
+          }).open();
+        };
+      });
+    };
+    renderCommandList("conversation");
+    renderCommandList("augment");
+    switchCategory(activeCategory);
   }
 };
 
@@ -3843,6 +4093,7 @@ init_storage();
 // src/sidebar.ts
 var import_obsidian7 = require("obsidian");
 init_annotation_repository();
+init_editor_viewport();
 
 // src/services/merge-service.ts
 init_ids();
@@ -4067,7 +4318,7 @@ var MarkingSidebarView = class extends import_obsidian7.ItemView {
       const current2 = editor.getValue();
       const updated2 = updater(current2);
       if (updated2 !== current2) {
-        editor.setValue(updated2);
+        setEditorValuePreservingViewport(editor, updated2);
       }
       return updated2;
     }
@@ -4165,30 +4416,24 @@ var MarkingSidebarView = class extends import_obsidian7.ItemView {
       }
     });
     const list = container.createEl("div", { cls: "mn-sidebar-list" });
-    for (const node of annotatedNodes) {
+    const visibleAnnotations = annotatedNodes.filter((node) => {
       if (this.stateFilter !== null && node.state !== this.stateFilter)
-        continue;
-      if (this.tagFilter !== null) {
-        if (this.tagFilter === "__none__" && node.tagId)
-          continue;
-        if (this.tagFilter !== "__none__" && node.tagId !== this.tagFilter)
-          continue;
-      }
-      this.renderNodeItem(list, node, fileContent, activeFile.path);
-    }
-    if (mergedNotes.length > 0) {
-      const mergedSection = container.createEl("div", {
-        cls: "mn-merged-section"
-      });
-      mergedSection.createEl("h5", {
-        text: `\u{1F517} \u5408\u5E76\u7B14\u8BB0 (${mergedNotes.length})`,
-        attr: { style: "margin: 16px 0 8px 0;" }
-      });
-      const mergedList = mergedSection.createEl("div", {
-        cls: "mn-sidebar-list"
-      });
-      for (const mergedNote of mergedNotes) {
-        this.renderMergedNodeItem(mergedList, mergedNote, activeFile.path);
+        return false;
+      if (this.tagFilter === "__none__" && node.tagId)
+        return false;
+      if (this.tagFilter !== null && this.tagFilter !== "__none__" && node.tagId !== this.tagFilter)
+        return false;
+      return true;
+    });
+    const orderedItems = [
+      ...visibleAnnotations.map((node) => ({ kind: "annotation", node })),
+      ...mergedNotes.map((node) => ({ kind: "merged", node }))
+    ].sort((left, right) => left.node.from - right.node.from);
+    for (const item of orderedItems) {
+      if (item.kind === "annotation") {
+        this.renderNodeItem(list, item.node, fileContent, activeFile.path);
+      } else {
+        this.renderMergedNodeItem(list, item.node, activeFile.path);
       }
     }
     container.scrollTop = previousScroll;
@@ -4439,6 +4684,8 @@ var MarkingSidebarView = class extends import_obsidian7.ItemView {
       const chatContainer = container.createEl("div", {
         cls: "mn-accordion-chat-row"
       });
+      chatContainer.addEventListener("mousedown", (event) => event.stopPropagation());
+      chatContainer.addEventListener("click", (event) => event.stopPropagation());
       const input = chatContainer.createEl("input", {
         type: "text",
         placeholder: "\u7EE7\u7EED\u8FFD\u95EE...",
@@ -4754,18 +5001,21 @@ var MarkingSidebarView = class extends import_obsidian7.ItemView {
     this.renderContent();
   }
   jumpToNode(node, filePath) {
+    const escapedId = node.id.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const readingTarget = document.querySelector(
+      `.markdown-preview-view [data-marking-id="${escapedId}"], [data-marking-id="${escapedId}"]`
+    );
+    if (readingTarget) {
+      readingTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     const targetEditor = this.findEditor(filePath);
     if (!targetEditor)
       return;
     try {
       const editorText = targetEditor.getValue();
-      const idx = editorText.indexOf(`[${node.id}]`);
-      let pos;
-      if (idx !== -1) {
-        pos = targetEditor.offsetToPos(idx);
-      } else {
-        pos = targetEditor.offsetToPos(node.from);
-      }
+      const idx = editorText.indexOf(`marking-note:id=${node.id}`);
+      const pos = targetEditor.offsetToPos(idx >= 0 ? idx : node.from);
       targetEditor.setCursor(pos);
       targetEditor.scrollIntoView(
         {
@@ -4886,7 +5136,7 @@ AI\u5206\u6790: ${content}`
       text: editor.getDoc().getValue(),
       nodes: nodeDataList
     });
-    editor.setValue(merged.text);
+    setEditorValuePreservingViewport(editor, merged.text);
     this.selectedNodes.clear();
     this.renderContent();
     new import_obsidian7.Notice(`\u5DF2\u5408\u5E76 ${nodeDataList.length} \u4E2A\u6807\u6CE8`);
@@ -4943,7 +5193,7 @@ AI\u5206\u6790: ${content}`
         settings: this.plugin.settings
       });
       if (merged) {
-        editor.setValue(merged.text);
+        setEditorValuePreservingViewport(editor, merged.text);
         this.selectedNodes.clear();
         this.renderContent();
         new import_obsidian7.Notice(`AI \u91CD\u7EC4\u5B8C\u6210\uFF0C\u5DF2\u5408\u5E76 ${annotations.length} \u4E2A\u6807\u6CE8`);
@@ -5009,7 +5259,7 @@ AI\u5206\u6790: ${content}`
         settings: this.plugin.settings
       });
       if (merged) {
-        editor.setValue(merged.text);
+        setEditorValuePreservingViewport(editor, merged.text);
         this.selectedNodes.clear();
         this.renderContent();
         new import_obsidian7.Notice(`\u5F15\u5BFC\u5408\u5E76\u5B8C\u6210\uFF0C\u5DF2\u5408\u5E76 ${annotations.length} \u4E2A\u6807\u6CE8`);
@@ -5468,6 +5718,9 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         (view, selection, command) => {
           this.handleAIAnnotation(view, selection, command);
         },
+        (view, selection, command) => {
+          this.handleAIAugment(view, selection, command);
+        },
         () => {
           var _a;
           const executed = (_a = this.app.commands) == null ? void 0 : _a.executeCommandById(
@@ -5481,28 +5734,37 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         this
       )
     );
-    this.registerMarkdownPostProcessor((el) => {
-      renderReadingModeAnnotations({
-        container: el,
-        tags: this.settings.tags,
-        onOpenPopover: ({
-          nodeId,
-          summary,
-          state,
-          tagId,
-          anchorX,
-          anchorY
-        }) => {
-          this.showReadingPopover(
+    this.registerMarkdownPostProcessor((el, ctx) => {
+      const render = (sourceText = "") => {
+        renderReadingModeAnnotations({
+          container: el,
+          tags: this.settings.tags,
+          nodes: sourceText ? parseMarkingNodes(sourceText) : void 0,
+          onOpenPopover: ({
             nodeId,
             summary,
             state,
             tagId,
             anchorX,
             anchorY
-          );
-        }
-      });
+          }) => {
+            this.showReadingPopover(
+              nodeId,
+              summary,
+              state,
+              tagId,
+              anchorX,
+              anchorY
+            );
+          }
+        });
+      };
+      const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
+      if (!file) {
+        render();
+        return;
+      }
+      return this.app.vault.cachedRead(file).then(render).catch(() => render());
     });
     const lightningHandler = (e) => {
       var _a;
@@ -5510,10 +5772,12 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         (s) => s.id === this.settings.activeStewardId
       ) || this.settings.stewards[0];
       if ((_a = e.detail) == null ? void 0 : _a.callback) {
-        const annotatedCmds = ((steward == null ? void 0 : steward.commands) || []).filter(
-          (c) => c.type === "annotated"
+        const operation = e.detail.operation === "augment" ? "augment" : "conversation";
+        const source = operation === "augment" ? (steward == null ? void 0 : steward.augmentCommands) || [] : (steward == null ? void 0 : steward.commands) || [];
+        const commands = source.filter(
+          (c) => c.enabled !== false && (operation === "augment" ? c.type === "augment" : c.type === "conversation" || c.type === "annotated")
         );
-        e.detail.callback(annotatedCmds);
+        e.detail.callback(commands);
       }
     };
     window.addEventListener("marking-note-get-commands", lightningHandler);
@@ -5531,13 +5795,37 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
     };
     window.addEventListener("marking-note-open-settings", openSettingsHandler);
     this.register(
-      () => window.removeEventListener("marking-note-open-settings", openSettingsHandler)
+      () => window.removeEventListener(
+        "marking-note-open-settings",
+        openSettingsHandler
+      )
+    );
+    const getStewardsHandler = (e) => {
+      var _a, _b;
+      (_b = (_a = e.detail) == null ? void 0 : _a.callback) == null ? void 0 : _b.call(_a, this.settings.stewards, this.settings.activeStewardId);
+    };
+    window.addEventListener("marking-note-get-stewards", getStewardsHandler);
+    this.register(
+      () => window.removeEventListener("marking-note-get-stewards", getStewardsHandler)
+    );
+    const selectStewardHandler = async (e) => {
+      var _a, _b;
+      const id = (_a = e.detail) == null ? void 0 : _a.id;
+      if (!id || !this.settings.stewards.some((steward) => steward.id === id))
+        return;
+      this.settings.activeStewardId = id;
+      await this.saveSettings();
+      new import_obsidian8.Notice(`\u5DF2\u5207\u6362\u5230\u7BA1\u5BB6\uFF1A${((_b = this.settings.stewards.find((steward) => steward.id === id)) == null ? void 0 : _b.name) || id}`);
+    };
+    window.addEventListener("marking-note-select-steward", selectStewardHandler);
+    this.register(
+      () => window.removeEventListener("marking-note-select-steward", selectStewardHandler)
     );
     const inlineHandler = (e) => {
       var _a, _b;
       if ((_a = e.detail) == null ? void 0 : _a.callback) {
         const inlineCmds = (((_b = this.settings.inlineSteward) == null ? void 0 : _b.commands) || []).filter(
-          (c) => c.type === "inline-modify"
+          (c) => c.type === "inline-modify" && c.enabled !== false
         );
         e.detail.callback(inlineCmds);
       }
@@ -5625,7 +5913,7 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
             newText = newText.replace(`==${node.text}==`, node.text);
           }
         }
-        editor.setValue(newText);
+        setEditorValuePreservingViewport(editor, newText);
         new import_obsidian8.Notice("\u5DF2\u6E05\u7A7A\u5F53\u524D\u7B14\u8BB0\u7684\u6240\u6709\u6807\u6CE8\u548C\u8BF4\u660E");
       }
     });
@@ -5649,7 +5937,7 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
           new import_obsidian8.Notice("\u5DF2\u53D6\u6D88\u6587\u6863\u8FC1\u79FB");
           return;
         }
-        editor.setValue(preview.text);
+        setEditorValuePreservingViewport(editor, preview.text);
         new import_obsidian8.Notice(`\u5DF2\u8FC1\u79FB ${preview.migrated} \u4E2A\u6807\u6CE8`);
       }
     });
@@ -5669,7 +5957,7 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
           new import_obsidian8.Notice("\u5DF2\u53D6\u6D88\u7ED3\u679C\u5757\u540C\u6B65");
           return;
         }
-        editor.setValue(result.text);
+        setEditorValuePreservingViewport(editor, result.text);
         new import_obsidian8.Notice("\u5F53\u524D\u6587\u6863\u7684\u6807\u6CE8\u7ED3\u679C\u5DF2\u540C\u6B65");
       }
     });
@@ -5737,7 +6025,7 @@ ${explanation}
     if (!fileContent) {
       fileContent = await this.app.vault.read(activeFile);
     }
-    const richText = StorageEngine.getCalloutContent(fileContent, nodeId) || "";
+    const richText = annotationRepository.getCalloutContent(fileContent, nodeId) || "";
     if (!this.popoverViewer) {
       this.popoverViewer = new PopoverViewer(this.popoverCtx);
     }
@@ -5847,6 +6135,39 @@ ${explanation}
       new import_obsidian8.Notice("\u26A0\uFE0F AI \u6807\u6CE8\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6A21\u578B\u914D\u7F6E\u4E0E API \u8FDE\u901A\u6027");
     }
   }
+  async handleAIAugment(view, selection, command) {
+    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
+    if (!markdownView)
+      return;
+    const steward = this.settings.stewards.find(
+      (s) => s.id === this.settings.activeStewardId
+    ) || this.settings.stewards[0];
+    const provider = this.getProviderForSteward(steward);
+    if (!provider) {
+      new import_obsidian8.Notice("\u274C \u672A\u914D\u7F6E AI \u6A21\u578B\u63D0\u4F9B\u5546\uFF0C\u8BF7\u524D\u5F80\u8BBE\u7F6E\u9875\u9762\u6DFB\u52A0");
+      return;
+    }
+    try {
+      const richText = await this.annotationService.augmentSelection({
+        view,
+        editor: markdownView.editor,
+        selection,
+        steward,
+        provider,
+        command,
+        settings: this.settings
+      });
+      if (!richText) {
+        new import_obsidian8.Notice("\u26A0\uFE0F \u589E\u8865\u751F\u6210\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6A21\u578B\u914D\u7F6E\u4E0E API \u8FDE\u901A\u6027");
+        return;
+      }
+      await navigator.clipboard.writeText(richText);
+      new import_obsidian8.Notice("\u2705 \u589E\u8865\u5185\u5BB9\u5DF2\u590D\u5236\u5230\u526A\u8D34\u677F");
+    } catch (error) {
+      console.error(error);
+      new import_obsidian8.Notice("\u26A0\uFE0F \u589E\u8865\u5185\u5BB9\u590D\u5236\u5931\u8D25");
+    }
+  }
   async handleFollowUp(nodeId, instruction, currentContent, filePath, options) {
     const steward = this.settings.stewards.find(
       (s) => s.id === this.settings.activeStewardId
@@ -5894,26 +6215,12 @@ ${explanation}
       this.settings.annotationSystemPromptTemplate = DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE;
     if (!this.settings.inlineRewriteSystemPromptTemplate)
       this.settings.inlineRewriteSystemPromptTemplate = DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE;
-    for (const s of this.settings.stewards) {
-      if (!s.commands)
-        s.commands = [];
-      if (!s.boundModelProviderId)
-        s.boundModelProviderId = this.settings.defaultProviderId || "";
-      for (const cmd of s.commands) {
-        if (!cmd.type)
-          cmd.type = "annotated";
-      }
-      if (!s.commands.find((c) => c.type === "default-summary")) {
-        const legacyPrompt = (loadedData == null ? void 0 : loadedData.defaultSummaryPrompt) || "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA";
-        s.commands.unshift({
-          id: `def-${s.id}`,
-          name: "\u9ED8\u8BA4\u6807\u6CE8\u6807\u9898",
-          icon: "\u{1FA84}",
-          detailPrompt: legacyPrompt,
-          type: "default-summary"
-        });
-      }
+    for (const steward of this.settings.stewards) {
+      if (!steward.boundModelProviderId)
+        steward.boundModelProviderId = this.settings.defaultProviderId || "";
+      normalizeStewardCommands(steward);
     }
+    normalizeInlineCommands(this.settings.inlineSteward);
   }
   async saveSettings() {
     await this.saveData(this.settings);

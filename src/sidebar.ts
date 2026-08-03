@@ -11,6 +11,7 @@ import {
 import type { MarkState, MarkingNode, MergedNoteNode } from "./state";
 import type MarkingNotePlugin from "../main";
 import { annotationRepository } from "./repository/annotation-repository";
+import { setEditorValuePreservingViewport } from "./editor-viewport";
 import { MergeService } from "./services/merge-service";
 import { applyTagButtonStyle, getTagBorderAccent } from "./tag-styles";
 
@@ -94,7 +95,7 @@ export class MarkingSidebarView extends ItemView {
 			const current = editor.getValue();
 			const updated = updater(current);
 			if (updated !== current) {
-				editor.setValue(updated);
+				setEditorValuePreservingViewport(editor, updated);
 			}
 			return updated;
 		}
@@ -212,35 +213,24 @@ export class MarkingSidebarView extends ItemView {
 			},
 		});
 
-		// Node list
+		// Node list is one document-order stream, including merged notes.
 		const list = container.createEl("div", { cls: "mn-sidebar-list" });
+		const visibleAnnotations = annotatedNodes.filter((node) => {
+			if (this.stateFilter !== null && node.state !== this.stateFilter) return false;
+			if (this.tagFilter === "__none__" && node.tagId) return false;
+			if (this.tagFilter !== null && this.tagFilter !== "__none__" && node.tagId !== this.tagFilter) return false;
+			return true;
+		});
+		const orderedItems = [
+			...visibleAnnotations.map((node) => ({ kind: "annotation" as const, node })),
+			...mergedNotes.map((node) => ({ kind: "merged" as const, node })),
+		].sort((left, right) => left.node.from - right.node.from);
 
-		for (const node of annotatedNodes) {
-			// Apply state filter (single-select)
-			if (this.stateFilter !== null && node.state !== this.stateFilter)
-				continue;
-			// Apply tag filter (single-select)
-			if (this.tagFilter !== null) {
-				if (this.tagFilter === "__none__" && node.tagId) continue;
-				if (this.tagFilter !== "__none__" && node.tagId !== this.tagFilter)
-					continue;
-			}
-			this.renderNodeItem(list, node, fileContent, activeFile.path);
-		}
-
-		if (mergedNotes.length > 0) {
-			const mergedSection = container.createEl("div", {
-				cls: "mn-merged-section",
-			});
-			mergedSection.createEl("h5", {
-				text: `🔗 合并笔记 (${mergedNotes.length})`,
-				attr: { style: "margin: 16px 0 8px 0;" },
-			});
-			const mergedList = mergedSection.createEl("div", {
-				cls: "mn-sidebar-list",
-			});
-			for (const mergedNote of mergedNotes) {
-				this.renderMergedNodeItem(mergedList, mergedNote, activeFile.path);
+		for (const item of orderedItems) {
+			if (item.kind === "annotation") {
+				this.renderNodeItem(list, item.node, fileContent, activeFile.path);
+			} else {
+				this.renderMergedNodeItem(list, item.node, activeFile.path);
 			}
 		}
 
@@ -552,6 +542,8 @@ export class MarkingSidebarView extends ItemView {
 			const chatContainer = container.createEl("div", {
 				cls: "mn-accordion-chat-row",
 			});
+			chatContainer.addEventListener("mousedown", (event) => event.stopPropagation());
+			chatContainer.addEventListener("click", (event) => event.stopPropagation());
 			const input = chatContainer.createEl("input", {
 				type: "text",
 				placeholder: "继续追问...",
@@ -910,17 +902,21 @@ export class MarkingSidebarView extends ItemView {
 	}
 
 	private jumpToNode(node: MarkingNode, filePath: string) {
+		const escapedId = node.id.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+		const readingTarget = document.querySelector(
+			`.markdown-preview-view [data-marking-id="${escapedId}"], [data-marking-id="${escapedId}"]`,
+		) as HTMLElement | null;
+		if (readingTarget) {
+			readingTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+			return;
+		}
+
 		const targetEditor = this.findEditor(filePath);
 		if (!targetEditor) return;
 		try {
 			const editorText = targetEditor.getValue();
-			const idx = editorText.indexOf(`[${node.id}]`);
-			let pos: any;
-			if (idx !== -1) {
-				pos = targetEditor.offsetToPos(idx);
-			} else {
-				pos = targetEditor.offsetToPos(node.from);
-			}
+			const idx = editorText.indexOf(`marking-note:id=${node.id}`);
+			const pos = targetEditor.offsetToPos(idx >= 0 ? idx : node.from);
 			targetEditor.setCursor(pos);
 			targetEditor.scrollIntoView(
 				{
@@ -1063,7 +1059,7 @@ export class MarkingSidebarView extends ItemView {
 			text: editor.getDoc().getValue(),
 			nodes: nodeDataList,
 		});
-		editor.setValue(merged.text);
+		setEditorValuePreservingViewport(editor, merged.text);
 
 		// Clear selection and refresh
 		this.selectedNodes.clear();
@@ -1134,7 +1130,7 @@ export class MarkingSidebarView extends ItemView {
 			});
 
 			if (merged) {
-				editor.setValue(merged.text);
+				setEditorValuePreservingViewport(editor, merged.text);
 
 				this.selectedNodes.clear();
 				this.renderContent();
@@ -1216,7 +1212,7 @@ export class MarkingSidebarView extends ItemView {
 			});
 
 			if (merged) {
-				editor.setValue(merged.text);
+				setEditorValuePreservingViewport(editor, merged.text);
 
 				this.selectedNodes.clear();
 				this.renderContent();

@@ -1,10 +1,11 @@
-import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { type App, type Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 import { AIClient } from '../ai';
 import { COLOR_PALETTE } from '../domain/constants';
-import type { LightningCommand, MarkingNoteSettings, MarkingTag, ModelProvider, StewardConfig } from '../domain/types';
+import type { MarkingNoteSettings, MarkingTag, ModelProvider, StewardConfig } from '../domain/types';
 import { applyTagHighlightStyle } from '../tag-styles';
 import { showEmojiGrid } from '../ui/emoji-picker';
+import { MAX_STEWARD_COMMANDS } from './command-presets';
 import { LightningCommandEditModal, TagEditModal } from './modals';
 
 export interface MarkingNoteSettingsHost extends Plugin {
@@ -373,41 +374,50 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
         const inlineCmdSection = inlineDiv.createEl('div', { attr: { style: 'margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);' } });
         inlineCmdSection.createEl('h5', { text: '✏️ 改写指令 (Inline Commands)' });
 
-        const btnAddInlineCmd = inlineCmdSection.createEl('button', { text: '➕ 添加改写指令' });
+        const inlineCommands = this.plugin.settings.inlineSteward.commands;
+        const btnAddInlineCmd = inlineCmdSection.createEl('button', { text: `➕ 添加改写指令 (${inlineCommands.length}/${MAX_STEWARD_COMMANDS})` });
+        btnAddInlineCmd.disabled = inlineCommands.length >= MAX_STEWARD_COMMANDS;
         btnAddInlineCmd.onclick = async () => {
-            const newCmd: LightningCommand = {
+            if (inlineCommands.length >= MAX_STEWARD_COMMANDS) return;
+            inlineCommands.push({
                 id: `inline-cmd-${Date.now()}`,
                 name: '新改写',
                 icon: '✏️',
                 detailPrompt: '',
                 type: 'inline-modify',
-            };
-            this.plugin.settings.inlineSteward.commands.push(newCmd);
+                enabled: true,
+            });
             await this.plugin.saveSettings();
             this.display();
         };
 
-        const inlineListDiv = inlineCmdSection.createEl('div', { attr: { style: 'display: flex; flex-direction: column; gap: 8px; margin-top: 8px;' } });
-
-        this.plugin.settings.inlineSteward.commands.forEach((cmd, index) => {
-            const cmdCard = inlineListDiv.createEl('div', { cls: 'marking-cmd-card', attr: { style: 'cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;' } });
-            const cardHeader = cmdCard.createEl('div', { attr: { style: 'display: flex; justify-content: space-between; align-items: center;' } });
+        const inlineListDiv = inlineCmdSection.createEl('div', { cls: 'mn-command-list' });
+        inlineCommands.forEach((cmd, index) => {
+            const cmdCard = inlineListDiv.createEl('div', { cls: 'marking-cmd-card' });
+            const cardHeader = cmdCard.createEl('div', { cls: 'mn-command-card-header' });
             cardHeader.createEl('div', { text: `${cmd.icon} ${cmd.name}`, attr: { style: 'font-weight: 600;' } });
-
-            const cmdDel = cardHeader.createEl('button', { text: '✖', attr: { style: 'font-size: 0.8em; padding: 2px 8px;' } });
+            const controls = cardHeader.createEl('div', { cls: 'mn-command-card-controls' });
+            const checkbox = controls.createEl('input', { attr: { type: 'checkbox' } });
+            checkbox.checked = cmd.enabled !== false;
+            checkbox.title = '是否显示在改写操作中';
+            checkbox.onclick = async (event) => {
+                event.stopPropagation();
+                cmd.enabled = checkbox.checked;
+                await this.plugin.saveSettings();
+            };
+            const cmdDel = controls.createEl('button', { text: '✖', attr: { title: '删除指令' } });
             cmdDel.onclick = async (event) => {
                 event.stopPropagation();
-                this.plugin.settings.inlineSteward.commands.splice(index, 1);
+                inlineCommands.splice(index, 1);
                 await this.plugin.saveSettings();
                 this.display();
             };
 
-            const descPreview = cmd.detailPrompt.slice(0, 45) + (cmd.detailPrompt.length > 45 ? '...' : '');
-            cmdCard.createEl('div', { text: descPreview || '未设置提示词', attr: { style: 'font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;' } });
-
+            const descPreview = cmd.detailPrompt.slice(0, 60) + (cmd.detailPrompt.length > 60 ? '...' : '');
+            cmdCard.createEl('div', { text: descPreview || '未设置提示词', cls: 'mn-command-preview' });
             cmdCard.onclick = () => {
                 new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
-                    this.plugin.settings.inlineSteward.commands[index] = updatedCmd;
+                    inlineCommands[index] = { ...updatedCmd, type: 'inline-modify', enabled: cmd.enabled !== false };
                     await this.plugin.saveSettings();
                     this.display();
                 }).open();
@@ -557,53 +567,94 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
             }));
 
-        const cmdSection = stewardDiv.createEl('div', { attr: { style: 'margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--background-modifier-border);' } });
-        cmdSection.createEl('h5', { text: '⚡ 管家指令 (Steward Commands)' });
+        const cmdSection = stewardDiv.createEl('div', { cls: 'mn-command-section' });
+        cmdSection.createEl('h5', { text: '⚡ 快捷指令' });
+        cmdSection.createEl('p', { text: '每类最多 8 条，取消勾选后不会出现在选区操作栏。默认摘要已改为全局提示词。', cls: 'setting-item-description' });
 
-        const btnAddCmd = cmdSection.createEl('button', { text: '➕ 添加快捷指令' });
-        btnAddCmd.onclick = async () => {
-            const newCmd: LightningCommand = {
-                id: `cmd-${Date.now()}`,
-                name: '新指令',
-                icon: '⚡',
-                detailPrompt: '',
-                type: 'annotated',
-                contextMode: 'full',
-            };
-            this.plugin.settings.stewards[index].commands.push(newCmd);
-            await this.plugin.saveSettings();
-            this.display();
+        const tabBar = cmdSection.createEl('div', { cls: 'mn-command-tabs' });
+        const panelHost = cmdSection.createEl('div', { cls: 'mn-command-panels' });
+        const panels: Record<'conversation' | 'augment', HTMLElement> = {
+            conversation: panelHost.createDiv({ cls: 'mn-command-panel' }),
+            augment: panelHost.createDiv({ cls: 'mn-command-panel' }),
+        };
+        const tabButtons: Partial<Record<'conversation' | 'augment', HTMLButtonElement>> = {};
+        let activeCategory: 'conversation' | 'augment' = 'conversation';
+
+        const switchCategory = (category: 'conversation' | 'augment') => {
+            activeCategory = category;
+            for (const key of ['conversation', 'augment'] as const) {
+                panels[key].style.display = key === category ? '' : 'none';
+                tabButtons[key]?.toggleClass('mn-command-tab-active', key === category);
+            }
         };
 
-        const listDiv = cmdSection.createEl('div', { attr: { style: 'display: flex; flex-direction: column; gap: 8px; margin-top: 8px;' } });
+        for (const [category, label] of [['conversation', '💬 对话指令'], ['augment', '➕ 增补指令']] as const) {
+            const button = tabBar.createEl('button', { text: label, cls: 'mn-command-tab' });
+            button.onclick = () => switchCategory(category);
+            tabButtons[category] = button;
+        }
 
-        steward.commands.forEach((cmd, cmdIndex) => {
-            const cmdCard = listDiv.createEl('div', { cls: 'marking-cmd-card', attr: { style: 'cursor: pointer; padding: 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); transition: background 0.2s;' } });
-            const cardHeader = cmdCard.createEl('div', { attr: { style: 'display: flex; justify-content: space-between; align-items: center;' } });
-            const typeBadge = cmd.type === 'default-summary' ? '✅ 默认' : '⚡ 挂载';
-            cardHeader.createEl('div', { text: `${cmd.icon} ${cmd.name}`, attr: { style: 'font-weight: 600;' } });
-
-            const rightControls = cardHeader.createEl('div', { attr: { style: 'display: flex; align-items: center; gap: 8px;' } });
-            rightControls.createEl('span', { text: typeBadge, attr: { style: 'font-size: 0.75em; padding: 2px 6px; background: var(--interactive-accent); color: var(--text-on-accent); border-radius: 4px;' } });
-
-            const cmdDel = rightControls.createEl('button', { text: '✖', attr: { style: 'font-size: 0.8em; padding: 2px 8px;' } });
-            cmdDel.onclick = async (event) => {
-                event.stopPropagation();
-                this.plugin.settings.stewards[index].commands.splice(cmdIndex, 1);
+        const renderCommandList = (category: 'conversation' | 'augment') => {
+            const panel = panels[category];
+            panel.empty();
+            const commands = category === 'conversation'
+                ? steward.commands
+                : (steward.augmentCommands || (steward.augmentCommands = []));
+            const addButton = panel.createEl('button', { text: `➕ 添加指令 (${commands.length}/${MAX_STEWARD_COMMANDS})` });
+            addButton.disabled = commands.length >= MAX_STEWARD_COMMANDS;
+            addButton.title = addButton.disabled ? `最多 ${MAX_STEWARD_COMMANDS} 条` : '添加快捷指令';
+            addButton.onclick = async () => {
+                if (commands.length >= MAX_STEWARD_COMMANDS) return;
+                commands.push({
+                    id: `cmd-${category}-${Date.now()}`,
+                    name: category === 'augment' ? '新增补指令' : '新对话指令',
+                    icon: category === 'augment' ? '➕' : '💬',
+                    detailPrompt: '',
+                    type: category,
+                    enabled: true,
+                    contextMode: 'full',
+                });
                 await this.plugin.saveSettings();
                 this.display();
             };
 
-            const descPreview = cmd.detailPrompt.slice(0, 45) + (cmd.detailPrompt.length > 45 ? '...' : '');
-            cmdCard.createEl('div', { text: descPreview || '未设置提示词', attr: { style: 'font-size: 0.85em; color: var(--text-muted); margin-top: 6px; line-height: 1.3;' } });
+            const listDiv = panel.createEl('div', { cls: 'mn-command-list' });
+            commands.forEach((cmd, cmdIndex) => {
+                const cmdCard = listDiv.createEl('div', { cls: 'marking-cmd-card' });
+                const cardHeader = cmdCard.createEl('div', { cls: 'mn-command-card-header' });
+                cardHeader.createEl('div', { text: `${cmd.icon} ${cmd.name}`, attr: { style: 'font-weight: 600;' } });
+                const rightControls = cardHeader.createEl('div', { cls: 'mn-command-card-controls' });
+                const checkbox = rightControls.createEl('input', { attr: { type: 'checkbox' } });
+                checkbox.checked = cmd.enabled !== false;
+                checkbox.title = '是否显示在操作栏';
+                checkbox.onclick = async (event) => {
+                    event.stopPropagation();
+                    cmd.enabled = checkbox.checked;
+                    await this.plugin.saveSettings();
+                };
 
-            cmdCard.onclick = () => {
-                new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
-                    this.plugin.settings.stewards[index].commands[cmdIndex] = updatedCmd;
+                const cmdDel = rightControls.createEl('button', { text: '✖', attr: { title: '删除指令' } });
+                cmdDel.onclick = async (event) => {
+                    event.stopPropagation();
+                    commands.splice(cmdIndex, 1);
                     await this.plugin.saveSettings();
                     this.display();
-                }).open();
-            };
-        });
+                };
+
+                const descPreview = cmd.detailPrompt.slice(0, 60) + (cmd.detailPrompt.length > 60 ? '...' : '');
+                cmdCard.createEl('div', { text: descPreview || '未设置提示词', cls: 'mn-command-preview' });
+                cmdCard.onclick = () => {
+                    new LightningCommandEditModal(this.app, cmd, this.plugin.settings.tags, async (updatedCmd) => {
+                        commands[cmdIndex] = { ...updatedCmd, type: category, enabled: cmd.enabled !== false };
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }).open();
+                };
+            });
+        };
+
+        renderCommandList('conversation');
+        renderCommandList('augment');
+        switchCategory(activeCategory);
     }
 }

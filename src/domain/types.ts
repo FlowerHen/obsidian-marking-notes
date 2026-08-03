@@ -17,12 +17,20 @@ export interface MarkingTag {
     style: HighlightStyle;
 }
 
+export type LightningCommandType =
+    | 'conversation'
+    | 'augment'
+    | 'annotated'
+    | 'default-summary'
+    | 'inline-modify';
+
 export interface LightningCommand {
     id: string;
     name: string;
     icon: string;
     detailPrompt: string;
-    type: 'default-summary' | 'annotated' | 'inline-modify';
+    type: LightningCommandType;
+    enabled?: boolean;
     enableWebSearch?: boolean;
     contextMode?: 'full' | 'writingOnly' | 'none';
     tagId?: string;
@@ -48,6 +56,8 @@ export interface StewardConfig {
     footnoteLength: number;
     boundModelProviderId: string;
     commands: LightningCommand[];
+    augmentCommands?: LightningCommand[];
+    legacyCommands?: LightningCommand[];
 }
 
 export interface InlineStewardConfig {

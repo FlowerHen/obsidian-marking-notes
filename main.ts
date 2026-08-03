@@ -9,12 +9,17 @@ import type { EditorView } from "@codemirror/view";
 
 import { createMarkingExtensions } from "./src/cm6";
 import { annotationRepository } from "./src/repository/annotation-repository";
+import { setEditorValuePreservingViewport } from "./src/editor-viewport";
 import { renderReadingModeAnnotations } from "./src/renderers/reading-mode-renderer";
 import { AnnotationService } from "./src/services/annotation-service";
 import { MarkingNoteSettingTab } from "./src/settings/setting-tab";
 import { createDefaultSettings } from "./src/settings/default-settings";
 import { StorageEngine } from "./src/storage";
 import { MarkingSidebarView, MARKING_SIDEBAR_VIEW_TYPE } from "./src/sidebar";
+import {
+	normalizeInlineCommands,
+	normalizeStewardCommands,
+} from "./src/settings/command-presets";
 import { type PopoverContext, PopoverEditor, PopoverViewer } from "./src/ui";
 import {
 	DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
@@ -108,6 +113,9 @@ export default class MarkingNotePlugin extends Plugin {
 				(view: EditorView, selection: string, command: LightningCommand) => {
 					this.handleAIAnnotation(view, selection, command);
 				},
+				(view: EditorView, selection: string, command: LightningCommand) => {
+					this.handleAIAugment(view, selection, command);
+				},
 				() => {
 					const executed = (this.app as any).commands?.executeCommandById(
 						"editor:insert-link",
@@ -122,28 +130,37 @@ export default class MarkingNotePlugin extends Plugin {
 		);
 
 		// 4. Register Markdown Post Processor for Reading/Preview mode
-		this.registerMarkdownPostProcessor((el) => {
-			renderReadingModeAnnotations({
-				container: el,
-				tags: this.settings.tags,
-				onOpenPopover: ({
-					nodeId,
-					summary,
-					state,
-					tagId,
-					anchorX,
-					anchorY,
-				}) => {
-					this.showReadingPopover(
+		this.registerMarkdownPostProcessor((el, ctx) => {
+			const render = (sourceText = "") => {
+				renderReadingModeAnnotations({
+					container: el,
+					tags: this.settings.tags,
+					nodes: sourceText ? parseMarkingNodes(sourceText) : undefined,
+					onOpenPopover: ({
 						nodeId,
 						summary,
 						state,
 						tagId,
 						anchorX,
 						anchorY,
-					);
-				},
-			});
+					}) => {
+						this.showReadingPopover(
+							nodeId,
+							summary,
+							state,
+							tagId,
+							anchorX,
+							anchorY,
+						);
+					},
+				});
+			};
+			const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
+			if (!file) {
+				render();
+				return;
+			}
+			return this.app.vault.cachedRead(file as any).then(render).catch(() => render());
 		});
 
 		// 5. Listen for lightning command requests from the UI
@@ -153,10 +170,14 @@ export default class MarkingNotePlugin extends Plugin {
 					(s) => s.id === this.settings.activeStewardId,
 				) || this.settings.stewards[0];
 			if (e.detail?.callback) {
-				const annotatedCmds = (steward?.commands || []).filter(
-					(c) => c.type === "annotated",
+				const operation = e.detail.operation === "augment" ? "augment" : "conversation";
+				const source = operation === "augment"
+					? steward?.augmentCommands || []
+					: steward?.commands || [];
+				const commands = source.filter(
+					(c) => c.enabled !== false && (operation === "augment" ? c.type === "augment" : c.type === "conversation" || c.type === "annotated"),
 				);
-				e.detail.callback(annotatedCmds);
+				e.detail.callback(commands);
 			}
 		}) as EventListener;
 		window.addEventListener("marking-note-get-commands", lightningHandler);
@@ -174,14 +195,37 @@ export default class MarkingNotePlugin extends Plugin {
 		}) as EventListener;
 		window.addEventListener("marking-note-open-settings", openSettingsHandler);
 		this.register(() =>
-			window.removeEventListener("marking-note-open-settings", openSettingsHandler),
+			window.removeEventListener(
+				"marking-note-open-settings",
+				openSettingsHandler,
+			),
+		);
+
+		const getStewardsHandler = ((e: CustomEvent) => {
+			e.detail?.callback?.(this.settings.stewards, this.settings.activeStewardId);
+		}) as EventListener;
+		window.addEventListener("marking-note-get-stewards", getStewardsHandler);
+		this.register(() =>
+			window.removeEventListener("marking-note-get-stewards", getStewardsHandler),
+		);
+
+		const selectStewardHandler = (async (e: CustomEvent) => {
+			const id = e.detail?.id;
+			if (!id || !this.settings.stewards.some((steward) => steward.id === id)) return;
+			this.settings.activeStewardId = id;
+			await this.saveSettings();
+			new Notice(`已切换到管家：${this.settings.stewards.find((steward) => steward.id === id)?.name || id}`);
+		}) as EventListener;
+		window.addEventListener("marking-note-select-steward", selectStewardHandler);
+		this.register(() =>
+			window.removeEventListener("marking-note-select-steward", selectStewardHandler),
 		);
 
 		// 6. Listen for inline modify command requests
 		const inlineHandler = ((e: CustomEvent) => {
 			if (e.detail?.callback) {
 				const inlineCmds = (this.settings.inlineSteward?.commands || []).filter(
-					(c) => c.type === "inline-modify",
+					(c) => c.type === "inline-modify" && c.enabled !== false,
 				);
 				e.detail.callback(inlineCmds);
 			}
@@ -281,7 +325,7 @@ export default class MarkingNotePlugin extends Plugin {
 					}
 				}
 
-				editor.setValue(newText);
+				setEditorValuePreservingViewport(editor, newText);
 				new Notice("已清空当前笔记的所有标注和说明");
 			},
 		});
@@ -308,7 +352,7 @@ export default class MarkingNotePlugin extends Plugin {
 					return;
 				}
 
-				editor.setValue(preview.text);
+				setEditorValuePreservingViewport(editor, preview.text);
 				new Notice(`已迁移 ${preview.migrated} 个标注`);
 			},
 		});
@@ -334,7 +378,7 @@ export default class MarkingNotePlugin extends Plugin {
 					return;
 				}
 
-				editor.setValue(result.text);
+				setEditorValuePreservingViewport(editor, result.text);
 				new Notice("当前文档的标注结果已同步");
 			},
 		});
@@ -401,7 +445,7 @@ export default class MarkingNotePlugin extends Plugin {
 			fileContent = await this.app.vault.read(activeFile);
 		}
 
-		const richText = StorageEngine.getCalloutContent(fileContent, nodeId) || "";
+		const richText = annotationRepository.getCalloutContent(fileContent, nodeId) || "";
 
 		if (!this.popoverViewer) {
 			this.popoverViewer = new PopoverViewer(this.popoverCtx);
@@ -543,6 +587,45 @@ export default class MarkingNotePlugin extends Plugin {
 		}
 	}
 
+	async handleAIAugment(
+		view: EditorView,
+		selection: string,
+		command: LightningCommand,
+	) {
+		const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!markdownView) return;
+		const steward =
+			this.settings.stewards.find(
+				(s) => s.id === this.settings.activeStewardId,
+			) || this.settings.stewards[0];
+		const provider = this.getProviderForSteward(steward);
+		if (!provider) {
+			new Notice("❌ 未配置 AI 模型提供商，请前往设置页面添加");
+			return;
+		}
+
+		try {
+			const richText = await this.annotationService.augmentSelection({
+				view,
+				editor: markdownView.editor,
+				selection,
+				steward,
+				provider,
+				command,
+				settings: this.settings,
+			});
+			if (!richText) {
+				new Notice("⚠️ 增补生成失败，请检查模型配置与 API 连通性");
+				return;
+			}
+			await navigator.clipboard.writeText(richText);
+			new Notice("✅ 增补内容已复制到剪贴板");
+		} catch (error) {
+			console.error(error);
+			new Notice("⚠️ 增补内容复制失败");
+		}
+	}
+
 	async handleFollowUp(
 		nodeId: string,
 		instruction: string,
@@ -606,31 +689,12 @@ export default class MarkingNotePlugin extends Plugin {
 			this.settings.inlineRewriteSystemPromptTemplate =
 				DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE;
 
-		// Migrate commands
-		for (const s of this.settings.stewards) {
-			if (!s.commands) s.commands = [];
-			if (!s.boundModelProviderId)
-				s.boundModelProviderId = this.settings.defaultProviderId || "";
-
-			for (const cmd of s.commands) {
-				if (!cmd.type) cmd.type = "annotated";
-			}
-
-			// Migrate old global default summary prompt to an actual command
-			if (
-				!s.commands.find((c: LightningCommand) => c.type === "default-summary")
-			) {
-				const legacyPrompt =
-					(loadedData as any)?.defaultSummaryPrompt || "用一句话高度概括结论";
-				s.commands.unshift({
-					id: `def-${s.id}`,
-					name: "默认标注标题",
-					icon: "🪄",
-					detailPrompt: legacyPrompt,
-					type: "default-summary",
-				});
-			}
+		for (const steward of this.settings.stewards) {
+			if (!steward.boundModelProviderId)
+				steward.boundModelProviderId = this.settings.defaultProviderId || "";
+			normalizeStewardCommands(steward);
 		}
+		normalizeInlineCommands(this.settings.inlineSteward);
 	}
 
 	async saveSettings() {

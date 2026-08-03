@@ -1,9 +1,11 @@
 import type { MarkingTag } from '../domain/types';
+import type { MarkingNode } from '../state';
 import { applyTagHighlightStyle } from '../tag-styles';
 
 interface RenderReadingModeAnnotationsInput {
     container: HTMLElement;
     tags: MarkingTag[];
+    nodes?: MarkingNode[];
     onOpenPopover: (input: {
         nodeId: string;
         summary: string;
@@ -15,80 +17,37 @@ interface RenderReadingModeAnnotationsInput {
 }
 
 export function renderReadingModeAnnotations(input: RenderReadingModeAnnotationsInput): void {
-    const marks = input.container.querySelectorAll('mark');
-    marks.forEach(mark => {
+    const marks = Array.from(input.container.querySelectorAll('mark'));
+    const sourceNodes = input.nodes || [];
+
+    marks.forEach((mark, index) => {
+        const node = sourceNodes[index];
         mark.classList.add('marking-highlight-region');
-        mark.style.cursor = 'pointer';
+        mark.style.cursor = node && !node.isPlain ? 'pointer' : 'default';
 
-        let state = '0';
-        let id = '';
-        let tagId = '';
-        let summary = '';
-        let hasFootprint = false;
-
-        let currentNode = mark.nextSibling;
-        let buffer = '';
-        const nodesToRemove: Node[] = [];
-        let foundMatch: RegExpExecArray | null = null;
-
-        while (currentNode && nodesToRemove.length < 15 && buffer.length < 300) {
-            nodesToRemove.push(currentNode);
-            buffer += currentNode.textContent || '';
-
-            const match = /^\s*(?:\[\^\[|\[)([0-3])(?:\]\s*\[|\s*\[)\s*(#[a-zA-Z0-9_-]+)\s*\](?:\[([a-zA-Z0-9_-]*)\])?([^\]]*)\]([\s\S]*)/.exec(buffer);
-            if (match) {
-                foundMatch = match;
-                break;
-            }
-
-            const trimmed = buffer.trimLeft();
-            if (!trimmed.startsWith('[') && !trimmed.startsWith('^')) {
-                break;
-            }
-            currentNode = currentNode.nextSibling;
-        }
-
-        if (foundMatch) {
-            hasFootprint = true;
-            state = foundMatch[1];
-            id = foundMatch[2];
-            tagId = foundMatch[3] || '';
-            summary = (foundMatch[4] || '').trim();
-
-            const parent = mark.parentNode;
-            if (parent) {
-                const insertBeforeNode = nodesToRemove[nodesToRemove.length - 1]?.nextSibling ?? null;
-                nodesToRemove.forEach(node => {
-                    parent.removeChild(node);
-                });
-                if (foundMatch[5]) {
-                    parent.insertBefore(document.createTextNode(foundMatch[5]), insertBeforeNode);
-                }
-            }
-        }
-
-        if (!hasFootprint) {
+        if (!node || node.isPlain) {
             mark.classList.add('mark-state-0');
             return;
         }
 
+        const state = node.state;
+        const tagId = node.tagId || '';
+        const summary = node.summary || '';
+        mark.dataset.markingId = node.id;
         mark.classList.add(`mark-state-${state}`);
-        if (tagId) {
-            const tag = input.tags.find(candidate => candidate.id === tagId);
-            if (tag) {
-                mark.classList.add('marking-tagged');
-                applyTagHighlightStyle(mark as HTMLElement, tag);
-            }
+
+        const tag = tagId ? input.tags.find(candidate => candidate.id === tagId) : undefined;
+        if (tag) {
+            mark.classList.add('marking-tagged');
+            applyTagHighlightStyle(mark, tag);
         }
 
         const badge = document.createElement('span');
         badge.addClass('marking-capsule', `marking-capsule-${state}`);
-        if (tagId) {
-            badge.dataset.tagId = tagId;
-        }
+        badge.dataset.markingId = node.id;
+        if (tagId) badge.dataset.tagId = tagId;
 
-        const emoji = input.tags.find(candidate => candidate.id === tagId)?.emoji
-            || (state === '0' ? '🪄' : state === '1' ? '⚡' : state === '2' ? '👤' : '📦');
+        const emoji = tag?.emoji || (state === '0' ? '🪄' : state === '1' ? '⚡' : state === '2' ? '👤' : '📦');
         const iconSpan = document.createElement('span');
         iconSpan.innerText = emoji;
         badge.appendChild(iconSpan);
@@ -105,7 +64,7 @@ export function renderReadingModeAnnotations(input: RenderReadingModeAnnotations
         const openPopover = (target: HTMLElement) => {
             const rect = target.getBoundingClientRect();
             input.onOpenPopover({
-                nodeId: id,
+                nodeId: node.id,
                 summary,
                 state,
                 tagId,
@@ -119,13 +78,10 @@ export function renderReadingModeAnnotations(input: RenderReadingModeAnnotations
             event.stopPropagation();
             openPopover(badge);
         });
-
         mark.addEventListener('click', event => {
-            if (state !== '0') {
-                event.preventDefault();
-                event.stopPropagation();
-                openPopover(mark as HTMLElement);
-            }
+            event.preventDefault();
+            event.stopPropagation();
+            openPopover(mark);
         });
     });
 }
