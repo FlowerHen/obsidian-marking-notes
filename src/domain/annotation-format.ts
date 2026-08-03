@@ -4,6 +4,12 @@ export interface MigrationResult {
 	skipped: string[];
 }
 
+export interface ReconciliationResult {
+	text: string;
+	addedResultIds: string[];
+	removedOrphanResultIds: string[];
+}
+
 export interface ResultBlock {
 	id: string;
 	state: string;
@@ -125,6 +131,40 @@ export function deleteResultBlock(text: string, id: string): string {
 			.replace(/\n{3,}/g, "\n\n")
 			.trimEnd()
 	);
+}
+
+export function reconcileDocument(text: string): ReconciliationResult {
+	const markers = parseInlineMarkers(text);
+	const markerIds = new Set(markers.map((marker) => marker.id));
+	const orphanedBlocks = parseResultBlocks(text).filter(
+		(block) => !markerIds.has(block.id),
+	);
+	let nextText = text;
+
+	for (const block of orphanedBlocks) {
+		nextText = deleteResultBlock(nextText, block.id);
+	}
+
+	const addedResultIds: string[] = [];
+	for (const marker of markers) {
+		if (parseResultBlocks(nextText).some((block) => block.id === marker.id)) {
+			continue;
+		}
+		nextText = appendResultBlock(nextText, {
+			id: marker.id,
+			state: marker.state,
+			tagId: marker.tagId,
+			summary: marker.summary,
+			content: "",
+		});
+		addedResultIds.push(marker.id);
+	}
+
+	return {
+		text: nextText,
+		addedResultIds,
+		removedOrphanResultIds: orphanedBlocks.map((block) => block.id),
+	};
 }
 
 function parseResultBlockBody(

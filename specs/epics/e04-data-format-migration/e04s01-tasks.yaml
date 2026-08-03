@@ -44,7 +44,7 @@ tasks:
     verify: "npm run build"
     risk: P1
     security: low
-    status: failing
+    status: passing
     allure:
       severity: high
       categories:

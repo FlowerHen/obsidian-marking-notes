@@ -22,7 +22,10 @@ import {
 	DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
 	DEFAULT_TAGS,
 } from "./src/domain/constants";
-import { migrateLegacyDocument } from "./src/domain/annotation-format";
+import {
+	migrateLegacyDocument,
+	reconcileDocument,
+} from "./src/domain/annotation-format";
 import type {
 	LightningCommand,
 	MarkingNoteSettings,
@@ -289,6 +292,32 @@ export default class MarkingNotePlugin extends Plugin {
 
 				editor.setValue(preview.text);
 				new Notice(`已迁移 ${preview.migrated} 个标注`);
+			},
+		});
+
+		this.addCommand({
+			id: "reconcile-current-document",
+			name: "同步当前文档的标注结果块",
+			editorCallback: (editor: Editor) => {
+				const result = reconcileDocument(editor.getValue());
+				if (
+					result.addedResultIds.length === 0 &&
+					result.removedOrphanResultIds.length === 0
+				) {
+					new Notice("当前文档的标注结果已同步");
+					return;
+				}
+
+				const confirmed = confirm(
+					`将新增 ${result.addedResultIds.length} 个结果块，并清理 ${result.removedOrphanResultIds.length} 个孤立结果。继续吗？`,
+				);
+				if (!confirmed) {
+					new Notice("已取消结果块同步");
+					return;
+				}
+
+				editor.setValue(result.text);
+				new Notice("当前文档的标注结果已同步");
 			},
 		});
 

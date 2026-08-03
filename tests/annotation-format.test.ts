@@ -8,6 +8,7 @@ const {
 	migrateLegacyDocument,
 	parseInlineMarkers,
 	parseResultBlocks,
+	reconcileDocument,
 	updateResultBlock,
 } = annotationFormat;
 
@@ -160,6 +161,40 @@ test("parses generated hash-prefixed annotation IDs", () => {
 
 	assert.ok(marker);
 	assert.equal(marker.id, "#AXAB1201");
+});
+
+test("reconciles missing and orphaned result blocks by stable ID", () => {
+	const document = [
+		"==保留标注==<!-- marking-note:id=#KEEP001 -->",
+		"==缺失结果==<!-- marking-note:id=#MISSING001 -->",
+		"",
+		"## Marking Note Results",
+		"",
+		"```marking-note-result",
+		"id: #KEEP001",
+		"state: annotated",
+		"tag: ",
+		"summary: ",
+		"---",
+		"已有结果。",
+		"```",
+		"",
+		"```marking-note-result",
+		"id: #ORPHAN001",
+		"state: reviewed",
+		"tag: ",
+		"summary: ",
+		"---",
+		"孤立结果。",
+		"```",
+	].join("\n");
+
+	const result = reconcileDocument(document);
+
+	assert.deepEqual(result.addedResultIds, ["#MISSING001"]);
+	assert.deepEqual(result.removedOrphanResultIds, ["#ORPHAN001"]);
+	assert.match(result.text, /id: #MISSING001/);
+	assert.doesNotMatch(result.text, /#ORPHAN001/);
 });
 
 test("appends and deletes one result block without changing正文", () => {

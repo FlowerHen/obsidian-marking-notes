@@ -98,6 +98,36 @@ function deleteResultBlock(text, id) {
     return text;
   return text.slice(0, block.from) + text.slice(block.to).replace(/\n{3,}/g, "\n\n").trimEnd();
 }
+function reconcileDocument(text) {
+  const markers = parseInlineMarkers(text);
+  const markerIds = new Set(markers.map((marker) => marker.id));
+  const orphanedBlocks = parseResultBlocks(text).filter(
+    (block) => !markerIds.has(block.id)
+  );
+  let nextText = text;
+  for (const block of orphanedBlocks) {
+    nextText = deleteResultBlock(nextText, block.id);
+  }
+  const addedResultIds = [];
+  for (const marker of markers) {
+    if (parseResultBlocks(nextText).some((block) => block.id === marker.id)) {
+      continue;
+    }
+    nextText = appendResultBlock(nextText, {
+      id: marker.id,
+      state: marker.state,
+      tagId: marker.tagId,
+      summary: marker.summary,
+      content: ""
+    });
+    addedResultIds.push(marker.id);
+  }
+  return {
+    text: nextText,
+    addedResultIds,
+    removedOrphanResultIds: orphanedBlocks.map((block) => block.id)
+  };
+}
 function parseResultBlockBody(body) {
   const separator = body.indexOf("\n---\n");
   if (separator < 0)
@@ -5510,6 +5540,26 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         }
         editor.setValue(preview.text);
         new import_obsidian8.Notice(`\u5DF2\u8FC1\u79FB ${preview.migrated} \u4E2A\u6807\u6CE8`);
+      }
+    });
+    this.addCommand({
+      id: "reconcile-current-document",
+      name: "\u540C\u6B65\u5F53\u524D\u6587\u6863\u7684\u6807\u6CE8\u7ED3\u679C\u5757",
+      editorCallback: (editor) => {
+        const result = reconcileDocument(editor.getValue());
+        if (result.addedResultIds.length === 0 && result.removedOrphanResultIds.length === 0) {
+          new import_obsidian8.Notice("\u5F53\u524D\u6587\u6863\u7684\u6807\u6CE8\u7ED3\u679C\u5DF2\u540C\u6B65");
+          return;
+        }
+        const confirmed = confirm(
+          `\u5C06\u65B0\u589E ${result.addedResultIds.length} \u4E2A\u7ED3\u679C\u5757\uFF0C\u5E76\u6E05\u7406 ${result.removedOrphanResultIds.length} \u4E2A\u5B64\u7ACB\u7ED3\u679C\u3002\u7EE7\u7EED\u5417\uFF1F`
+        );
+        if (!confirmed) {
+          new import_obsidian8.Notice("\u5DF2\u53D6\u6D88\u7ED3\u679C\u5757\u540C\u6B65");
+          return;
+        }
+        editor.setValue(result.text);
+        new import_obsidian8.Notice("\u5F53\u524D\u6587\u6863\u7684\u6807\u6CE8\u7ED3\u679C\u5DF2\u540C\u6B65");
       }
     });
     this.addCommand({
