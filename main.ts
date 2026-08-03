@@ -105,11 +105,14 @@ export default class MarkingNotePlugin extends Plugin {
 		// 4. Register CodeMirror 6 extensions
 		this.registerEditorExtension(
 			createMarkingExtensions(
-				(view: EditorView, selection: string) => {
-					this.handleAIAnnotation(view, selection);
-				},
 				(view: EditorView, selection: string, command: LightningCommand) => {
 					this.handleAIAnnotation(view, selection, command);
+				},
+				() => {
+					const executed = (this.app as any).commands?.executeCommandById("editor:insert-link");
+					if (!executed) {
+						new Notice("无法打开 Obsidian 原生链接选择器");
+					}
 				},
 				this.popoverCtx,
 				this,

@@ -1,8 +1,12 @@
-import { EditorView } from "@codemirror/view";
-import { MarkingNode } from "./state";
-import { LightningCommand } from "./domain/types";
-import { App, Component, MarkdownRenderer, Notice } from "obsidian";
+import type { EditorView } from "@codemirror/view";
+import type { MarkingNode } from "./state";
+import type { LightningCommand } from "./domain/types";
+import { type App, Component, MarkdownRenderer } from "obsidian";
 import { annotationRepository } from "./repository/annotation-repository";
+import {
+    getDesktopActionPosition,
+    getMobileActionBottom,
+} from "./ui/action-surface";
 
 // --- Context passed to PopoverEditor ---
 
@@ -19,12 +23,12 @@ export interface PopoverContext {
 export class FloatingMenu {
     private container: HTMLElement | null = null;
     private currentSelection: string = '';
+    private viewportCleanup: (() => void) | null = null;
 
     constructor(
-        private onAnalyze: (selection: string) => void,
         private onCommand: (selection: string, command: LightningCommand) => void,
         private onInlineModify: (selection: string, instruction: string) => void,
-        private plugin: any
+        private onLink: () => void,
     ) {}
 
     show(x: number, y: number, selection: string) {
@@ -33,84 +37,104 @@ export class FloatingMenu {
 
         this.container = document.createElement('div');
         this.container.addClass('ai-floating-menu');
+        const isMobile = window.innerWidth <= 600 || window.matchMedia('(pointer: coarse)').matches;
+        if (isMobile) this.container.addClass('ai-floating-menu-mobile');
 
-        const popW = 200; // approximate menu width
-        const popH = 45;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+        // Keep the editor selection active while the action bar receives the click.
+        this.container.addEventListener('mousedown', (event) => event.preventDefault());
 
-        let posX = x;
-        let posY = y - 45;
+        const actions = [
+            {
+                icon: '💬',
+                label: '对话',
+                title: '使用当前管家的对话指令',
+                onClick: (button: HTMLElement) => this.showCommandDropdown(button, 'conversation'),
+            },
+            {
+                icon: '✏️',
+                label: '改写',
+                title: '使用当前管家的改写指令',
+                onClick: (button: HTMLElement) => this.showInlineModifyDropdown(button),
+            },
+            {
+                icon: '➕',
+                label: '增补',
+                title: '使用当前管家的增补指令',
+                onClick: (button: HTMLElement) => this.showCommandDropdown(button, 'augment'),
+            },
+            {
+                icon: '🔗',
+                label: '链接',
+                title: '使用 Obsidian 原生链接选择',
+                onClick: () => {
+                    this.onLink();
+                    this.close();
+                },
+            },
+        ];
 
-        if (posX + popW > vw - 10) posX = vw - popW - 10;
-        if (posY < 10) posY = y + 25; // Show below if too high
-        if (posY + popH > vh - 10) posY = vh - popH - 10;
-
-        this.container.style.left = `${posX}px`;
-        this.container.style.top = `${posY}px`;
-
-        // 🪄 Analyze button
-        const btnAnalyze = document.createElement('button');
-        btnAnalyze.addClass('ai-floating-btn', 'ai-floating-btn-primary');
-        btnAnalyze.innerText = '🪄 标注';
-        btnAnalyze.title = '使用当前管家标注选中文本';
-        btnAnalyze.onclick = () => {
-            this.onAnalyze(this.currentSelection);
-            this.close();
-        };
-
-        // ⚡ Lightning Commands dropdown
-        const btnLightning = document.createElement('button');
-        btnLightning.addClass('ai-floating-btn');
-        btnLightning.innerText = '⚡';
-        btnLightning.title = '快捷指令';
-        btnLightning.onclick = (e) => {
-            e.stopPropagation();
-            this.showCommandDropdown(btnLightning);
-        };
-
-        this.container.appendChild(btnAnalyze);
-        this.container.appendChild(btnLightning);
-
-        // ✏️ Inline Modification
-        if (this.plugin?.settings?.enableInlineModification) {
-            const btnModify = document.createElement('button');
-            btnModify.addClass('ai-floating-btn');
-            btnModify.innerText = '✏️';
-            btnModify.title = 'AI 原文片段改写';
-            btnModify.onclick = (e) => {
-                e.stopPropagation();
-                this.showInlineModifyDropdown(btnModify);
+        for (const [index, action] of actions.entries()) {
+            const button = document.createElement('button');
+            button.addClass('ai-floating-btn');
+            if (index === 0) button.addClass('ai-floating-btn-primary');
+            button.innerText = `${action.icon} ${action.label}`;
+            button.title = action.title;
+            button.onclick = (event) => {
+                event.stopPropagation();
+                action.onClick(button);
             };
-            this.container.appendChild(btnModify);
+            this.container.appendChild(button);
         }
 
-        // 🏠 Butler switcher dropdown
-        const btnButler = document.createElement('button');
-        btnButler.addClass('ai-floating-btn');
-        const activeSteward = this.plugin?.settings?.stewards?.find((s: any) => s.id === this.plugin?.settings?.activeStewardId);
-        btnButler.innerText = activeSteward?.icon || '🏠';
-        btnButler.title = '切换管家';
-        btnButler.onclick = (e) => {
-            e.stopPropagation();
-            this.showStewardDropdown(btnButler);
-        };
-        this.container.appendChild(btnButler);
-
-        // ✖ Cancel
-        const btnCancel = document.createElement('button');
-        btnCancel.addClass('ai-floating-btn');
-        btnCancel.innerText = '✖';
-        btnCancel.title = '关闭';
-        btnCancel.onclick = () => {
-            this.close();
-        };
-
-        this.container.appendChild(btnCancel);
         document.body.appendChild(this.container);
+        this.position(x, y, isMobile);
+
+        const viewport = window.visualViewport;
+        if (viewport) {
+            const reposition = () => this.position(x, y, isMobile);
+            viewport.addEventListener('resize', reposition);
+            viewport.addEventListener('scroll', reposition);
+            this.viewportCleanup = () => {
+                viewport.removeEventListener('resize', reposition);
+                viewport.removeEventListener('scroll', reposition);
+            };
+        }
     }
 
-    private showCommandDropdown(anchor: HTMLElement) {
+    private position(anchorX: number, anchorY: number, isMobile: boolean) {
+        if (!this.container) return;
+        const viewport = window.visualViewport;
+        const vw = viewport?.width || window.innerWidth;
+        const vh = viewport?.height || window.innerHeight;
+
+        if (isMobile) {
+            this.container.style.left = '8px';
+            this.container.style.right = '8px';
+            this.container.style.top = '';
+            this.container.style.bottom = `${getMobileActionBottom(
+                window.innerHeight,
+                viewport?.offsetTop || 0,
+                vh,
+            )}px`;
+            return;
+        }
+
+        const menuRect = this.container.getBoundingClientRect();
+        const position = getDesktopActionPosition(
+            anchorX,
+            anchorY,
+            menuRect.width,
+            menuRect.height,
+            vw,
+            vh,
+        );
+        this.container.style.left = `${position.left}px`;
+        this.container.style.top = `${position.top}px`;
+        this.container.style.right = '';
+        this.container.style.bottom = '';
+    }
+
+    private showCommandDropdown(anchor: HTMLElement, operation = 'conversation') {
         const existing = document.querySelector('.ai-lightning-dropdown');
         if (existing) existing.remove();
 
@@ -122,7 +146,7 @@ export class FloatingMenu {
         dropdown.style.top = `${rect.bottom + 4}px`;
 
         const event = new CustomEvent('marking-note-get-commands', {
-            detail: { callback: (commands: LightningCommand[]) => {
+            detail: { operation, callback: (commands: LightningCommand[]) => {
                 if (commands.length === 0) {
                     const emptyItem = document.createElement('div');
                     emptyItem.addClass('ai-lightning-item');
@@ -226,81 +250,9 @@ export class FloatingMenu {
         setTimeout(() => document.addEventListener('click', closeHandler), 10);
     }
 
-    private showStewardDropdown(anchor: HTMLElement) {
-        const existing = document.querySelector('.ai-lightning-dropdown');
-        if (existing) existing.remove();
-
-        const dropdown = document.createElement('div');
-        dropdown.addClass('ai-lightning-dropdown');
-        dropdown.style.minWidth = '180px';
-        dropdown.style.border = '1px solid var(--background-modifier-border)';
-        dropdown.style.borderRadius = '8px';
-        dropdown.style.padding = '4px 0';
-
-        const rect = anchor.getBoundingClientRect();
-        dropdown.style.left = `${rect.left}px`;
-        dropdown.style.top = `${rect.bottom + 4}px`;
-
-        const stewards = this.plugin?.settings?.stewards || [];
-        const activeStewardId = this.plugin?.settings?.activeStewardId;
-
-        if (stewards.length === 0) {
-            const emptyItem = document.createElement('div');
-            emptyItem.addClass('ai-lightning-item');
-            emptyItem.innerText = '无管家配置';
-            emptyItem.style.color = 'var(--text-muted)';
-            dropdown.appendChild(emptyItem);
-        } else {
-            for (const steward of stewards) {
-                const item = document.createElement('div');
-                item.addClass('ai-lightning-item');
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.justifyContent = 'space-between';
-                item.style.padding = '8px 12px';
-                item.style.borderRadius = '4px';
-                item.style.margin = '2px 4px';
-                item.style.width = 'calc(100% - 8px)';
-                item.style.boxSizing = 'border-box';
-
-                const leftPart = document.createElement('span');
-                leftPart.style.color = 'var(--text-normal)';
-                leftPart.style.fontSize = '0.9em';
-                leftPart.innerText = `${steward.icon} ${steward.name}`;
-
-                item.appendChild(leftPart);
-
-                if (steward.id === activeStewardId) {
-                    item.style.background = 'var(--interactive-accent)';
-                    leftPart.style.color = 'var(--text-on-accent)';
-                    leftPart.style.fontWeight = '600';
-                }
-
-                item.onclick = async () => {
-                    this.plugin.settings.activeStewardId = steward.id;
-                    await this.plugin.saveSettings();
-                    window.dispatchEvent(new CustomEvent('marking-note-steward-changed'));
-                    dropdown.remove();
-                    this.close();
-                    new Notice(`已切换到: ${steward.icon} ${steward.name}`);
-                };
-                dropdown.appendChild(item);
-            }
-        }
-
-        document.body.appendChild(dropdown);
-
-        const closeHandler = (e: MouseEvent) => {
-            if (!dropdown.contains(e.target as Node)) {
-                dropdown.remove();
-                document.removeEventListener('click', closeHandler);
-            }
-        };
-        setTimeout(() => document.addEventListener('click', closeHandler), 10);
-    }
-
-
     close() {
+        this.viewportCleanup?.();
+        this.viewportCleanup = null;
         if (this.container) {
             this.container.remove();
             this.container = null;

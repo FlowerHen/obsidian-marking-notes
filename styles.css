@@ -239,9 +239,32 @@
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(12px);
     display: flex;
-    padding: 4px;
-    gap: 2px;
+    padding: 6px;
+    gap: 4px;
     animation: menu-enter 0.12s ease-out;
+}
+
+.ai-floating-menu-mobile {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: calc(100vw - 16px);
+    box-sizing: border-box;
+    padding: 6px 6px max(6px, env(safe-area-inset-bottom));
+    gap: 4px;
+}
+
+.ai-floating-menu-mobile .ai-floating-btn {
+    min-width: 0;
+    min-height: 44px;
+    width: 100%;
+    padding: 8px 4px;
+    white-space: nowrap;
+}
+
+.ai-floating-menu-mobile + .ai-lightning-dropdown {
+    top: auto !important;
+    bottom: calc(64px + env(safe-area-inset-bottom)) !important;
+    max-width: calc(100vw - 16px);
 }
 
 @keyframes menu-enter {
@@ -260,12 +283,13 @@
     border: none;
     cursor: pointer;
     border-radius: 6px;
-    padding: 4px 8px;
+    padding: 6px 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-normal);
     font-size: 0.9em;
+    line-height: 1.2;
     transition: background-color 0.12s;
 }
 .ai-floating-btn:hover {

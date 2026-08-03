@@ -700,6 +700,27 @@ var init_annotation_repository = __esm({
   }
 });
 
+// src/ui/action-surface.ts
+function getDesktopActionPosition(anchorX, anchorY, menuWidth, menuHeight, viewportWidth, viewportHeight, margin = 8) {
+  const left = Math.min(Math.max(anchorX, margin), viewportWidth - menuWidth - margin);
+  let top = anchorY - menuHeight - margin;
+  if (top < margin) {
+    top = Math.min(anchorY + margin, viewportHeight - menuHeight - margin);
+  }
+  return {
+    left: Math.max(margin, left),
+    top: Math.max(margin, top)
+  };
+}
+function getMobileActionBottom(layoutHeight, viewportTop, viewportHeight, margin = 8) {
+  const visibleBottom = viewportTop + viewportHeight;
+  return Math.max(margin, layoutHeight - visibleBottom + margin);
+}
+var init_action_surface = __esm({
+  "src/ui/action-surface.ts"() {
+  }
+});
+
 // src/ui.ts
 var ui_exports = {};
 __export(ui_exports, {
@@ -713,88 +734,112 @@ var init_ui = __esm({
   "src/ui.ts"() {
     import_obsidian = require("obsidian");
     init_annotation_repository();
+    init_action_surface();
     FloatingMenu = class {
-      constructor(onAnalyze, onCommand, onInlineModify, plugin) {
-        this.onAnalyze = onAnalyze;
+      constructor(onCommand, onInlineModify, onLink) {
         this.onCommand = onCommand;
         this.onInlineModify = onInlineModify;
-        this.plugin = plugin;
+        this.onLink = onLink;
         this.container = null;
         this.currentSelection = "";
+        this.viewportCleanup = null;
       }
       show(x, y, selection) {
-        var _a, _b, _c, _d, _e;
         this.close();
         this.currentSelection = selection;
         this.container = document.createElement("div");
         this.container.addClass("ai-floating-menu");
-        const popW = 200;
-        const popH = 45;
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        let posX = x;
-        let posY = y - 45;
-        if (posX + popW > vw - 10)
-          posX = vw - popW - 10;
-        if (posY < 10)
-          posY = y + 25;
-        if (posY + popH > vh - 10)
-          posY = vh - popH - 10;
-        this.container.style.left = `${posX}px`;
-        this.container.style.top = `${posY}px`;
-        const btnAnalyze = document.createElement("button");
-        btnAnalyze.addClass("ai-floating-btn", "ai-floating-btn-primary");
-        btnAnalyze.innerText = "\u{1FA84} \u6807\u6CE8";
-        btnAnalyze.title = "\u4F7F\u7528\u5F53\u524D\u7BA1\u5BB6\u6807\u6CE8\u9009\u4E2D\u6587\u672C";
-        btnAnalyze.onclick = () => {
-          this.onAnalyze(this.currentSelection);
-          this.close();
-        };
-        const btnLightning = document.createElement("button");
-        btnLightning.addClass("ai-floating-btn");
-        btnLightning.innerText = "\u26A1";
-        btnLightning.title = "\u5FEB\u6377\u6307\u4EE4";
-        btnLightning.onclick = (e) => {
-          e.stopPropagation();
-          this.showCommandDropdown(btnLightning);
-        };
-        this.container.appendChild(btnAnalyze);
-        this.container.appendChild(btnLightning);
-        if ((_b = (_a = this.plugin) == null ? void 0 : _a.settings) == null ? void 0 : _b.enableInlineModification) {
-          const btnModify = document.createElement("button");
-          btnModify.addClass("ai-floating-btn");
-          btnModify.innerText = "\u270F\uFE0F";
-          btnModify.title = "AI \u539F\u6587\u7247\u6BB5\u6539\u5199";
-          btnModify.onclick = (e) => {
-            e.stopPropagation();
-            this.showInlineModifyDropdown(btnModify);
+        const isMobile = window.innerWidth <= 600 || window.matchMedia("(pointer: coarse)").matches;
+        if (isMobile)
+          this.container.addClass("ai-floating-menu-mobile");
+        this.container.addEventListener("mousedown", (event) => event.preventDefault());
+        const actions = [
+          {
+            icon: "\u{1F4AC}",
+            label: "\u5BF9\u8BDD",
+            title: "\u4F7F\u7528\u5F53\u524D\u7BA1\u5BB6\u7684\u5BF9\u8BDD\u6307\u4EE4",
+            onClick: (button) => this.showCommandDropdown(button, "conversation")
+          },
+          {
+            icon: "\u270F\uFE0F",
+            label: "\u6539\u5199",
+            title: "\u4F7F\u7528\u5F53\u524D\u7BA1\u5BB6\u7684\u6539\u5199\u6307\u4EE4",
+            onClick: (button) => this.showInlineModifyDropdown(button)
+          },
+          {
+            icon: "\u2795",
+            label: "\u589E\u8865",
+            title: "\u4F7F\u7528\u5F53\u524D\u7BA1\u5BB6\u7684\u589E\u8865\u6307\u4EE4",
+            onClick: (button) => this.showCommandDropdown(button, "augment")
+          },
+          {
+            icon: "\u{1F517}",
+            label: "\u94FE\u63A5",
+            title: "\u4F7F\u7528 Obsidian \u539F\u751F\u94FE\u63A5\u9009\u62E9",
+            onClick: () => {
+              this.onLink();
+              this.close();
+            }
+          }
+        ];
+        for (const [index, action] of actions.entries()) {
+          const button = document.createElement("button");
+          button.addClass("ai-floating-btn");
+          if (index === 0)
+            button.addClass("ai-floating-btn-primary");
+          button.innerText = `${action.icon} ${action.label}`;
+          button.title = action.title;
+          button.onclick = (event) => {
+            event.stopPropagation();
+            action.onClick(button);
           };
-          this.container.appendChild(btnModify);
+          this.container.appendChild(button);
         }
-        const btnButler = document.createElement("button");
-        btnButler.addClass("ai-floating-btn");
-        const activeSteward = (_e = (_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null ? void 0 : _d.stewards) == null ? void 0 : _e.find((s) => {
-          var _a2, _b2;
-          return s.id === ((_b2 = (_a2 = this.plugin) == null ? void 0 : _a2.settings) == null ? void 0 : _b2.activeStewardId);
-        });
-        btnButler.innerText = (activeSteward == null ? void 0 : activeSteward.icon) || "\u{1F3E0}";
-        btnButler.title = "\u5207\u6362\u7BA1\u5BB6";
-        btnButler.onclick = (e) => {
-          e.stopPropagation();
-          this.showStewardDropdown(btnButler);
-        };
-        this.container.appendChild(btnButler);
-        const btnCancel = document.createElement("button");
-        btnCancel.addClass("ai-floating-btn");
-        btnCancel.innerText = "\u2716";
-        btnCancel.title = "\u5173\u95ED";
-        btnCancel.onclick = () => {
-          this.close();
-        };
-        this.container.appendChild(btnCancel);
         document.body.appendChild(this.container);
+        this.position(x, y, isMobile);
+        const viewport = window.visualViewport;
+        if (viewport) {
+          const reposition = () => this.position(x, y, isMobile);
+          viewport.addEventListener("resize", reposition);
+          viewport.addEventListener("scroll", reposition);
+          this.viewportCleanup = () => {
+            viewport.removeEventListener("resize", reposition);
+            viewport.removeEventListener("scroll", reposition);
+          };
+        }
       }
-      showCommandDropdown(anchor) {
+      position(anchorX, anchorY, isMobile) {
+        if (!this.container)
+          return;
+        const viewport = window.visualViewport;
+        const vw = (viewport == null ? void 0 : viewport.width) || window.innerWidth;
+        const vh = (viewport == null ? void 0 : viewport.height) || window.innerHeight;
+        if (isMobile) {
+          this.container.style.left = "8px";
+          this.container.style.right = "8px";
+          this.container.style.top = "";
+          this.container.style.bottom = `${getMobileActionBottom(
+            window.innerHeight,
+            (viewport == null ? void 0 : viewport.offsetTop) || 0,
+            vh
+          )}px`;
+          return;
+        }
+        const menuRect = this.container.getBoundingClientRect();
+        const position = getDesktopActionPosition(
+          anchorX,
+          anchorY,
+          menuRect.width,
+          menuRect.height,
+          vw,
+          vh
+        );
+        this.container.style.left = `${position.left}px`;
+        this.container.style.top = `${position.top}px`;
+        this.container.style.right = "";
+        this.container.style.bottom = "";
+      }
+      showCommandDropdown(anchor, operation = "conversation") {
         const existing = document.querySelector(".ai-lightning-dropdown");
         if (existing)
           existing.remove();
@@ -804,7 +849,7 @@ var init_ui = __esm({
         dropdown.style.left = `${rect.left}px`;
         dropdown.style.top = `${rect.bottom + 4}px`;
         const event = new CustomEvent("marking-note-get-commands", {
-          detail: { callback: (commands) => {
+          detail: { operation, callback: (commands) => {
             if (commands.length === 0) {
               const emptyItem = document.createElement("div");
               emptyItem.addClass("ai-lightning-item");
@@ -896,71 +941,10 @@ var init_ui = __esm({
         };
         setTimeout(() => document.addEventListener("click", closeHandler), 10);
       }
-      showStewardDropdown(anchor) {
-        var _a, _b, _c, _d;
-        const existing = document.querySelector(".ai-lightning-dropdown");
-        if (existing)
-          existing.remove();
-        const dropdown = document.createElement("div");
-        dropdown.addClass("ai-lightning-dropdown");
-        dropdown.style.minWidth = "180px";
-        dropdown.style.border = "1px solid var(--background-modifier-border)";
-        dropdown.style.borderRadius = "8px";
-        dropdown.style.padding = "4px 0";
-        const rect = anchor.getBoundingClientRect();
-        dropdown.style.left = `${rect.left}px`;
-        dropdown.style.top = `${rect.bottom + 4}px`;
-        const stewards = ((_b = (_a = this.plugin) == null ? void 0 : _a.settings) == null ? void 0 : _b.stewards) || [];
-        const activeStewardId = (_d = (_c = this.plugin) == null ? void 0 : _c.settings) == null ? void 0 : _d.activeStewardId;
-        if (stewards.length === 0) {
-          const emptyItem = document.createElement("div");
-          emptyItem.addClass("ai-lightning-item");
-          emptyItem.innerText = "\u65E0\u7BA1\u5BB6\u914D\u7F6E";
-          emptyItem.style.color = "var(--text-muted)";
-          dropdown.appendChild(emptyItem);
-        } else {
-          for (const steward of stewards) {
-            const item = document.createElement("div");
-            item.addClass("ai-lightning-item");
-            item.style.display = "flex";
-            item.style.alignItems = "center";
-            item.style.justifyContent = "space-between";
-            item.style.padding = "8px 12px";
-            item.style.borderRadius = "4px";
-            item.style.margin = "2px 4px";
-            item.style.width = "calc(100% - 8px)";
-            item.style.boxSizing = "border-box";
-            const leftPart = document.createElement("span");
-            leftPart.style.color = "var(--text-normal)";
-            leftPart.style.fontSize = "0.9em";
-            leftPart.innerText = `${steward.icon} ${steward.name}`;
-            item.appendChild(leftPart);
-            if (steward.id === activeStewardId) {
-              item.style.background = "var(--interactive-accent)";
-              leftPart.style.color = "var(--text-on-accent)";
-              leftPart.style.fontWeight = "600";
-            }
-            item.onclick = async () => {
-              this.plugin.settings.activeStewardId = steward.id;
-              await this.plugin.saveSettings();
-              window.dispatchEvent(new CustomEvent("marking-note-steward-changed"));
-              dropdown.remove();
-              this.close();
-              new import_obsidian.Notice(`\u5DF2\u5207\u6362\u5230: ${steward.icon} ${steward.name}`);
-            };
-            dropdown.appendChild(item);
-          }
-        }
-        document.body.appendChild(dropdown);
-        const closeHandler = (e) => {
-          if (!dropdown.contains(e.target)) {
-            dropdown.remove();
-            document.removeEventListener("click", closeHandler);
-          }
-        };
-        setTimeout(() => document.addEventListener("click", closeHandler), 10);
-      }
       close() {
+        var _a;
+        (_a = this.viewportCleanup) == null ? void 0 : _a.call(this);
+        this.viewportCleanup = null;
         if (this.container) {
           this.container.remove();
           this.container = null;
@@ -2068,7 +2052,7 @@ function buildDecorations(text, tags) {
   }
   return { decos: builder.finish(), nodes };
 }
-function createMarkingExtensions(onAnalyze, onCommand, popoverCtx, plugin) {
+function createMarkingExtensions(onCommand, onLink, popoverCtx, plugin) {
   const mainPlugin = import_view.ViewPlugin.fromClass(class {
     constructor(view) {
       this.view = view;
@@ -2110,14 +2094,13 @@ function createMarkingExtensions(onAnalyze, onCommand, popoverCtx, plugin) {
           if (coords) {
             if (!this.menu) {
               this.menu = new FloatingMenu(
-                (s) => onAnalyze(update.view, s),
                 (s, cmd) => onCommand(update.view, s, cmd),
                 (s, instruction) => {
                   window.dispatchEvent(new CustomEvent("marking-note-inline-modify", {
                     detail: { view: update.view, selection: s, instruction }
                   }));
                 },
-                plugin
+                onLink
               );
             }
             this.menu.show(coords.left, coords.top, selection);
@@ -5373,11 +5356,15 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
     });
     this.registerEditorExtension(
       createMarkingExtensions(
-        (view, selection) => {
-          this.handleAIAnnotation(view, selection);
-        },
         (view, selection, command) => {
           this.handleAIAnnotation(view, selection, command);
+        },
+        () => {
+          var _a;
+          const executed = (_a = this.app.commands) == null ? void 0 : _a.executeCommandById("editor:insert-link");
+          if (!executed) {
+            new import_obsidian8.Notice("\u65E0\u6CD5\u6253\u5F00 Obsidian \u539F\u751F\u94FE\u63A5\u9009\u62E9\u5668");
+          }
         },
         this.popoverCtx,
         this

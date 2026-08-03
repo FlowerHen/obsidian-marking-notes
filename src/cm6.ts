@@ -1,10 +1,10 @@
-import { RangeSetBuilder, Extension } from "@codemirror/state";
-import { Decoration, DecorationSet, EditorView, WidgetType, ViewPlugin, ViewUpdate } from "@codemirror/view";
-import { parseMarkingNodes, MarkingNode } from "./state";
+import { RangeSetBuilder, type Extension } from "@codemirror/state";
+import { Decoration, type DecorationSet, EditorView, WidgetType, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import { parseMarkingNodes, type MarkingNode } from "./state";
 import { getTagHighlightInlineStyle } from "./tag-styles";
-import { FloatingMenu, PopoverContext } from "./ui";
+import { FloatingMenu, type PopoverContext } from "./ui";
 import type MarkingNotePlugin from "../main";
-import { LightningCommand, MarkingTag } from "./domain/types";
+import type { LightningCommand, MarkingTag } from "./domain/types";
 
 // --- Capsule Widget (minimal: just icon) ---
 
@@ -90,8 +90,8 @@ function buildDecorations(text: string, tags: MarkingTag[]): { decos: Decoration
 // --- Main Extension Factory ---
 
 export function createMarkingExtensions(
-    onAnalyze: (view: EditorView, selection: string) => void,
     onCommand: (view: EditorView, selection: string, command: LightningCommand) => void,
+    onLink: () => void,
     popoverCtx: PopoverContext,
     plugin: MarkingNotePlugin
 ): Extension[] {
@@ -144,14 +144,13 @@ export function createMarkingExtensions(
                     if (coords) {
                         if (!this.menu) {
                             this.menu = new FloatingMenu(
-                                (s: string) => onAnalyze(update.view, s),
                                 (s: string, cmd: LightningCommand) => onCommand(update.view, s, cmd),
                                 (s: string, instruction: string) => {
                                     window.dispatchEvent(new CustomEvent('marking-note-inline-modify', {
                                         detail: { view: update.view, selection: s, instruction }
                                     }));
                                 },
-                                plugin
+                                onLink,
                             );
                         }
                         this.menu.show(coords.left, coords.top, selection);

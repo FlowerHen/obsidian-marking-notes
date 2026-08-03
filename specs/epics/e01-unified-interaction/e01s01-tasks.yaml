@@ -8,11 +8,11 @@ tasks:
     verify: >-
       grep -q '四项操作'
       specs/epics/e01-unified-interaction/e01s01-unified-action-surface.md
-    status: todo
+    status: passing
   - id: 2
     description: "重构选区操作栏、快捷指令面板和移动端底部操作栏"
     verify: "npm run build"
-    status: todo
+    status: passing
   - id: 3
     description: "拆分当前标注弹窗与侧边栏的即时操作和管理职责"
     verify: "npm run build"
@@ -20,7 +20,7 @@ tasks:
   - id: 4
     description: "补充边界定位、软键盘、安全区域和空状态处理"
     verify: "npm run build"
-    status: todo
+    status: passing
   - id: 5
     description: "在真实 Obsidian 桌面和移动视口完成交互验收"
     verify: "git diff --check -- src styles.css specs"
