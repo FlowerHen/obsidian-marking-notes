@@ -83,7 +83,10 @@ test("reuses an existing result heading during mixed-format migration", () => {
 	const result = migrateLegacyDocument(legacy);
 
 	assert.equal(result.migrated, 1);
-	assert.equal((result.text.match(/^## Marking Note Results$/gm) || []).length, 1);
+	assert.equal(
+		(result.text.match(/^## Marking Note Results$/gm) || []).length,
+		1,
+	);
 	assert.match(result.text, /id: OLD001/);
 	assert.match(result.text, /id: EXIST001/);
 });

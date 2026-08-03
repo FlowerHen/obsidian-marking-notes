@@ -31,8 +31,7 @@ export interface InlineMarker {
 	highlightEnd: number;
 }
 
-const INLINE_MARKER =
-	/==([\s\S]*?)==<!--\s*marking-note:id=([^\s]+?)\s*-->/g;
+const INLINE_MARKER = /==([\s\S]*?)==<!--\s*marking-note:id=([^\s]+?)\s*-->/g;
 
 export function parseInlineMarkers(text: string): InlineMarker[] {
 	const resultBlocks = new Map(
