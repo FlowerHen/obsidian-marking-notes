@@ -1,6 +1,7 @@
 import { requestUrl } from "obsidian";
 import {
 	DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE as FALLBACK_ANNOTATION_TEMPLATE,
+	DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE as FALLBACK_AUGMENT_TEMPLATE,
 	DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE as FALLBACK_DEFAULT_SUMMARY_TEMPLATE,
 } from "./domain/constants";
 import type {
@@ -8,7 +9,6 @@ import type {
 	ModelProvider,
 	LightningCommand,
 } from "./domain/types";
-import { TavilyClient } from "./tavily";
 
 export interface ImageInfo {
 	url: string;
@@ -80,7 +80,9 @@ export class AIClient {
 		promptTemplates?: {
 			defaultSummary?: string;
 			annotation?: string;
+			augment?: string;
 		};
+		purpose?: "annotation" | "augment";
 	}): Promise<{
 		state: string;
 		id: string;
@@ -102,6 +104,7 @@ export class AIClient {
 			searchContext,
 			images,
 			promptTemplates,
+			purpose = "annotation",
 		} = options;
 
 		// Resolve effective parameters (command overrides > steward defaults)
@@ -128,7 +131,19 @@ export class AIClient {
 			command?.language || steward.language || "文本的原始语言";
 
 		let systemPrompt = "";
-		if (command?.type === "default-summary") {
+		if (purpose === "augment") {
+			systemPrompt = applyPromptTemplate(
+				promptTemplates?.augment || FALLBACK_AUGMENT_TEMPLATE,
+				{
+					FOOTNOTE_LENGTH: String(effectiveFootnoteLen),
+					TARGET_LANGUAGE: targetLanguage,
+					FOOTNOTE_ID: footnoteId,
+					DEFAULT_SUMMARY_PROMPT: defaultSummaryPrompt,
+					DYNAMIC_PROMPTS: dynamicPrompts,
+					DETAIL_INSTRUCTION: detailInstruction,
+				},
+			);
+		} else if (command?.type === "default-summary") {
 			systemPrompt = applyPromptTemplate(
 				promptTemplates?.defaultSummary || FALLBACK_DEFAULT_SUMMARY_TEMPLATE,
 				{
@@ -247,6 +262,14 @@ export class AIClient {
 				imagesCount: images?.length || 0,
 			});
 
+			if (purpose === "augment") {
+				return {
+					state: "1",
+					id: footnoteId,
+					summary: "增补",
+					richText: content.trim(),
+				};
+			}
 			return AIClient.parseResponse(content, footnoteId);
 		} catch (e) {
 			console.error("Failed to connect to AI Provider", e);

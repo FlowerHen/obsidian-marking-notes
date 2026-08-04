@@ -379,6 +379,65 @@ var init_state = __esm({
   }
 });
 
+// src/tag-styles.ts
+function withOpacity(color, alpha) {
+  return color.replace(/[\d.]+\)$/, `${alpha})`);
+}
+function getTagHighlightInlineStyle(tag) {
+  switch (tag.style) {
+    case "highlight":
+      return `background-color: ${tag.color}; color: ${tag.textColor};`;
+    case "underline":
+      return `background-color: transparent; border-bottom: 2px solid ${withOpacity(tag.color, "0.8")}; color: ${tag.textColor};`;
+    case "dashed":
+      return `background-color: transparent; border-bottom: 2px dashed ${withOpacity(tag.color, "0.7")}; color: ${tag.textColor};`;
+    case "semi-transparent":
+      return `background-color: ${tag.color}; color: ${tag.textColor}; opacity: 0.6;`;
+    default:
+      return "";
+  }
+}
+function applyTagHighlightStyle(element, tag) {
+  switch (tag.style) {
+    case "highlight":
+      element.style.background = tag.color;
+      element.style.color = tag.textColor;
+      element.style.opacity = "";
+      element.style.borderBottom = "";
+      break;
+    case "underline":
+      element.style.background = "transparent";
+      element.style.borderBottom = `2px solid ${withOpacity(tag.color, "0.8")}`;
+      element.style.color = tag.textColor;
+      element.style.opacity = "";
+      break;
+    case "dashed":
+      element.style.background = "transparent";
+      element.style.borderBottom = `2px dashed ${withOpacity(tag.color, "0.7")}`;
+      element.style.color = tag.textColor;
+      element.style.opacity = "";
+      break;
+    case "semi-transparent":
+      element.style.background = tag.color;
+      element.style.color = tag.textColor;
+      element.style.opacity = "0.6";
+      element.style.borderBottom = "";
+      break;
+  }
+}
+function applyTagButtonStyle(element, tag) {
+  element.style.background = tag.color;
+  element.style.color = tag.textColor !== "inherit" ? tag.textColor : "var(--text-normal)";
+  element.style.borderColor = "transparent";
+}
+function getTagBorderAccent(tag) {
+  return withOpacity(tag.color, "0.8");
+}
+var init_tag_styles = __esm({
+  "src/tag-styles.ts"() {
+  }
+});
+
 // src/domain/ids.ts
 function generateAnnotationId() {
   const suffix = Date.now().toString(36).slice(-4).toUpperCase();
@@ -765,6 +824,695 @@ var init_action_surface = __esm({
   }
 });
 
+// src/commands/variables.ts
+function extractCommandVariableIds(prompt) {
+  const ids = [];
+  for (const match of prompt.matchAll(VARIABLE_PATTERN)) {
+    if (!ids.includes(match[1]))
+      ids.push(match[1]);
+  }
+  return ids;
+}
+function normalizeCommandVariables(variables) {
+  if (!Array.isArray(variables))
+    return [];
+  return variables.flatMap((variable) => {
+    var _a;
+    if (!variable || typeof variable.id !== "string")
+      return [];
+    const id = variable.id.trim();
+    if (!id)
+      return [];
+    const options = Array.isArray(variable.options) ? variable.options.flatMap((option) => {
+      var _a2;
+      if (!option || typeof option.value !== "string" || !option.value.trim())
+        return [];
+      const value = option.value.trim();
+      return [{ value, label: ((_a2 = option.label) == null ? void 0 : _a2.trim()) || value }];
+    }) : void 0;
+    return [
+      {
+        ...variable,
+        id,
+        label: ((_a = variable.label) == null ? void 0 : _a.trim()) || id,
+        options
+      }
+    ];
+  });
+}
+function valueToText(value) {
+  if (Array.isArray(value))
+    return value.filter(Boolean).join("\u3001");
+  return typeof value === "string" ? value.trim() : "";
+}
+function resolveCommandPrompt(command, values = {}) {
+  var _a;
+  const variables = normalizeCommandVariables(command.variables);
+  const byId = new Map(variables.map((variable) => [variable.id, variable]));
+  const referenced = extractCommandVariableIds(command.detailPrompt);
+  const undeclared = referenced.filter((id) => !byId.has(id));
+  const missing = [];
+  for (const variable of variables) {
+    const rawValue = (_a = values[variable.id]) != null ? _a : variable.defaultValue;
+    if (variable.required && !valueToText(rawValue))
+      missing.push(variable.id);
+  }
+  const prompt = command.detailPrompt.replace(
+    VARIABLE_PATTERN,
+    (_whole, id) => {
+      var _a2, _b;
+      return valueToText((_b = values[id]) != null ? _b : (_a2 = byId.get(id)) == null ? void 0 : _a2.defaultValue);
+    }
+  );
+  return { prompt, missing, undeclared };
+}
+var VARIABLE_PATTERN;
+var init_variables = __esm({
+  "src/commands/variables.ts"() {
+    VARIABLE_PATTERN = /\{\{\s*([A-Za-z][A-Za-z0-9_-]*)\s*\}\}/g;
+  }
+});
+
+// src/domain/constants.ts
+var COLOR_PALETTE, TEXT_COLOR_PALETTE, EMOJI_CATEGORIES, EMOJI_SET, DEFAULT_TAGS, DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE, DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE, DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE, DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE;
+var init_constants = __esm({
+  "src/domain/constants.ts"() {
+    COLOR_PALETTE = [
+      { name: "\u8367\u5149\u9EC4", value: "rgba(255, 255, 100, 0.45)" },
+      { name: "\u8367\u5149\u7C89", value: "rgba(255, 130, 180, 0.40)" },
+      { name: "\u8367\u5149\u6A59", value: "rgba(255, 180, 80, 0.45)" },
+      { name: "\u8367\u5149\u7EFF", value: "rgba(130, 255, 130, 0.40)" },
+      { name: "\u8367\u5149\u84DD", value: "rgba(100, 200, 255, 0.40)" },
+      { name: "\u8367\u5149\u7D2B", value: "rgba(200, 140, 255, 0.40)" },
+      { name: "\u67D4\u548C\u7EA2", value: "rgba(220, 80, 80, 0.25)" },
+      { name: "\u67D4\u548C\u84DD", value: "rgba(80, 120, 220, 0.25)" },
+      { name: "\u67D4\u548C\u7EFF", value: "rgba(60, 180, 100, 0.25)" },
+      { name: "\u67D4\u548C\u7D2B", value: "rgba(160, 80, 200, 0.25)" },
+      { name: "\u8584\u8377\u7EFF", value: "rgba(100, 220, 200, 0.30)" },
+      { name: "\u7425\u73C0\u91D1", value: "rgba(220, 180, 60, 0.35)" }
+    ];
+    TEXT_COLOR_PALETTE = [
+      { name: "\u9ED8\u8BA4", value: "inherit" },
+      { name: "\u6DF1\u7070", value: "#333333" },
+      { name: "\u7EAF\u9ED1", value: "#000000" },
+      { name: "\u6697\u7EA2", value: "#9b2226" },
+      { name: "\u975B\u84DD", value: "#1d3557" },
+      { name: "\u6DF1\u7EFF", value: "#2d6a4f" },
+      { name: "\u6697\u7D2B", value: "#5a189a" },
+      { name: "\u68D5\u8910", value: "#6b4226" },
+      { name: "\u767D\u8272", value: "#ffffff" }
+    ];
+    EMOJI_CATEGORIES = [
+      { name: "\u5E38\u7528", emojis: ["\u{1FA84}", "\u26A1", "\u{1F916}", "\u{1F4A1}", "\u{1F525}", "\u2753", "\u2705", "\u{1F4CC}", "\u{1F517}", "\u{1F3F7}\uFE0F", "\u{1F3AF}", "\u{1F4AD}"] },
+      { name: "\u5B66\u672F", emojis: ["\u{1F4DA}", "\u{1F4D6}", "\u{1F52C}", "\u{1F9EA}", "\u{1F4D0}", "\u{1F4CA}", "\u{1F50D}", "\u{1F310}", "\u{1F393}", "\u{1F4CB}", "\u{1F4C9}", "\u{1F4C8}"] },
+      { name: "\u5DE5\u5177", emojis: ["\u270F\uFE0F", "\u{1F527}", "\u2699\uFE0F", "\u{1F6E1}\uFE0F", "\u{1F680}", "\u{1F4AC}", "\u{1F4DD}", "\u{1F4E6}", "\u{1F5C2}\uFE0F", "\u{1F5C3}\uFE0F", "\u{1F4BB}", "\u{1F4F1}", "\u{1F4E1}", "\u{1F399}\uFE0F", "\u2702\uFE0F", "\u{1F528}"] },
+      { name: "\u8C61\u5F81", emojis: ["\u{1F9E0}", "\u{1F9E9}", "\u{1F3A8}", "\u{1F48E}", "\u{1F31F}", "\u2764\uFE0F", "\u{1F30D}", "\u23F0", "\u{1F308}", "\u{1F3AD}", "\u2696\uFE0F", "\u{1F3AA}", "\u{1F338}", "\u{1F340}", "\u{1F98B}", "\u{1F3B5}", "\u{1F4B0}", "\u{1F511}", "\u{1F3C6}", "\u{1F9F2}", "\u{1F6A9}", "\u{1F3C1}"] },
+      { name: "\u72B6\u6001", emojis: ["\u{1F7E2}", "\u{1F7E1}", "\u{1F534}", "\u{1F535}", "\u{1F7E3}", "\u{1F7E0}", "\u2705", "\u274C", "\u26A0\uFE0F", "\u26D4", "\u2139\uFE0F", "\u{1F197}"] }
+    ];
+    EMOJI_SET = EMOJI_CATEGORIES.flatMap((c) => c.emojis);
+    DEFAULT_TAGS = [
+      { id: "tag-concept", name: "\u6982\u5FF5", emoji: "\u{1F4A1}", color: "rgba(255, 255, 100, 0.45)", textColor: "inherit", style: "highlight" },
+      { id: "tag-important", name: "\u91CD\u70B9", emoji: "\u{1F525}", color: "rgba(255, 180, 80, 0.45)", textColor: "inherit", style: "highlight" },
+      { id: "tag-question", name: "\u7591\u95EE", emoji: "\u2753", color: "rgba(255, 130, 180, 0.40)", textColor: "inherit", style: "dashed" },
+      { id: "tag-reference", name: "\u5F15\u7528", emoji: "\u{1F4CE}", color: "rgba(80, 120, 220, 0.25)", textColor: "inherit", style: "underline" },
+      { id: "tag-todo", name: "\u5F85\u529E", emoji: "\u2705", color: "rgba(130, 255, 130, 0.40)", textColor: "inherit", style: "semi-transparent" }
+    ];
+    DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u6DF1\u5EA6\u7ED1\u5B9A\u7684\u4E2A\u4EBA\u77E5\u8BC6\u7BA1\u7406\uFF08PKM\uFF09\u5206\u6790\u5F15\u64CE\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u5BF9\u7528\u6237\u9009\u4E2D\u7684\u6587\u672C\u751F\u6210\u4E00\u4E2A\u9AD8\u5EA6\u7CBE\u70BC\u7684\u5355\u884C\u6458\u8981\u6807\u9898\u3002
+
+\u3010\u7EDD\u5BF9\u8F93\u51FA\u89C4\u5219 \u2014 \u6781\u4E3A\u4E25\u683C\u3011
+1. \u4F60\u7684\u6574\u4E2A\u56DE\u590D\u5FC5\u987B\u662F\u4E14\u4EC5\u662F\u5355\u884C\u7EAF\u6587\u672C\uFF0C\u4E25\u7981\u6362\u884C\uFF0C\u4E25\u7981 Markdown \u683C\u5F0F\u3002
+2. \u5B57\u6570\u9650\u5236\u5728 __FOOTNOTE_LENGTH__ \u5B57\u4EE5\u5185\u3002
+3. \u4E0D\u5F97\u8F93\u51FA\u4EFB\u4F55\u5BD2\u6684\u3001\u89E3\u91CA\u3001\u5E8F\u53F7\u6216\u989D\u5916\u6BB5\u843D\u3002
+4. \u8F93\u51FA\u8BED\u8A00\u5FC5\u987B\u4E3A\uFF1A__TARGET_LANGUAGE__\u3002
+5. \u5FC5\u987B\u4E25\u683C\u9075\u5FAA\u4EE5\u4E0B\u683C\u5F0F\uFF0C\u82B1\u62EC\u53F7\u5185\u586B\u5165\u6458\u8981\u5185\u5BB9\uFF1A
+[1][__FOOTNOTE_ID__] {__DEFAULT_SUMMARY_PROMPT__}`;
+    DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u6DF1\u5EA6\u7ED1\u5B9A\u7684\u4E2A\u4EBA\u77E5\u8BC6\u7BA1\u7406\uFF08PKM\uFF09\u5206\u6790\u5F15\u64CE\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u5904\u7406\u7528\u6237\u63D0\u4F9B\u7684\u6587\u672C\u7247\u6BB5\uFF0C\u5E76\u4E25\u683C\u6309\u7167\u4EE5\u4E0B\u89C4\u5B9A\u7684\u683C\u5F0F\u8F93\u51FA\u7ED3\u679C\u3002
+
+\u3010\u7EDD\u5BF9\u8F93\u51FA\u89C4\u5219\u3011
+\u4F60\u7684\u56DE\u590D\u5FC5\u987B\u4E25\u683C\u5305\u542B\u4E24\u90E8\u5206\uFF0C\u4E14\u987A\u5E8F\u4E0D\u53EF\u98A0\u5012\u3002\u4E0D\u8981\u8F93\u51FA\u4EFB\u4F55\u5BD2\u6684\u6216\u989D\u5916\u7684\u89E3\u91CA\u3002
+\u8F93\u51FA\u8BED\u8A00\u5FC5\u987B\u4E3A\uFF1A__TARGET_LANGUAGE__\u3002
+
+=== PART1 ===
+\u5FC5\u987B\u4EC5\u4E3A\u5355\u884C\u7EAF\u6587\u672C\uFF0C\u4E25\u7981\u6362\u884C\uFF0C\u5B57\u6570\u9650\u5236\u5728 __FOOTNOTE_LENGTH__ \u4EE5\u5185\u3002\u5FC5\u987B\u4E25\u683C\u9075\u5FAA\u4EE5\u4E0B\u683C\u5F0F\uFF1A
+[1][__FOOTNOTE_ID__] {__DEFAULT_SUMMARY_PROMPT__}
+
+=== PART2 ===
+\u7B2C\u4E8C\u90E8\u5206\u7684\u8F93\u51FA\u53EF\u4EE5\u5F00\u59CB\u5305\u542B Markdown \u8BED\u6CD5\u3002\u8868\u683C\u3001Mermaid \u56FE\u8868\u7B49\u591A\u7EA7\u6392\u7248\u4E5F\u88AB\u5141\u8BB8\u4F7F\u7528\u3002
+\u4F46\u6700\u91CD\u8981\u7684\u662F\uFF1A\u4F60\u5FC5\u987B\u4E25\u683C\u9075\u5FAA\u7528\u6237\u7684\u5177\u4F53\u6307\u793A\u6765\u751F\u6210\u6216\u4FEE\u6539\u8FD9\u4E00\u90E8\u5206\u7684\u6587\u672C\u5185\u5BB9\uFF1A
+
+__DYNAMIC_PROMPTS____DETAIL_INSTRUCTION__`;
+    DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u4E25\u8C28\u7684\u77E5\u8BC6\u589E\u8865\u5F15\u64CE\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u56F4\u7ED5\u7528\u6237\u9009\u4E2D\u7684\u539F\u6587\u8865\u5145\u5FC5\u8981\u4FE1\u606F\uFF0C\u5E2E\u52A9\u8BFB\u8005\u7406\u89E3\u3001\u9A8C\u8BC1\u6216\u5E94\u7528\u539F\u6587\u3002
+
+\u3010\u8F93\u51FA\u89C4\u5219\u3011
+1. \u9ED8\u8BA4\u8F93\u51FA 1-2 \u4E2A\u5B8C\u6574\u3001\u8FDE\u8D2F\u7684\u6BB5\u843D\uFF0C\u4E0D\u91CD\u590D\u539F\u6587\uFF0C\u4E0D\u5BD2\u6684\uFF0C\u4E0D\u5199\u5206\u6790\u8FC7\u7A0B\u3002
+2. \u53EA\u8865\u5145\u4E0E\u539F\u6587\u76F4\u63A5\u76F8\u5173\u4E14\u6709\u5E2E\u52A9\u7684\u4FE1\u606F\uFF1B\u4E0D\u786E\u5B9A\u7684\u4E8B\u5B9E\u8981\u660E\u786E\u6807\u6CE8\u4E0D\u786E\u5B9A\u6027\u3002
+3. \u5982\u679C\u7528\u6237\u8981\u6C42\u66F4\u8BE6\u7EC6\u7684\u8BF4\u660E\uFF0C\u6216\u8865\u5145\u5185\u5BB9\u786E\u5B9E\u9700\u8981\u8D85\u8FC7\u4E24\u4E2A\u6BB5\u843D\uFF0C\u4F7F\u7528\u4EE5\u4E0B Markdown Callout \u5305\u88F9\u5B8C\u6574\u5185\u5BB9\uFF1A
+> [!note] \u589E\u8865
+> \u5185\u5BB9\u7B2C\u4E00\u6BB5
+> \u5185\u5BB9\u7B2C\u4E8C\u6BB5
+4. \u9664\u975E\u7528\u6237\u660E\u786E\u8981\u6C42\uFF0C\u4E0D\u751F\u6210\u6807\u9898\u3001\u5217\u8868\u6216\u4EE3\u7801\u5757\u3002
+5. \u8F93\u51FA\u8BED\u8A00\u4E0E\u539F\u6587\u4E00\u81F4\u3002
+
+__DYNAMIC_PROMPTS____DETAIL_INSTRUCTION__`;
+    DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u5F3A\u5927\u7684\u5E95\u5C42\u6587\u672C\u5904\u7406\u5F15\u64CE\u3002\u7528\u6237\u9009\u4E2D\u4E86\u4E00\u6BB5\u6587\u672C\u5E76\u7ED9\u4F60\u4E86\u4E00\u6761\u5904\u7406\u6307\u4EE4\u3002\u8BF7\u4E25\u4E1D\u5408\u7F1D\u5730\u6267\u884C\u7528\u6237\u7684\u6307\u4EE4\u53BB\u6539\u5199\u539F\u6587\u3002
+
+\u26A0\uFE0F \u3010\u7CFB\u7EDF\u6700\u9AD8\u5B89\u5168\u7EA7\u522B\u89C4\u5B9A\u3011
+1. \u4F60\u7684\u8F93\u51FA\u5C06\u5B8C\u5168\u3001\u76F4\u63A5\u5730\u8986\u76D6\u7528\u6237\u7684\u539F\u6587\u3002
+2. \u7EDD\u5BF9\u7981\u6B62\u8F93\u51FA\u4EFB\u4F55\u5BD2\u6684\u3001\u89E3\u91CA\u3001\u8BC4\u8BBA\u3001\u6216\u8005\u4F60\u7684\u201C\u601D\u8003\u8FC7\u7A0B\u201D\u3002
+3. \u7EDD\u5BF9\u7981\u6B62\u5728\u4E0D\u9700\u8981\u65F6\u4E3B\u52A8\u6DFB\u52A0 Markdown \u4EE3\u7801\u5757\u6807\u8BB0\uFF08\u5982 \`\`\` \u7B49\uFF09\u3002\u5982\u679C\u6307\u4EE4\u660E\u786E\u8981\u6C42 Mermaid\uFF0C\u5FC5\u987B\u4FDD\u7559\u5B8C\u6574\u7684 \`\`\`mermaid \u4EE3\u7801\u5757\uFF0C\u4F7F\u7ED3\u679C\u53EF\u4EE5\u76F4\u63A5\u9884\u89C8\u3002
+4. \u5C3D\u53EF\u80FD\u4FDD\u6301\u539F\u6587\u672C\u8EAB\u7684\u6392\u7248\u7279\u5F81\u3002`;
+  }
+});
+
+// src/ui/emoji-picker.ts
+function showEmojiGrid(anchor, onSelect) {
+  const existing = document.querySelector(".mn-emoji-picker");
+  if (existing)
+    existing.remove();
+  const picker = document.createElement("div");
+  picker.addClass("mn-emoji-picker");
+  const rect = anchor.getBoundingClientRect();
+  picker.style.position = "fixed";
+  const pickerWidth = 320;
+  let posX = rect.left - pickerWidth - 6;
+  if (posX < 10)
+    posX = rect.right + 6;
+  if (posX + pickerWidth + 10 > window.innerWidth) {
+    posX = window.innerWidth - pickerWidth - 10;
+    if (posX < 10)
+      posX = 10;
+  }
+  let posY = rect.top;
+  if (posY + 400 > window.innerHeight) {
+    posY = window.innerHeight - 410;
+    if (posY < 10)
+      posY = 10;
+  }
+  picker.style.left = `${posX}px`;
+  picker.style.top = `${posY}px`;
+  picker.style.zIndex = "10000";
+  const tabsHeader = picker.createEl("div", { cls: "mn-emoji-tabs" });
+  const gridContainer = picker.createEl("div", { cls: "mn-emoji-grid" });
+  let isFirst = true;
+  for (const cat of EMOJI_CATEGORIES) {
+    const tab = tabsHeader.createEl("div", { cls: "mn-emoji-tab", text: cat.name });
+    if (isFirst)
+      tab.addClass("mn-emoji-tab-active");
+    const populateGrid = () => {
+      gridContainer.empty();
+      for (const emoji of cat.emojis) {
+        const cell = gridContainer.createEl("span", { text: emoji, cls: "mn-emoji-cell" });
+        cell.onclick = () => {
+          onSelect(emoji);
+          picker.remove();
+        };
+      }
+    };
+    if (isFirst)
+      populateGrid();
+    tab.onclick = () => {
+      tabsHeader.querySelectorAll(".mn-emoji-tab").forEach((node) => {
+        node.removeClass("mn-emoji-tab-active");
+      });
+      tab.addClass("mn-emoji-tab-active");
+      populateGrid();
+    };
+    isFirst = false;
+  }
+  document.body.appendChild(picker);
+  const closeHandler = (e) => {
+    if (!picker.contains(e.target) && e.target !== anchor) {
+      picker.remove();
+      document.removeEventListener("click", closeHandler);
+    }
+  };
+  setTimeout(() => document.addEventListener("click", closeHandler), 10);
+}
+var init_emoji_picker = __esm({
+  "src/ui/emoji-picker.ts"() {
+    init_constants();
+  }
+});
+
+// src/ui/icons.ts
+var UI_ICONS;
+var init_icons = __esm({
+  "src/ui/icons.ts"() {
+    UI_ICONS = {
+      settings: "\u2699\uFE0F",
+      general: "\u2699\uFE0F",
+      tags: "\u{1F3F7}\uFE0F",
+      models: "\u{1F50C}",
+      steward: "\u{1F916}",
+      advanced: "\u{1F6E0}\uFE0F",
+      prompt: "\u{1F9E0}",
+      actionChat: "\u{1F4AC}",
+      actionRewrite: "\u270E",
+      actionAugment: "\u2295",
+      actionLink: "\u{1F517}",
+      refresh: "\u21BB",
+      filter: "\u2315",
+      locate: "\u2316",
+      view: "\u25C9",
+      merge: "\u26D3",
+      add: "+",
+      remove: "\xD7",
+      delete: "\u{1F5D1}\uFE0F",
+      save: "\u2713",
+      cancel: "\xD7",
+      undo: "\u21B6",
+      copy: "\u29C9",
+      search: "\u2315",
+      warning: "\u26A0\uFE0F",
+      success: "\u2713",
+      error: "\xD7"
+    };
+  }
+});
+
+// src/settings/modals.ts
+var import_obsidian, CommandVariableInputModal, LightningCommandEditModal, TagEditModal;
+var init_modals = __esm({
+  "src/settings/modals.ts"() {
+    import_obsidian = require("obsidian");
+    init_constants();
+    init_tag_styles();
+    init_emoji_picker();
+    init_icons();
+    CommandVariableInputModal = class extends import_obsidian.Modal {
+      constructor(app, command, onSubmit) {
+        super(app);
+        this.command = command;
+        this.onSubmit = onSubmit;
+      }
+      onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl("h3", { text: `\u8F93\u5165\u53C2\u6570: ${this.command.name}` });
+        const values = {};
+        const variables = this.command.variables || [];
+        for (const variable of variables) {
+          const defaultValue = variable.defaultValue;
+          if (defaultValue !== void 0)
+            values[variable.id] = defaultValue;
+          if (variable.type === "text") {
+            new import_obsidian.Setting(contentEl).setName(`${variable.label}${variable.required ? " *" : ""}`).addText((text) => {
+              text.setPlaceholder(variable.placeholder || "\u8BF7\u8F93\u5165");
+              text.setValue(typeof defaultValue === "string" ? defaultValue : "");
+              text.onChange((value) => {
+                values[variable.id] = value;
+              });
+            });
+            continue;
+          }
+          if (variable.type === "select") {
+            new import_obsidian.Setting(contentEl).setName(`${variable.label}${variable.required ? " *" : ""}`).addDropdown((dropdown) => {
+              for (const option of variable.options || []) {
+                dropdown.addOption(option.value, option.label);
+              }
+              const initial = typeof defaultValue === "string" ? defaultValue : "";
+              if (initial)
+                dropdown.setValue(initial);
+              dropdown.onChange((value) => {
+                values[variable.id] = value;
+              });
+            });
+            continue;
+          }
+          const group = contentEl.createDiv({ cls: "mn-variable-multiselect" });
+          group.createEl("div", {
+            text: `${variable.label}${variable.required ? " *" : ""}`,
+            cls: "setting-item-name"
+          });
+          const selected = new Set(
+            Array.isArray(defaultValue) ? defaultValue : []
+          );
+          for (const option of variable.options || []) {
+            const row = group.createEl("label", { cls: "mn-variable-option" });
+            const checkbox = row.createEl("input", { type: "checkbox" });
+            checkbox.checked = selected.has(option.value);
+            row.createEl("span", { text: option.label });
+            checkbox.onchange = () => {
+              if (checkbox.checked)
+                selected.add(option.value);
+              else
+                selected.delete(option.value);
+              values[variable.id] = Array.from(selected);
+            };
+          }
+          values[variable.id] = Array.from(selected);
+        }
+        const actions = contentEl.createDiv({ cls: "modal-button-container" });
+        const cancel = actions.createEl("button", { text: `${UI_ICONS.cancel} \u53D6\u6D88` });
+        cancel.onclick = () => this.close();
+        const submit = actions.createEl("button", {
+          text: `${UI_ICONS.save} \u6267\u884C`,
+          cls: "mod-cta"
+        });
+        submit.onclick = () => {
+          const missing = variables.filter((variable) => {
+            if (!variable.required)
+              return false;
+            const value = values[variable.id];
+            return !value || (Array.isArray(value) ? value.length === 0 : !value.trim());
+          });
+          if (missing.length > 0) {
+            new import_obsidian.Notice(`\u8BF7\u586B\u5199\u5FC5\u586B\u53C2\u6570\uFF1A${missing.map((item) => item.label).join("\u3001")}`);
+            return;
+          }
+          this.onSubmit(values);
+          this.close();
+        };
+      }
+      onClose() {
+        this.contentEl.empty();
+      }
+    };
+    LightningCommandEditModal = class extends import_obsidian.Modal {
+      constructor(app, cmd, tags, onSave) {
+        super(app);
+        this.cmd = { ...cmd };
+        this.tags = tags;
+        this.onSave = onSave;
+      }
+      onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl("h3", {
+          text: `${UI_ICONS.actionRewrite} \u7F16\u8F91\u6307\u4EE4: ${this.cmd.icon} ${this.cmd.name}`
+        });
+        new import_obsidian.Setting(contentEl).setName("\u540D\u79F0").addText(
+          (text) => text.setValue(this.cmd.name).onChange((value) => {
+            this.cmd.name = value;
+          })
+        );
+        const iconSetting = new import_obsidian.Setting(contentEl).setName("\u56FE\u6807");
+        const iconBtn = iconSetting.controlEl.createEl("button", {
+          text: this.cmd.icon,
+          attr: {
+            style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;"
+          }
+        });
+        iconBtn.onclick = () => {
+          showEmojiGrid(iconBtn, (emoji) => {
+            this.cmd.icon = emoji;
+            iconBtn.innerText = emoji;
+          });
+        };
+        if (this.cmd.type === "default-summary") {
+          new import_obsidian.Setting(contentEl).setName("\u4E00\u53E5\u8BDD\u603B\u7ED3\u7EA6\u675F").setDesc("\u9ED8\u8BA4\u5904\u7406\u9AD8\u4EAE\u65F6\u7684\u4E00\u53E5\u8BDD\u7EA6\u675F").addTextArea(
+            (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+              this.cmd.detailPrompt = value;
+            })
+          );
+        } else if (this.cmd.type === "inline-modify") {
+          new import_obsidian.Setting(contentEl).setName("\u5904\u7406\u547D\u4EE4").setDesc(
+            "\u544A\u8BC9\u5927\u6A21\u578B\u4F60\u60F3\u5982\u4F55\u5904\u7406\u6216\u6539\u5199\u8FD9\u6BB5\u539F\u6587\uFF08\u4E0D\u8981\u6709\u4EFB\u4F55\u8FD4\u56DE\u7ED3\u679C\u5916\u7684\u6807\u9898\u5185\u5BB9\uFF09"
+          ).addTextArea(
+            (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+              this.cmd.detailPrompt = value;
+            })
+          );
+        } else {
+          new import_obsidian.Setting(contentEl).setName("\u8BE6\u7EC6\u5185\u5BB9\u6307\u4EE4").setDesc("\u5B9A\u4E49 AI \u7B2C\u4E8C\u90E8\u5206\uFF08\u5411\u4E0B\u8FFD\u95EE\u89D2\u6CE8\u6DF1\u5C42\u5185\u5BB9\uFF09\u7684\u8F93\u51FA\u5185\u5BB9").addTextArea(
+            (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
+              this.cmd.detailPrompt = value;
+            })
+          );
+          new import_obsidian.Setting(contentEl).setName("\u7BA1\u5BB6\u63D0\u793A\u8BCD\u5E94\u7528\u8303\u56F4").setDesc("\u51B3\u5B9A\u8BE5\u547D\u4EE4\u6267\u884C\u65F6\uFF0C\u662F\u5426\u6CBF\u7528\u9605\u8BFB\u7BA1\u5BB6\u7684\u8BBE\u5B9A\u3002").addDropdown((dropdown) => {
+            dropdown.addOption("full", "\u5E94\u7528\u9605\u8BFB\u7406\u89E3 + \u5199\u4F5C\u98CE\u683C (\u63A8\u8350)");
+            dropdown.addOption("writingOnly", "\u4EC5\u5E94\u7528\u5199\u4F5C\u98CE\u683C");
+            dropdown.addOption("none", "\u7EAF\u51C0\u6267\u884C (\u5747\u4E0D\u5E94\u7528)");
+            dropdown.setValue(this.cmd.contextMode || "full");
+            dropdown.onChange((value) => {
+              this.cmd.contextMode = value;
+            });
+          });
+        }
+        if (this.cmd.type === "inline-modify") {
+          new import_obsidian.Setting(contentEl).setName("\u7BA1\u5BB6\u63D0\u793A\u8BCD\u5E94\u7528\u8303\u56F4").setDesc("\u51B3\u5B9A\u6539\u5199\u65F6\u662F\u5426\u9644\u52A0\u5F53\u524D\u9605\u8BFB\u7BA1\u5BB6\u7684\u4E3B\u63D0\u793A\u8BCD\u548C\u5199\u4F5C\u98CE\u683C\u3002").addDropdown((dropdown) => {
+            dropdown.addOption("full", "\u4E3B\u63D0\u793A\u8BCD + \u5199\u4F5C\u98CE\u683C");
+            dropdown.addOption("writingOnly", "\u4EC5\u5199\u4F5C\u98CE\u683C");
+            dropdown.addOption("none", "\u5747\u4E0D\u9644\u52A0");
+            dropdown.setValue(this.cmd.contextMode || "writingOnly");
+            dropdown.onChange((value) => {
+              this.cmd.contextMode = value;
+            });
+          });
+        }
+        const variableSection = contentEl.createDiv({ cls: "mn-command-variable-editor" });
+        variableSection.createEl("h5", { text: "\u5B9E\u9A8C\u6027\u53D8\u91CF" });
+        variableSection.createEl("p", {
+          text: "\u5728\u63D0\u793A\u8BCD\u4E2D\u4F7F\u7528 {{\u53D8\u91CFID}}\u3002\u6267\u884C\u6307\u4EE4\u65F6\u4F1A\u5148\u6536\u96C6\u8F93\u5165\u3002",
+          cls: "setting-item-description"
+        });
+        const variableList = variableSection.createDiv({ cls: "mn-variable-list" });
+        this.renderVariableEditor(variableList);
+        const addVariable = variableSection.createEl("button", { text: `${UI_ICONS.add} \u6DFB\u52A0\u53D8\u91CF` });
+        addVariable.onclick = () => {
+          const index = (this.cmd.variables || []).length + 1;
+          this.cmd.variables = [
+            ...this.cmd.variables || [],
+            { id: `variable${index}`, label: `\u53D8\u91CF ${index}`, type: "text", required: false }
+          ];
+          variableList.empty();
+          this.renderVariableEditor(variableList);
+        };
+        if (this.cmd.type !== "inline-modify") {
+          new import_obsidian.Setting(contentEl).setName("\u5173\u8054\u6807\u7B7E (Tag)").setDesc("\u6267\u884C\u6B64\u6307\u4EE4\u65F6\u81EA\u52A8\u9644\u52A0\u7684\u6807\u7B7E\u5206\u7C7B").addDropdown((dropdown) => {
+            dropdown.addOption("", "\u4E0D\u5173\u8054 (\u65E0\u6807\u7B7E)");
+            const tags = this.tags.length > 0 ? this.tags : DEFAULT_TAGS;
+            for (const tag of tags) {
+              dropdown.addOption(tag.id, `${tag.emoji} ${tag.name}`);
+            }
+            dropdown.setValue(this.cmd.tagId || "");
+            dropdown.onChange((value) => {
+              this.cmd.tagId = value || void 0;
+            });
+          });
+        }
+        contentEl.createEl("h5", {
+          text: `${UI_ICONS.advanced} \u9AD8\u7EA7\u8986\u76D6 (Overrides)`
+        });
+        new import_obsidian.Setting(contentEl).setName("Temperature \u8986\u5199").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u63A8\u8350\u6781\u4F4E\u6E29 0-0.3 \u786E\u4FDD\u4E25\u8C28\u3002").addText(
+          (text) => {
+            var _a, _b;
+            return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.temperature) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
+              this.cmd.temperature = value ? parseFloat(value) : void 0;
+            });
+          }
+        );
+        new import_obsidian.Setting(contentEl).setName("\u4E0A\u4E0B\u6587\u957F\u5EA6").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u6700\u5927 8192\u3002").addText(
+          (text) => {
+            var _a, _b;
+            return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.contextLength) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
+              this.cmd.contextLength = value ? parseInt(value) : void 0;
+            });
+          }
+        );
+        const btnDiv = contentEl.createEl("div", {
+          attr: {
+            style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;"
+          }
+        });
+        const cancelBtn = btnDiv.createEl("button", {
+          text: `${UI_ICONS.cancel} \u53D6\u6D88`
+        });
+        cancelBtn.onclick = () => this.close();
+        const saveBtn = btnDiv.createEl("button", {
+          text: `${UI_ICONS.save} \u4FDD\u5B58`,
+          cls: "mod-cta"
+        });
+        saveBtn.onclick = () => {
+          this.onSave(this.cmd);
+          this.close();
+        };
+      }
+      renderVariableEditor(container) {
+        for (const [index, variable] of (this.cmd.variables || []).entries()) {
+          const row = container.createDiv({ cls: "mn-variable-editor-row" });
+          const id = row.createEl("input", { type: "text", value: variable.id, placeholder: "\u53D8\u91CFID" });
+          id.oninput = () => {
+            variable.id = id.value.trim().replace(/[^A-Za-z0-9_-]/g, "_");
+          };
+          const label = row.createEl("input", { type: "text", value: variable.label, placeholder: "\u663E\u793A\u540D\u79F0" });
+          label.oninput = () => {
+            variable.label = label.value;
+          };
+          const type = row.createEl("select");
+          for (const option of [
+            ["text", "\u6587\u672C"],
+            ["select", "\u5355\u9009"],
+            ["multiselect", "\u591A\u9009"]
+          ])
+            type.createEl("option", { value: option[0], text: option[1] });
+          type.value = variable.type;
+          type.onchange = () => {
+            variable.type = type.value;
+            container.empty();
+            this.renderVariableEditor(container);
+          };
+          const required = row.createEl("label", { cls: "mn-variable-required" });
+          const checkbox = required.createEl("input", { type: "checkbox" });
+          checkbox.checked = variable.required === true;
+          checkbox.onchange = () => {
+            variable.required = checkbox.checked;
+          };
+          required.createEl("span", { text: "\u5FC5\u586B" });
+          if (variable.type !== "text") {
+            const options = row.createEl("input", {
+              type: "text",
+              value: (variable.options || []).map((option) => `${option.value}=${option.label}`).join(", "),
+              placeholder: "\u9009\u9879: value=label, value=label"
+            });
+            options.oninput = () => {
+              variable.options = options.value.split(",").map((item) => item.trim()).filter(Boolean).map((item) => {
+                const [value, ...label2] = item.split("=");
+                return { value: value.trim(), label: label2.join("=").trim() || value.trim() };
+              });
+            };
+          }
+          const remove = row.createEl("button", { text: UI_ICONS.remove, attr: { "aria-label": "\u5220\u9664\u53D8\u91CF" } });
+          remove.onclick = () => {
+            var _a;
+            (_a = this.cmd.variables) == null ? void 0 : _a.splice(index, 1);
+            container.empty();
+            this.renderVariableEditor(container);
+          };
+        }
+      }
+      onClose() {
+        this.contentEl.empty();
+      }
+    };
+    TagEditModal = class extends import_obsidian.Modal {
+      constructor(app, tag, onSave) {
+        super(app);
+        this.tag = { ...tag };
+        this.onSave = onSave;
+      }
+      onOpen() {
+        this.renderContent();
+      }
+      renderContent() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl("h3", {
+          text: `${UI_ICONS.tags} \u7F16\u8F91\u6807\u7B7E: ${this.tag.emoji} ${this.tag.name}`
+        });
+        const previewRow = contentEl.createEl("div", {
+          attr: {
+            style: "margin-bottom: 16px; padding: 12px; background: var(--background-primary); border-radius: 8px; text-align: center;"
+          }
+        });
+        const previewEl = previewRow.createEl("span", {
+          text: `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`,
+          attr: {
+            style: "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;"
+          }
+        });
+        this.applyPreviewStyle(previewEl);
+        new import_obsidian.Setting(contentEl).setName("\u6807\u7B7E\u540D\u79F0").addText(
+          (text) => text.setValue(this.tag.name).onChange((value) => {
+            this.tag.name = value;
+          })
+        );
+        const emojiSetting = new import_obsidian.Setting(contentEl).setName("\u56FE\u6807");
+        const emojiBtn = emojiSetting.controlEl.createEl("button", {
+          text: this.tag.emoji,
+          attr: {
+            style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;"
+          }
+        });
+        emojiBtn.onclick = () => {
+          showEmojiGrid(emojiBtn, (emoji) => {
+            this.tag.emoji = emoji;
+            emojiBtn.innerText = emoji;
+            this.applyPreviewStyle(previewEl);
+            previewEl.innerText = `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`;
+          });
+        };
+        contentEl.createEl("h5", {
+          text: "\u5E95\u8272",
+          attr: { style: "margin-bottom: 4px;" }
+        });
+        const bgGrid = contentEl.createEl("div", {
+          cls: "mn-palette-grid",
+          attr: { style: "margin-bottom: 12px;" }
+        });
+        for (const color of COLOR_PALETTE) {
+          const swatch = bgGrid.createEl("div", {
+            cls: `mn-palette-swatch ${color.value === this.tag.color ? "mn-swatch-active" : ""}`,
+            attr: { style: `background: ${color.value};`, title: color.name }
+          });
+          swatch.onclick = () => {
+            this.tag.color = color.value;
+            this.applyPreviewStyle(previewEl);
+            this.renderContent();
+          };
+        }
+        contentEl.createEl("h5", {
+          text: "\u6587\u5B57\u989C\u8272",
+          attr: { style: "margin-bottom: 4px;" }
+        });
+        const txtGrid = contentEl.createEl("div", {
+          cls: "mn-palette-grid",
+          attr: { style: "margin-bottom: 12px;" }
+        });
+        for (const color of TEXT_COLOR_PALETTE) {
+          const swatch = txtGrid.createEl("div", {
+            cls: `mn-palette-swatch ${color.value === this.tag.textColor ? "mn-swatch-active" : ""}`,
+            attr: {
+              style: `background: ${color.value === "inherit" ? "var(--text-normal)" : color.value};`,
+              title: color.name
+            }
+          });
+          swatch.onclick = () => {
+            this.tag.textColor = color.value;
+            this.applyPreviewStyle(previewEl);
+            this.renderContent();
+          };
+        }
+        new import_obsidian.Setting(contentEl).setName("\u6807\u6CE8\u6837\u5F0F").addDropdown((dropdown) => {
+          dropdown.addOption("highlight", "\u9AD8\u4EAE (Highlight)");
+          dropdown.addOption("underline", "\u4E0B\u5212\u7EBF (Underline)");
+          dropdown.addOption("dashed", "\u865A\u7EBF (Dashed)");
+          dropdown.addOption("semi-transparent", "\u534A\u900F\u660E (Semi-transparent)");
+          dropdown.setValue(this.tag.style);
+          dropdown.onChange((value) => {
+            this.tag.style = value;
+            this.applyPreviewStyle(previewEl);
+          });
+        });
+        const btnDiv = contentEl.createEl("div", {
+          attr: {
+            style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;"
+          }
+        });
+        const cancelBtn = btnDiv.createEl("button", {
+          text: `${UI_ICONS.cancel} \u53D6\u6D88`
+        });
+        cancelBtn.onclick = () => this.close();
+        const saveBtn = btnDiv.createEl("button", {
+          text: `${UI_ICONS.save} \u4FDD\u5B58`,
+          cls: "mod-cta"
+        });
+        saveBtn.onclick = () => {
+          this.onSave(this.tag);
+          this.close();
+        };
+      }
+      applyPreviewStyle(el) {
+        el.style.cssText = "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;";
+        applyTagHighlightStyle(el, this.tag);
+      }
+      onClose() {
+        this.contentEl.empty();
+      }
+    };
+  }
+});
+
 // src/ui.ts
 var ui_exports = {};
 __export(ui_exports, {
@@ -791,15 +1539,18 @@ function bindMobilePopoverViewport(container, isMobile) {
     viewport.removeEventListener("scroll", reposition);
   };
 }
-var import_obsidian, FloatingMenu, PopoverEditor, PopoverViewer, ButlerFloatingPanel;
+var import_obsidian2, FloatingMenu, PopoverEditor, PopoverViewer, ButlerFloatingPanel;
 var init_ui = __esm({
   "src/ui.ts"() {
-    import_obsidian = require("obsidian");
+    import_obsidian2 = require("obsidian");
     init_annotation_repository();
     init_editor_viewport();
     init_action_surface();
+    init_variables();
+    init_modals();
     FloatingMenu = class {
-      constructor(onCommand, onAugment, onInlineModify, onLink) {
+      constructor(app, onCommand, onAugment, onInlineModify, onLink) {
+        this.app = app;
         this.onCommand = onCommand;
         this.onAugment = onAugment;
         this.onInlineModify = onInlineModify;
@@ -931,6 +1682,30 @@ var init_ui = __esm({
         };
         dropdown.appendChild(settingsButton);
       }
+      runCommandWithVariables(command, operation) {
+        const execute = (values) => {
+          const resolved = resolveCommandPrompt(command, values);
+          if (resolved.undeclared.length > 0) {
+            new import_obsidian2.Notice(`\u6307\u4EE4\u5305\u542B\u672A\u58F0\u660E\u53D8\u91CF\uFF1A${resolved.undeclared.join("\u3001")}`);
+            return;
+          }
+          if (resolved.missing.length > 0) {
+            new import_obsidian2.Notice(`\u8BF7\u586B\u5199\u5FC5\u586B\u53D8\u91CF\uFF1A${resolved.missing.join("\u3001")}`);
+            return;
+          }
+          const resolvedCommand = { ...command, detailPrompt: resolved.prompt };
+          if (operation === "augment") {
+            this.onAugment(this.currentSelection, resolvedCommand);
+          } else {
+            this.onCommand(this.currentSelection, resolvedCommand);
+          }
+        };
+        if (command.variables && command.variables.length > 0) {
+          new CommandVariableInputModal(this.app, command, execute).open();
+          return;
+        }
+        execute({});
+      }
       showCommandDropdown(anchor, operation = "conversation") {
         const existing = document.querySelector(".ai-lightning-dropdown");
         if (existing)
@@ -970,10 +1745,7 @@ var init_ui = __esm({
                   item.appendChild(leftPart);
                   item.appendChild(rightPart);
                   item.onclick = () => {
-                    if (operation === "augment")
-                      this.onAugment(this.currentSelection, cmd);
-                    else
-                      this.onCommand(this.currentSelection, cmd);
+                    this.runCommandWithVariables(cmd, operation);
                     dropdown.remove();
                     this.close();
                   };
@@ -1061,7 +1833,19 @@ var init_ui = __esm({
                   item.addClass("ai-lightning-item");
                   item.innerText = `${cmd.icon} ${cmd.name}`;
                   item.onclick = () => {
-                    this.onInlineModify(this.currentSelection, cmd.detailPrompt);
+                    const execute = (values) => {
+                      const resolved = resolveCommandPrompt(cmd, values);
+                      if (resolved.undeclared.length > 0 || resolved.missing.length > 0) {
+                        new import_obsidian2.Notice("\u8BF7\u5148\u4FEE\u6B63\u6307\u4EE4\u53D8\u91CF\u914D\u7F6E\u6216\u586B\u5199\u5FC5\u586B\u53D8\u91CF");
+                        return;
+                      }
+                      this.onInlineModify(this.currentSelection, cmd, resolved.prompt);
+                    };
+                    if (cmd.variables && cmd.variables.length > 0) {
+                      new CommandVariableInputModal(this.app, cmd, execute).open();
+                    } else {
+                      execute({});
+                    }
                     dropdown.remove();
                     this.close();
                   };
@@ -1114,7 +1898,7 @@ var init_ui = __esm({
         this.savedWidth = "";
         this.savedHeight = "";
         this.cleanupFns = [];
-        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent = new import_obsidian2.Component();
         this.renderComponent.load();
       }
       async show(anchorX, anchorY) {
@@ -1390,7 +2174,7 @@ var init_ui = __esm({
       }
       resetRenderComponent() {
         this.renderComponent.unload();
-        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent = new import_obsidian2.Component();
         this.renderComponent.load();
       }
       createCtrlBtn(text, tooltip, onclick) {
@@ -1419,7 +2203,7 @@ var init_ui = __esm({
           return;
         }
         try {
-          await import_obsidian.MarkdownRenderer.render(
+          await import_obsidian2.MarkdownRenderer.render(
             this.ctx.app,
             this.currentContent,
             this.viewContainer,
@@ -1428,7 +2212,7 @@ var init_ui = __esm({
           );
         } catch (e) {
           try {
-            await import_obsidian.MarkdownRenderer.renderMarkdown(
+            await import_obsidian2.MarkdownRenderer.renderMarkdown(
               this.currentContent,
               this.viewContainer,
               "",
@@ -1652,7 +2436,7 @@ var init_ui = __esm({
         this.cleanupFns = [];
         // Extracted so title refresh has context
         this.currentParams = null;
-        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent = new import_obsidian2.Component();
         this.renderComponent.load();
       }
       async show(nodeId, nodeSummary, nodeState, nodeTagId, richText, anchorX, anchorY) {
@@ -1709,7 +2493,7 @@ var init_ui = __esm({
         viewContainer.addClass("ai-popover-view");
         if (richText) {
           try {
-            await import_obsidian.MarkdownRenderer.render(
+            await import_obsidian2.MarkdownRenderer.render(
               this.ctx.app,
               richText,
               viewContainer,
@@ -1790,7 +2574,7 @@ var init_ui = __esm({
       }
       resetRenderComponent() {
         this.renderComponent.unload();
-        this.renderComponent = new import_obsidian.Component();
+        this.renderComponent = new import_obsidian2.Component();
         this.renderComponent.load();
       }
       createCtrlBtn(text, tooltip, onclick) {
@@ -2159,63 +2943,7 @@ var import_obsidian8 = require("obsidian");
 var import_state2 = require("@codemirror/state");
 var import_view = require("@codemirror/view");
 init_state();
-
-// src/tag-styles.ts
-function withOpacity(color, alpha) {
-  return color.replace(/[\d.]+\)$/, `${alpha})`);
-}
-function getTagHighlightInlineStyle(tag) {
-  switch (tag.style) {
-    case "highlight":
-      return `background-color: ${tag.color}; color: ${tag.textColor};`;
-    case "underline":
-      return `background-color: transparent; border-bottom: 2px solid ${withOpacity(tag.color, "0.8")}; color: ${tag.textColor};`;
-    case "dashed":
-      return `background-color: transparent; border-bottom: 2px dashed ${withOpacity(tag.color, "0.7")}; color: ${tag.textColor};`;
-    case "semi-transparent":
-      return `background-color: ${tag.color}; color: ${tag.textColor}; opacity: 0.6;`;
-    default:
-      return "";
-  }
-}
-function applyTagHighlightStyle(element, tag) {
-  switch (tag.style) {
-    case "highlight":
-      element.style.background = tag.color;
-      element.style.color = tag.textColor;
-      element.style.opacity = "";
-      element.style.borderBottom = "";
-      break;
-    case "underline":
-      element.style.background = "transparent";
-      element.style.borderBottom = `2px solid ${withOpacity(tag.color, "0.8")}`;
-      element.style.color = tag.textColor;
-      element.style.opacity = "";
-      break;
-    case "dashed":
-      element.style.background = "transparent";
-      element.style.borderBottom = `2px dashed ${withOpacity(tag.color, "0.7")}`;
-      element.style.color = tag.textColor;
-      element.style.opacity = "";
-      break;
-    case "semi-transparent":
-      element.style.background = tag.color;
-      element.style.color = tag.textColor;
-      element.style.opacity = "0.6";
-      element.style.borderBottom = "";
-      break;
-  }
-}
-function applyTagButtonStyle(element, tag) {
-  element.style.background = tag.color;
-  element.style.color = tag.textColor !== "inherit" ? tag.textColor : "var(--text-normal)";
-  element.style.borderColor = "transparent";
-}
-function getTagBorderAccent(tag) {
-  return withOpacity(tag.color, "0.8");
-}
-
-// src/cm6.ts
+init_tag_styles();
 init_ui();
 var CapsuleWidget = class extends import_view.WidgetType {
   constructor(node, tags) {
@@ -2330,14 +3058,16 @@ function createMarkingExtensions(onCommand, onAugment, onLink, popoverCtx, plugi
             if (coords) {
               if (!this.menu) {
                 this.menu = new FloatingMenu(
+                  plugin.app,
                   (s, cmd) => onCommand(update.view, s, cmd),
                   (s, cmd) => onAugment(update.view, s, cmd),
-                  (s, instruction) => {
+                  (s, command, instruction) => {
                     window.dispatchEvent(
                       new CustomEvent("marking-note-inline-modify", {
                         detail: {
                           view: update.view,
                           selection: s,
+                          command,
                           instruction
                         }
                       })
@@ -2414,36 +3144,55 @@ init_annotation_repository();
 init_editor_viewport();
 
 // src/renderers/reading-mode-renderer.ts
+init_tag_styles();
+function normalizeText(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
+function findMatchingNode(mark, nodes, used) {
+  const markText = normalizeText(mark.textContent || "");
+  if (!markText)
+    return void 0;
+  return nodes.find(
+    (node) => !used.has(node.id) && normalizeText(node.text) === markText
+  );
+}
 function renderReadingModeAnnotations(input) {
   const marks = Array.from(input.container.querySelectorAll("mark"));
   const sourceNodes = input.nodes || [];
-  marks.forEach((mark, index) => {
+  const usedNodeIds = /* @__PURE__ */ new Set();
+  marks.forEach((mark) => {
     var _a;
-    const node = sourceNodes[index];
+    const node = findMatchingNode(mark, sourceNodes, usedNodeIds);
     mark.classList.add("marking-highlight-region");
     mark.style.cursor = node && !node.isPlain ? "pointer" : "default";
     if (!node || node.isPlain) {
       mark.classList.add("mark-state-0");
       return;
     }
+    usedNodeIds.add(node.id);
     const state = node.state;
     const tagId = node.tagId || "";
     const summary = node.summary || "";
     mark.dataset.markingId = node.id;
+    mark.dataset.markingState = state;
     mark.classList.add(`mark-state-${state}`);
     const tag = tagId ? input.tags.find((candidate) => candidate.id === tagId) : void 0;
     if (tag) {
       mark.classList.add("marking-tagged");
       applyTagHighlightStyle(mark, tag);
     }
+    const existingBadge = mark.nextElementSibling;
+    if (existingBadge instanceof HTMLElement && existingBadge.classList.contains("marking-capsule") && existingBadge.dataset.markingId === node.id) {
+      return;
+    }
     const badge = document.createElement("span");
     badge.addClass("marking-capsule", `marking-capsule-${state}`);
     badge.dataset.markingId = node.id;
     if (tagId)
       badge.dataset.tagId = tagId;
-    const emoji = (tag == null ? void 0 : tag.emoji) || (state === "0" ? "\u{1FA84}" : state === "1" ? "\u26A1" : state === "2" ? "\u{1F464}" : "\u{1F4E6}");
+    const icon = (tag == null ? void 0 : tag.emoji) || (state === "0" ? "\u25CB" : state === "1" ? "\u270E" : state === "2" ? "\u25C9" : "\u2713");
     const iconSpan = document.createElement("span");
-    iconSpan.innerText = emoji;
+    iconSpan.innerText = icon;
     badge.appendChild(iconSpan);
     if (summary) {
       const summarySpan = document.createElement("span");
@@ -2477,85 +3226,11 @@ function renderReadingModeAnnotations(input) {
 }
 
 // src/services/annotation-service.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/ai.ts
-var import_obsidian2 = require("obsidian");
-
-// src/domain/constants.ts
-var COLOR_PALETTE = [
-  { name: "\u8367\u5149\u9EC4", value: "rgba(255, 255, 100, 0.45)" },
-  { name: "\u8367\u5149\u7C89", value: "rgba(255, 130, 180, 0.40)" },
-  { name: "\u8367\u5149\u6A59", value: "rgba(255, 180, 80, 0.45)" },
-  { name: "\u8367\u5149\u7EFF", value: "rgba(130, 255, 130, 0.40)" },
-  { name: "\u8367\u5149\u84DD", value: "rgba(100, 200, 255, 0.40)" },
-  { name: "\u8367\u5149\u7D2B", value: "rgba(200, 140, 255, 0.40)" },
-  { name: "\u67D4\u548C\u7EA2", value: "rgba(220, 80, 80, 0.25)" },
-  { name: "\u67D4\u548C\u84DD", value: "rgba(80, 120, 220, 0.25)" },
-  { name: "\u67D4\u548C\u7EFF", value: "rgba(60, 180, 100, 0.25)" },
-  { name: "\u67D4\u548C\u7D2B", value: "rgba(160, 80, 200, 0.25)" },
-  { name: "\u8584\u8377\u7EFF", value: "rgba(100, 220, 200, 0.30)" },
-  { name: "\u7425\u73C0\u91D1", value: "rgba(220, 180, 60, 0.35)" }
-];
-var TEXT_COLOR_PALETTE = [
-  { name: "\u9ED8\u8BA4", value: "inherit" },
-  { name: "\u6DF1\u7070", value: "#333333" },
-  { name: "\u7EAF\u9ED1", value: "#000000" },
-  { name: "\u6697\u7EA2", value: "#9b2226" },
-  { name: "\u975B\u84DD", value: "#1d3557" },
-  { name: "\u6DF1\u7EFF", value: "#2d6a4f" },
-  { name: "\u6697\u7D2B", value: "#5a189a" },
-  { name: "\u68D5\u8910", value: "#6b4226" },
-  { name: "\u767D\u8272", value: "#ffffff" }
-];
-var EMOJI_CATEGORIES = [
-  { name: "\u5E38\u7528", emojis: ["\u{1FA84}", "\u26A1", "\u{1F916}", "\u{1F4A1}", "\u{1F525}", "\u2753", "\u2705", "\u{1F4CC}", "\u{1F517}", "\u{1F3F7}\uFE0F", "\u{1F3AF}", "\u{1F4AD}"] },
-  { name: "\u5B66\u672F", emojis: ["\u{1F4DA}", "\u{1F4D6}", "\u{1F52C}", "\u{1F9EA}", "\u{1F4D0}", "\u{1F4CA}", "\u{1F50D}", "\u{1F310}", "\u{1F393}", "\u{1F4CB}", "\u{1F4C9}", "\u{1F4C8}"] },
-  { name: "\u5DE5\u5177", emojis: ["\u270F\uFE0F", "\u{1F527}", "\u2699\uFE0F", "\u{1F6E1}\uFE0F", "\u{1F680}", "\u{1F4AC}", "\u{1F4DD}", "\u{1F4E6}", "\u{1F5C2}\uFE0F", "\u{1F5C3}\uFE0F", "\u{1F4BB}", "\u{1F4F1}", "\u{1F4E1}", "\u{1F399}\uFE0F", "\u2702\uFE0F", "\u{1F528}"] },
-  { name: "\u8C61\u5F81", emojis: ["\u{1F9E0}", "\u{1F9E9}", "\u{1F3A8}", "\u{1F48E}", "\u{1F31F}", "\u2764\uFE0F", "\u{1F30D}", "\u23F0", "\u{1F308}", "\u{1F3AD}", "\u2696\uFE0F", "\u{1F3AA}", "\u{1F338}", "\u{1F340}", "\u{1F98B}", "\u{1F3B5}", "\u{1F4B0}", "\u{1F511}", "\u{1F3C6}", "\u{1F9F2}", "\u{1F6A9}", "\u{1F3C1}"] },
-  { name: "\u72B6\u6001", emojis: ["\u{1F7E2}", "\u{1F7E1}", "\u{1F534}", "\u{1F535}", "\u{1F7E3}", "\u{1F7E0}", "\u2705", "\u274C", "\u26A0\uFE0F", "\u26D4", "\u2139\uFE0F", "\u{1F197}"] }
-];
-var EMOJI_SET = EMOJI_CATEGORIES.flatMap((c) => c.emojis);
-var DEFAULT_TAGS = [
-  { id: "tag-concept", name: "\u6982\u5FF5", emoji: "\u{1F4A1}", color: "rgba(255, 255, 100, 0.45)", textColor: "inherit", style: "highlight" },
-  { id: "tag-important", name: "\u91CD\u70B9", emoji: "\u{1F525}", color: "rgba(255, 180, 80, 0.45)", textColor: "inherit", style: "highlight" },
-  { id: "tag-question", name: "\u7591\u95EE", emoji: "\u2753", color: "rgba(255, 130, 180, 0.40)", textColor: "inherit", style: "dashed" },
-  { id: "tag-reference", name: "\u5F15\u7528", emoji: "\u{1F4CE}", color: "rgba(80, 120, 220, 0.25)", textColor: "inherit", style: "underline" },
-  { id: "tag-todo", name: "\u5F85\u529E", emoji: "\u2705", color: "rgba(130, 255, 130, 0.40)", textColor: "inherit", style: "semi-transparent" }
-];
-var DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u6DF1\u5EA6\u7ED1\u5B9A\u7684\u4E2A\u4EBA\u77E5\u8BC6\u7BA1\u7406\uFF08PKM\uFF09\u5206\u6790\u5F15\u64CE\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u5BF9\u7528\u6237\u9009\u4E2D\u7684\u6587\u672C\u751F\u6210\u4E00\u4E2A\u9AD8\u5EA6\u7CBE\u70BC\u7684\u5355\u884C\u6458\u8981\u6807\u9898\u3002
-
-\u3010\u7EDD\u5BF9\u8F93\u51FA\u89C4\u5219 \u2014 \u6781\u4E3A\u4E25\u683C\u3011
-1. \u4F60\u7684\u6574\u4E2A\u56DE\u590D\u5FC5\u987B\u662F\u4E14\u4EC5\u662F\u5355\u884C\u7EAF\u6587\u672C\uFF0C\u4E25\u7981\u6362\u884C\uFF0C\u4E25\u7981 Markdown \u683C\u5F0F\u3002
-2. \u5B57\u6570\u9650\u5236\u5728 __FOOTNOTE_LENGTH__ \u5B57\u4EE5\u5185\u3002
-3. \u4E0D\u5F97\u8F93\u51FA\u4EFB\u4F55\u5BD2\u6684\u3001\u89E3\u91CA\u3001\u5E8F\u53F7\u6216\u989D\u5916\u6BB5\u843D\u3002
-4. \u8F93\u51FA\u8BED\u8A00\u5FC5\u987B\u4E3A\uFF1A__TARGET_LANGUAGE__\u3002
-5. \u5FC5\u987B\u4E25\u683C\u9075\u5FAA\u4EE5\u4E0B\u683C\u5F0F\uFF0C\u82B1\u62EC\u53F7\u5185\u586B\u5165\u6458\u8981\u5185\u5BB9\uFF1A
-[1][__FOOTNOTE_ID__] {__DEFAULT_SUMMARY_PROMPT__}`;
-var DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u6DF1\u5EA6\u7ED1\u5B9A\u7684\u4E2A\u4EBA\u77E5\u8BC6\u7BA1\u7406\uFF08PKM\uFF09\u5206\u6790\u5F15\u64CE\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u5904\u7406\u7528\u6237\u63D0\u4F9B\u7684\u6587\u672C\u7247\u6BB5\uFF0C\u5E76\u4E25\u683C\u6309\u7167\u4EE5\u4E0B\u89C4\u5B9A\u7684\u683C\u5F0F\u8F93\u51FA\u7ED3\u679C\u3002
-
-\u3010\u7EDD\u5BF9\u8F93\u51FA\u89C4\u5219\u3011
-\u4F60\u7684\u56DE\u590D\u5FC5\u987B\u4E25\u683C\u5305\u542B\u4E24\u90E8\u5206\uFF0C\u4E14\u987A\u5E8F\u4E0D\u53EF\u98A0\u5012\u3002\u4E0D\u8981\u8F93\u51FA\u4EFB\u4F55\u5BD2\u6684\u6216\u989D\u5916\u7684\u89E3\u91CA\u3002
-\u8F93\u51FA\u8BED\u8A00\u5FC5\u987B\u4E3A\uFF1A__TARGET_LANGUAGE__\u3002
-
-=== PART1 ===
-\u5FC5\u987B\u4EC5\u4E3A\u5355\u884C\u7EAF\u6587\u672C\uFF0C\u4E25\u7981\u6362\u884C\uFF0C\u5B57\u6570\u9650\u5236\u5728 __FOOTNOTE_LENGTH__ \u4EE5\u5185\u3002\u5FC5\u987B\u4E25\u683C\u9075\u5FAA\u4EE5\u4E0B\u683C\u5F0F\uFF1A
-[1][__FOOTNOTE_ID__] {__DEFAULT_SUMMARY_PROMPT__}
-
-=== PART2 ===
-\u7B2C\u4E8C\u90E8\u5206\u7684\u8F93\u51FA\u53EF\u4EE5\u5F00\u59CB\u5305\u542B Markdown \u8BED\u6CD5\u3002\u8868\u683C\u3001Mermaid \u56FE\u8868\u7B49\u591A\u7EA7\u6392\u7248\u4E5F\u88AB\u5141\u8BB8\u4F7F\u7528\u3002
-\u4F46\u6700\u91CD\u8981\u7684\u662F\uFF1A\u4F60\u5FC5\u987B\u4E25\u683C\u9075\u5FAA\u7528\u6237\u7684\u5177\u4F53\u6307\u793A\u6765\u751F\u6210\u6216\u4FEE\u6539\u8FD9\u4E00\u90E8\u5206\u7684\u6587\u672C\u5185\u5BB9\uFF1A
-
-__DYNAMIC_PROMPTS____DETAIL_INSTRUCTION__`;
-var DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE = `\u4F60\u662F\u4E00\u4E2A\u5F3A\u5927\u7684\u5E95\u5C42\u6587\u672C\u5904\u7406\u5F15\u64CE\u3002\u7528\u6237\u9009\u4E2D\u4E86\u4E00\u6BB5\u6587\u672C\u5E76\u7ED9\u4F60\u4E86\u4E00\u6761\u5904\u7406\u6307\u4EE4\u3002\u8BF7\u4E25\u4E1D\u5408\u7F1D\u5730\u6267\u884C\u7528\u6237\u7684\u6307\u4EE4\u53BB\u6539\u5199\u539F\u6587\u3002
-
-\u26A0\uFE0F \u3010\u7CFB\u7EDF\u6700\u9AD8\u5B89\u5168\u7EA7\u522B\u89C4\u5B9A\u3011
-1. \u4F60\u7684\u8F93\u51FA\u5C06\u5B8C\u5168\u3001\u76F4\u63A5\u5730\u8986\u76D6\u7528\u6237\u7684\u539F\u6587\u3002
-2. \u7EDD\u5BF9\u7981\u6B62\u8F93\u51FA\u4EFB\u4F55\u5BD2\u6684\u3001\u89E3\u91CA\u3001\u8BC4\u8BBA\u3001\u6216\u8005\u4F60\u7684\u201C\u601D\u8003\u8FC7\u7A0B\u201D\u3002
-3. \u7EDD\u5BF9\u7981\u6B62\u5728\u4E0D\u9700\u8981\u65F6\u4E3B\u52A8\u6DFB\u52A0 Markdown \u4EE3\u7801\u5757\u6807\u8BB0\uFF08\u5982 \`\`\` \u7B49\uFF09\u3002
-4. \u5C3D\u53EF\u80FD\u4FDD\u6301\u539F\u6587\u672C\u8EAB\u7684\u6392\u7248\u7279\u5F81\u3002`;
-
-// src/ai.ts
+var import_obsidian3 = require("obsidian");
+init_constants();
 function applyPromptTemplate(template, replacements) {
   let result = template;
   for (const [key, value] of Object.entries(replacements)) {
@@ -2569,7 +3244,7 @@ var AIClient = class {
    */
   static async testConnection(provider) {
     try {
-      const response = await (0, import_obsidian2.requestUrl)({
+      const response = await (0, import_obsidian3.requestUrl)({
         url: `${provider.baseURL}/models`,
         method: "GET",
         headers: {
@@ -2579,7 +3254,7 @@ var AIClient = class {
       return response.status === 200;
     } catch (e) {
       try {
-        const response = await (0, import_obsidian2.requestUrl)({
+        const response = await (0, import_obsidian3.requestUrl)({
           url: `${provider.baseURL}/chat/completions`,
           method: "POST",
           headers: {
@@ -2614,7 +3289,8 @@ var AIClient = class {
       followUpText,
       searchContext,
       images,
-      promptTemplates
+      promptTemplates,
+      purpose = "annotation"
     } = options;
     const effectiveTemp = (_a = command == null ? void 0 : command.temperature) != null ? _a : steward.temperature;
     const effectiveTopP = (_b = command == null ? void 0 : command.topP) != null ? _b : steward.topP;
@@ -2641,7 +3317,19 @@ ${steward.writingStyle}`;
 ${command.detailPrompt}` : "";
     const targetLanguage = (command == null ? void 0 : command.language) || steward.language || "\u6587\u672C\u7684\u539F\u59CB\u8BED\u8A00";
     let systemPrompt = "";
-    if ((command == null ? void 0 : command.type) === "default-summary") {
+    if (purpose === "augment") {
+      systemPrompt = applyPromptTemplate(
+        (promptTemplates == null ? void 0 : promptTemplates.augment) || DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE,
+        {
+          FOOTNOTE_LENGTH: String(effectiveFootnoteLen),
+          TARGET_LANGUAGE: targetLanguage,
+          FOOTNOTE_ID: footnoteId,
+          DEFAULT_SUMMARY_PROMPT: defaultSummaryPrompt,
+          DYNAMIC_PROMPTS: dynamicPrompts,
+          DETAIL_INSTRUCTION: detailInstruction
+        }
+      );
+    } else if ((command == null ? void 0 : command.type) === "default-summary") {
       systemPrompt = applyPromptTemplate(
         (promptTemplates == null ? void 0 : promptTemplates.defaultSummary) || DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
         {
@@ -2749,7 +3437,7 @@ ${text}
           { role: "user", content: userPrompt }
         ];
       }
-      const response = await (0, import_obsidian2.requestUrl)({
+      const response = await (0, import_obsidian3.requestUrl)({
         url: `${provider.baseURL}/chat/completions`,
         method: "POST",
         headers: {
@@ -2771,6 +3459,14 @@ ${text}
         totalTokens: (_j = (_i = data.usage) == null ? void 0 : _i.total_tokens) != null ? _j : "N/A",
         imagesCount: (images == null ? void 0 : images.length) || 0
       });
+      if (purpose === "augment") {
+        return {
+          state: "1",
+          id: footnoteId,
+          summary: "\u589E\u8865",
+          richText: content.trim()
+        };
+      }
       return AIClient.parseResponse(content, footnoteId);
     } catch (e) {
       console.error("Failed to connect to AI Provider", e);
@@ -2840,13 +3536,13 @@ ${text}
 init_ids();
 
 // src/tavily.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 var TavilyClient = class {
   static async search(apiKey, query, maxResults = 3, searchDepth = "basic") {
     if (!apiKey)
       return [];
     try {
-      const response = await (0, import_obsidian3.requestUrl)({
+      const response = await (0, import_obsidian4.requestUrl)({
         url: "https://api.tavily.com/search",
         method: "POST",
         headers: {
@@ -2894,14 +3590,30 @@ var TavilyClient = class {
 // src/services/annotation-service.ts
 init_state();
 init_annotation_repository();
+
+// src/services/augment-format.ts
+function formatAugmentOutput(output, instruction) {
+  const normalized = output.trim();
+  if (!normalized || normalized.includes("> [!note]"))
+    return normalized;
+  if (normalized.includes("```") || normalized.startsWith("> [!"))
+    return normalized;
+  const paragraphCount = normalized.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean).length;
+  const requestsDetail = /详细|展开|完整说明|逐一|步骤|多角度|深入/.test(instruction);
+  if (paragraphCount <= 2 && !requestsDetail)
+    return normalized;
+  return ["> [!note] \u589E\u8865", ...normalized.split("\n").map((line) => `> ${line}`)].join("\n");
+}
+
+// src/services/annotation-service.ts
 init_editor_viewport();
 var AnnotationService = class {
   constructor(app) {
     this.app = app;
   }
   async rewriteSelection(input) {
-    var _a, _b, _c, _d, _e;
-    const notice = new import_obsidian4.Notice("\u23F3 AI \u6B63\u5728\u6025\u901F\u6539\u5199\u539F\u6587\u4E2D...", 0);
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const notice = new import_obsidian5.Notice("\u23F3 AI \u6B63\u5728\u6025\u901F\u6539\u5199\u539F\u6587\u4E2D...", 0);
     const { from, to } = input.view.state.selection.main;
     const effectiveContextLen = input.inlineSteward.contextLength || 0;
     const fullText = input.view.state.doc.toString();
@@ -2929,13 +3641,23 @@ ${input.selection}`;
 ${input.instruction}`;
     }
     try {
+      const contextPrompt = input.contextMode === "full" ? `
+
+\u3010\u5F53\u524D\u7BA1\u5BB6\u4E3B\u63D0\u793A\u8BCD\u3011
+${((_a = input.steward) == null ? void 0 : _a.systemPrompt) || ""}
+
+\u3010\u5F53\u524D\u7BA1\u5BB6\u5199\u4F5C\u98CE\u683C\u3011
+${((_b = input.steward) == null ? void 0 : _b.writingStyle) || ""}` : input.contextMode === "writingOnly" ? `
+
+\u3010\u5F53\u524D\u7BA1\u5BB6\u5199\u4F5C\u98CE\u683C\u3011
+${((_c = input.steward) == null ? void 0 : _c.writingStyle) || ""}` : "";
       const body = {
         model: input.provider.modelId,
         messages: [
-          { role: "system", content: input.inlineRewritePrompt },
+          { role: "system", content: `${input.inlineRewritePrompt}${contextPrompt}` },
           { role: "user", content: userPrompt }
         ],
-        temperature: (_a = input.inlineSteward.temperature) != null ? _a : 0.3
+        temperature: (_d = input.inlineSteward.temperature) != null ? _d : 0.3
       };
       const response = await fetch(
         `${input.provider.baseURL}/chat/completions`,
@@ -2952,22 +3674,23 @@ ${input.instruction}`;
         throw new Error("API Request Failed");
       }
       const data = await response.json();
-      let newText = ((_e = (_d = (_c = (_b = data.choices) == null ? void 0 : _b[0]) == null ? void 0 : _c.message) == null ? void 0 : _d.content) == null ? void 0 : _e.trim()) || input.selection;
-      if (newText.startsWith("```markdown") && newText.endsWith("```")) {
+      let newText = ((_h = (_g = (_f = (_e = data.choices) == null ? void 0 : _e[0]) == null ? void 0 : _f.message) == null ? void 0 : _g.content) == null ? void 0 : _h.trim()) || input.selection;
+      const isMermaidBlock = /^```mermaid\s/i.test(newText) && newText.endsWith("```");
+      if (!isMermaidBlock && newText.startsWith("```markdown") && newText.endsWith("```")) {
         newText = newText.slice(11, -3).trim();
-      } else if (newText.startsWith("```") && newText.endsWith("```")) {
+      } else if (!isMermaidBlock && newText.startsWith("```") && newText.endsWith("```")) {
         newText = newText.slice(3, -3).trim();
       }
       dispatchEditorChangePreservingViewport(input.view, {
         changes: { from, to, insert: newText }
       });
       notice.hide();
-      new import_obsidian4.Notice("\u2728 \u539F\u6587\u6539\u5199\u5B8C\u6210\uFF01\u53EF\u4EE5\u901A\u8FC7 Ctrl+Z \u64A4\u56DE");
+      new import_obsidian5.Notice("\u2728 \u539F\u6587\u6539\u5199\u5B8C\u6210\uFF01\u53EF\u4EE5\u901A\u8FC7 Ctrl+Z \u64A4\u56DE");
       return true;
     } catch (error) {
       console.error(error);
       notice.hide();
-      new import_obsidian4.Notice("\u26A0\uFE0F AI \u6539\u5199\u5931\u8D25");
+      new import_obsidian5.Notice("\u26A0\uFE0F AI \u6539\u5199\u5931\u8D25");
       return false;
     }
   }
@@ -3017,7 +3740,7 @@ ${input.instruction}`;
     return { id: newId, summary: result.summary };
   }
   async augmentSelection(input) {
-    var _a, _b;
+    var _a, _b, _c;
     const { from, to } = input.view.state.selection.main;
     const effectiveContextLen = (_b = (_a = input.command) == null ? void 0 : _a.contextLength) != null ? _b : input.steward.contextLength;
     const halfLen = Math.floor(effectiveContextLen / 2);
@@ -3033,19 +3756,20 @@ ${input.instruction}`;
       footnoteId: generateAnnotationId(),
       defaultSummaryPrompt: "\u7528\u4E00\u53E5\u8BDD\u9AD8\u5EA6\u6982\u62EC\u7ED3\u8BBA",
       command: input.command,
-      promptTemplates: this.promptTemplates(input.settings)
+      promptTemplates: this.promptTemplates(input.settings),
+      purpose: "augment"
     });
-    return (result == null ? void 0 : result.richText) || null;
+    return result ? formatAugmentOutput(result.richText, ((_c = input.command) == null ? void 0 : _c.detailPrompt) || "") : null;
   }
   async followUp(input) {
     const fullText = await this.loadDocumentText(input.filePath);
     if (!fullText) {
-      new import_obsidian4.Notice("\u274C \u672A\u627E\u5230\u5173\u8054\u6587\u6863\uFF0C\u8BF7\u786E\u4FDD\u76F8\u5173\u6587\u6863\u5728\u6807\u7B7E\u9875\u4E2D\u5DF2\u6253\u5F00");
+      new import_obsidian5.Notice("\u274C \u672A\u627E\u5230\u5173\u8054\u6587\u6863\uFF0C\u8BF7\u786E\u4FDD\u76F8\u5173\u6587\u6863\u5728\u6807\u7B7E\u9875\u4E2D\u5DF2\u6253\u5F00");
       return null;
     }
     const node = annotationRepository.parseMarkingNodes(fullText).find((candidate) => candidate.id === input.nodeId);
     if (!node) {
-      new import_obsidian4.Notice("\u274C \u672A\u80FD\u5728\u6587\u6863\u4E2D\u627E\u5230\u8BE5\u9AD8\u4EAE\u539F\u6587");
+      new import_obsidian5.Notice("\u274C \u672A\u80FD\u5728\u6587\u6863\u4E2D\u627E\u5230\u8BE5\u9AD8\u4EAE\u539F\u6587");
       return null;
     }
     const effectiveContextLen = input.steward.contextLength;
@@ -3086,7 +3810,7 @@ ${input.instruction}`;
       }
     }
     const targetFile = filePath ? this.app.vault.getAbstractFileByPath(filePath) : this.app.workspace.getActiveFile();
-    if (!(targetFile instanceof import_obsidian4.TFile)) {
+    if (!(targetFile instanceof import_obsidian5.TFile)) {
       return "";
     }
     return this.app.vault.read(targetFile);
@@ -3094,7 +3818,8 @@ ${input.instruction}`;
   promptTemplates(settings) {
     return {
       defaultSummary: settings.defaultSummarySystemPromptTemplate,
-      annotation: settings.annotationSystemPromptTemplate
+      annotation: settings.annotationSystemPromptTemplate,
+      augment: settings.augmentSystemPromptTemplate
     };
   }
   async buildSearchContext(input, nodeText) {
@@ -3116,158 +3841,240 @@ ${input.instruction}`;
 
 // src/settings/setting-tab.ts
 var import_obsidian6 = require("obsidian");
-
-// src/ui/emoji-picker.ts
-function showEmojiGrid(anchor, onSelect) {
-  const existing = document.querySelector(".mn-emoji-picker");
-  if (existing)
-    existing.remove();
-  const picker = document.createElement("div");
-  picker.addClass("mn-emoji-picker");
-  const rect = anchor.getBoundingClientRect();
-  picker.style.position = "fixed";
-  const pickerWidth = 320;
-  let posX = rect.left - pickerWidth - 6;
-  if (posX < 10)
-    posX = rect.right + 6;
-  if (posX + pickerWidth + 10 > window.innerWidth) {
-    posX = window.innerWidth - pickerWidth - 10;
-    if (posX < 10)
-      posX = 10;
-  }
-  let posY = rect.top;
-  if (posY + 400 > window.innerHeight) {
-    posY = window.innerHeight - 410;
-    if (posY < 10)
-      posY = 10;
-  }
-  picker.style.left = `${posX}px`;
-  picker.style.top = `${posY}px`;
-  picker.style.zIndex = "10000";
-  const tabsHeader = picker.createEl("div", { cls: "mn-emoji-tabs" });
-  const gridContainer = picker.createEl("div", { cls: "mn-emoji-grid" });
-  let isFirst = true;
-  for (const cat of EMOJI_CATEGORIES) {
-    const tab = tabsHeader.createEl("div", { cls: "mn-emoji-tab", text: cat.name });
-    if (isFirst)
-      tab.addClass("mn-emoji-tab-active");
-    const populateGrid = () => {
-      gridContainer.empty();
-      for (const emoji of cat.emojis) {
-        const cell = gridContainer.createEl("span", { text: emoji, cls: "mn-emoji-cell" });
-        cell.onclick = () => {
-          onSelect(emoji);
-          picker.remove();
-        };
-      }
-    };
-    if (isFirst)
-      populateGrid();
-    tab.onclick = () => {
-      tabsHeader.querySelectorAll(".mn-emoji-tab").forEach((node) => {
-        node.removeClass("mn-emoji-tab-active");
-      });
-      tab.addClass("mn-emoji-tab-active");
-      populateGrid();
-    };
-    isFirst = false;
-  }
-  document.body.appendChild(picker);
-  const closeHandler = (e) => {
-    if (!picker.contains(e.target) && e.target !== anchor) {
-      picker.remove();
-      document.removeEventListener("click", closeHandler);
-    }
-  };
-  setTimeout(() => document.addEventListener("click", closeHandler), 10);
-}
-
-// src/ui/icons.ts
-var UI_ICONS = {
-  settings: "\u2699\uFE0F",
-  general: "\u2699\uFE0F",
-  tags: "\u{1F3F7}\uFE0F",
-  models: "\u{1F50C}",
-  steward: "\u{1F916}",
-  advanced: "\u{1F6E0}\uFE0F",
-  prompt: "\u{1F9E0}",
-  actionChat: "\u{1F4AC}",
-  actionRewrite: "\u270E",
-  actionAugment: "\u2295",
-  actionLink: "\u{1F517}",
-  refresh: "\u21BB",
-  filter: "\u2315",
-  locate: "\u2316",
-  view: "\u25C9",
-  merge: "\u26D3",
-  add: "+",
-  remove: "\xD7",
-  delete: "\u{1F5D1}\uFE0F",
-  save: "\u2713",
-  cancel: "\xD7",
-  undo: "\u21B6",
-  copy: "\u29C9",
-  search: "\u2315",
-  warning: "\u26A0\uFE0F",
-  success: "\u2713",
-  error: "\xD7"
-};
+init_constants();
+init_tag_styles();
+init_emoji_picker();
+init_icons();
 
 // src/settings/command-presets.ts
 var MAX_STEWARD_COMMANDS = 8;
 var DEFAULT_STEWARD_COMMANDS = 6;
+function normalizeCommandVariables2(variables) {
+  return Array.isArray(variables) ? variables.flatMap((variable) => {
+    var _a;
+    if (!variable || typeof variable.id !== "string" || !variable.id.trim())
+      return [];
+    return [{
+      ...variable,
+      id: variable.id.trim(),
+      label: ((_a = variable.label) == null ? void 0 : _a.trim()) || variable.id.trim()
+    }];
+  }) : [];
+}
 var CONVERSATION_PRESETS = [
-  ["\u6838\u5FC3\u89E3\u91CA", "\u{1F50D}", "\u89E3\u91CA\u9009\u4E2D\u6587\u672C\u7684\u6838\u5FC3\u542B\u4E49\u3001\u5173\u952E\u6982\u5FF5\u548C\u6210\u7ACB\u6761\u4EF6\u3002"],
-  ["\u903B\u8F91\u68B3\u7406", "\u{1F5FA}\uFE0F", "\u68B3\u7406\u9009\u4E2D\u6587\u672C\u7684\u8BBA\u8BC1\u7ED3\u6784\u3001\u56E0\u679C\u5173\u7CFB\u548C\u5173\u952E\u6B65\u9AA4\u3002"],
-  ["\u4E3E\u4F8B\u8BF4\u660E", "\u{1F4A1}", "\u4E3A\u9009\u4E2D\u6587\u672C\u63D0\u4F9B\u7531\u6D45\u5165\u6DF1\u7684\u5177\u4F53\u4F8B\u5B50\uFF0C\u5E2E\u52A9\u7406\u89E3\u5176\u5B9E\u9645\u542B\u4E49\u3002"],
-  [
-    "\u8054\u7CFB\u4E0A\u4E0B\u6587",
-    "\u{1F517}",
-    "\u8BF4\u660E\u9009\u4E2D\u6587\u672C\u4E0E\u4E0A\u4E0B\u6587\u7684\u5173\u7CFB\uFF0C\u4EE5\u53CA\u5B83\u5728\u6574\u4F53\u5185\u5BB9\u4E2D\u7684\u4F5C\u7528\u3002"
-  ],
-  ["\u6279\u5224\u6027\u9605\u8BFB", "\u2696\uFE0F", "\u6307\u51FA\u9009\u4E2D\u6587\u672C\u7684\u524D\u63D0\u3001\u8BC1\u636E\u3001\u5C40\u9650\u548C\u53EF\u80FD\u7684\u53CD\u4F8B\u3002"],
-  ["\u751F\u6210\u7EC3\u4E60", "\u270F\uFE0F", "\u56F4\u7ED5\u9009\u4E2D\u6587\u672C\u751F\u6210\u4E00\u9053\u7406\u89E3\u6027\u7EC3\u4E60\uFF0C\u5E76\u63D0\u4F9B\u7B54\u6848\u548C\u89E3\u6790\u3002"]
+  {
+    name: "\u8BBA\u70B9\u4E0E\u8BC1\u636E",
+    icon: "\u2315",
+    detailPrompt: "\u8BC6\u522B\u9009\u4E2D\u6587\u672C\u7684\u6838\u5FC3\u8BBA\u70B9\u3001\u652F\u6301\u8BC1\u636E\u548C\u9690\u542B\u524D\u63D0\u3002\u533A\u5206\u4E8B\u5B9E\u3001\u63A8\u65AD\u4E0E\u4EF7\u503C\u5224\u65AD\uFF1B\u5982\u679C\u8BC1\u636E\u4E0D\u8DB3\uFF0C\u660E\u786E\u6307\u51FA\u7F3A\u53E3\u3002\u8F93\u51FA\u201C\u6838\u5FC3\u8BBA\u70B9 / \u4F9D\u636E / \u672A\u51B3\u95EE\u9898\u201D\u4E09\u6BB5\uFF0C\u907F\u514D\u590D\u8FF0\u539F\u6587\u3002"
+  },
+  {
+    name: "\u6982\u5FF5\u8FB9\u754C",
+    icon: "\u25C7",
+    detailPrompt: "\u5B9A\u4E49\u9009\u4E2D\u6587\u672C\u4E2D\u7684\u5173\u952E\u6982\u5FF5\uFF0C\u8BF4\u660E\u5176\u5FC5\u8981\u7279\u5F81\u3001\u5BB9\u6613\u6DF7\u6DC6\u7684\u8FD1\u90BB\u6982\u5FF5\u548C\u9002\u7528\u8FB9\u754C\u3002\u82E5\u539F\u6587\u4F7F\u7528\u4E86\u542B\u6DF7\u6216\u5077\u6362\u6982\u5FF5\u7684\u8868\u8FBE\uFF0C\u7ED9\u51FA\u5177\u4F53\u5224\u65AD\u3002"
+  },
+  {
+    name: "\u673A\u5236\u94FE\u6761",
+    icon: "\u2192",
+    detailPrompt: "\u628A\u9009\u4E2D\u6587\u672C\u8FD8\u539F\u4E3A\u53EF\u68C0\u9A8C\u7684\u673A\u5236\u94FE\u6761\uFF1A\u8D77\u70B9\u6761\u4EF6\u3001\u4F5C\u7528\u673A\u5236\u3001\u4E2D\u95F4\u73AF\u8282\u3001\u7ED3\u679C\u548C\u53CD\u9988\u3002\u6807\u51FA\u54EA\u4E9B\u73AF\u8282\u662F\u6587\u672C\u660E\u786E\u8BF4\u660E\u7684\uFF0C\u54EA\u4E9B\u662F\u4F60\u6839\u636E\u8BED\u5883\u63A8\u65AD\u7684\u3002"
+  },
+  {
+    name: "\u8BC1\u636E\u5BA1\u8BA1",
+    icon: "\u25A3",
+    detailPrompt: "\u5BA1\u67E5\u9009\u4E2D\u6587\u672C\u7684\u8BC1\u636E\u8D28\u91CF\uFF1A\u8BC1\u636E\u7C7B\u578B\u3001\u6837\u672C\u6216\u6765\u6E90\u3001\u63A8\u7406\u662F\u5426\u8D8A\u8FC7\u8BC1\u636E\u8FB9\u754C\u3001\u53EF\u80FD\u7684\u6DF7\u6DC6\u56E0\u7D20\u4E0E\u66FF\u4EE3\u89E3\u91CA\u3002\u53EA\u57FA\u4E8E\u6587\u672C\u53EF\u652F\u6301\u7684\u5185\u5BB9\u4F5C\u5224\u65AD\uFF0C\u4E0D\u7F16\u9020\u6765\u6E90\u3002"
+  },
+  {
+    name: "\u5E94\u7528\u8FC1\u79FB",
+    icon: "\u2197",
+    detailPrompt: "\u5C06\u9009\u4E2D\u6587\u672C\u4E2D\u7684\u65B9\u6CD5\u6216\u539F\u5219\u8FC1\u79FB\u5230\u4E00\u4E2A\u73B0\u5B9E\u4F7F\u7528\u573A\u666F\u3002\u5148\u8BF4\u660E\u9002\u7528\u6761\u4EF6\uFF0C\u518D\u7ED9\u51FA\u5177\u4F53\u6B65\u9AA4\u3001\u4E00\u4E2A\u6B63\u4F8B\u548C\u4E00\u4E2A\u4E0D\u9002\u7528\u7684\u60C5\u5F62\uFF0C\u4FDD\u6301\u4E0E\u539F\u6587\u6982\u5FF5\u4E25\u683C\u5BF9\u5E94\u3002",
+    variables: [
+      {
+        id: "scenario",
+        label: "\u5E94\u7528\u573A\u666F",
+        type: "text",
+        required: true,
+        placeholder: "\u4F8B\u5982\uFF1A\u6574\u7406\u7814\u7A76\u8BA1\u5212"
+      }
+    ]
+  },
+  {
+    name: "\u53CD\u4E8B\u5B9E\u68C0\u9A8C",
+    icon: "\u2696",
+    detailPrompt: "\u6784\u9020\u4E00\u4E2A\u80FD\u591F\u68C0\u9A8C\u9009\u4E2D\u6587\u672C\u6838\u5FC3\u4E3B\u5F20\u7684\u53CD\u4E8B\u5B9E\u6216\u8FB9\u754C\u6848\u4F8B\u3002\u8BF4\u660E\u5B83\u6539\u53D8\u4E86\u54EA\u4E2A\u524D\u63D0\u3001\u9884\u671F\u4F1A\u51FA\u73B0\u4EC0\u4E48\u7ED3\u679C\uFF0C\u4EE5\u53CA\u8FD9\u4E2A\u6848\u4F8B\u5BF9\u539F\u7ED3\u8BBA\u7684\u652F\u6301\u3001\u9650\u5236\u6216\u53CD\u9A73\u3002"
+  }
 ];
 var INLINE_PRESETS = [
-  ["\u63D0\u53D6\u8981\u70B9", "\u{1F3AF}", "\u63D0\u53D6\u539F\u6587\u6700\u91CD\u8981\u7684 3-5 \u4E2A\u8981\u70B9\uFF0C\u4FDD\u6301\u539F\u610F\u5E76\u4F7F\u7528\u7B80\u6D01\u6761\u76EE\u3002"],
-  ["\u7CBE\u70BC\u603B\u7ED3", "\u{1F4DD}", "\u5C06\u539F\u6587\u7CBE\u70BC\u4E3A\u6838\u5FC3\u7ED3\u8BBA\uFF0C\u5220\u9664\u91CD\u590D\u548C\u65E0\u5173\u8868\u8FBE\u3002"],
-  ["\u903B\u8F91\u6574\u7406", "\u{1F504}", "\u4F18\u5316\u539F\u6587\u7684\u903B\u8F91\u987A\u5E8F\u548C\u8854\u63A5\uFF0C\u4E0D\u6539\u53D8\u539F\u59CB\u542B\u4E49\u3002"],
-  ["\u901A\u4FD7\u8F6C\u6362", "\u{1F5E3}\uFE0F", "\u5C06\u539F\u6587\u6539\u5199\u4E3A\u975E\u4E13\u4E1A\u8BFB\u8005\u4E5F\u80FD\u7406\u89E3\u7684\u81EA\u7136\u8868\u8FBE\u3002"],
-  ["Markdown\u7ED3\u6784\u5316", "\u24C2\uFE0F", "\u5C06\u539F\u6587\u6574\u7406\u4E3A\u6E05\u6670\u7684 Markdown \u6807\u9898\u3001\u5217\u8868\u548C\u91CD\u70B9\u7ED3\u6784\u3002"],
-  ["\u601D\u7EF4\u5BFC\u56FE", "\u{1F4CA}", "\u5C06\u539F\u6587\u63D0\u70BC\u4E3A Mermaid mindmap \u4EE3\u7801\uFF0C\u53EA\u8F93\u51FA\u53EF\u6267\u884C\u4EE3\u7801\u3002"]
+  {
+    name: "\u538B\u7F29\u8BBA\u65E8",
+    icon: "\u2261",
+    detailPrompt: "\u5C06\u539F\u6587\u538B\u7F29\u4E3A\u6700\u5C0F\u4F46\u5B8C\u6574\u7684\u8BBA\u65E8\u3002\u4FDD\u7559\u4E3B\u8BED\u3001\u8C13\u8BED\u3001\u56E0\u679C\u5173\u7CFB\u3001\u9650\u5B9A\u6761\u4EF6\u3001\u6570\u5B57\u548C\u4E13\u6709\u540D\u8BCD\uFF1B\u5220\u9664\u4FEE\u8F9E\u3001\u91CD\u590D\u548C\u80CC\u666F\u94FA\u57AB\u3002\u53EA\u8F93\u51FA\u6539\u5199\u540E\u7684\u6587\u672C\uFF0C\u957F\u5EA6\u63A7\u5236\u5728\u539F\u6587\u7684 25%-40%\u3002"
+  },
+  {
+    name: "\u8BBA\u8BC1\u91CD\u5199",
+    icon: "\u270E",
+    detailPrompt: "\u91CD\u5199\u539F\u6587\u4EE5\u589E\u5F3A\u8BBA\u8BC1\u6E05\u6670\u5EA6\u3002\u6309\u201C\u4E3B\u5F20\u2014\u4F9D\u636E\u2014\u9650\u5B9A\u6761\u4EF6\u201D\u7684\u987A\u5E8F\u7EC4\u7EC7\u53E5\u5B50\uFF0C\u4FEE\u590D\u6307\u4EE3\u4E0D\u660E\u3001\u903B\u8F91\u8DF3\u8DC3\u548C\u8FC7\u957F\u5D4C\u5957\u53E5\uFF0C\u4F46\u4E0D\u5F97\u6539\u53D8\u4E8B\u5B9E\u3001\u7ACB\u573A\u6216\u7ED3\u8BBA\u5F3A\u5EA6\u3002\u53EA\u8F93\u51FA\u6539\u5199\u7ED3\u679C\u3002"
+  },
+  {
+    name: "\u9762\u5411\u8BFB\u8005\u6539\u5199",
+    icon: "Aa",
+    detailPrompt: "\u9762\u5411\u6307\u5B9A\u8BFB\u8005\u6539\u5199\u539F\u6587\u3002\u4FDD\u7559\u4E0D\u53EF\u66FF\u4EE3\u7684\u4E13\u4E1A\u672F\u8BED\uFF0C\u5E76\u5728\u9996\u6B21\u51FA\u73B0\u65F6\u7528\u77ED\u8BED\u89E3\u91CA\uFF1B\u628A\u62BD\u8C61\u8868\u8FBE\u6362\u6210\u53EF\u7406\u89E3\u7684\u5177\u4F53\u8868\u8FBE\u3002\u4E0D\u5F97\u6DFB\u52A0\u539F\u6587\u6CA1\u6709\u7684\u4E8B\u5B9E\uFF0C\u53EA\u8F93\u51FA\u6539\u5199\u7ED3\u679C\u3002",
+    variables: [
+      {
+        id: "audience",
+        label: "\u76EE\u6807\u8BFB\u8005",
+        type: "select",
+        required: true,
+        options: [
+          { value: "\u521D\u5B66\u8005", label: "\u521D\u5B66\u8005" },
+          { value: "\u4E13\u4E1A\u540C\u884C", label: "\u4E13\u4E1A\u540C\u884C" },
+          { value: "\u7BA1\u7406\u8005", label: "\u7BA1\u7406\u8005" }
+        ]
+      }
+    ]
+  },
+  {
+    name: "\u903B\u8F91\u5206\u5C42",
+    icon: "\u2195",
+    detailPrompt: "\u5728\u4E0D\u6539\u53D8\u539F\u610F\u7684\u524D\u63D0\u4E0B\u91CD\u6392\u539F\u6587\u3002\u8BA9\u6BCF\u4E00\u6BB5\u53EA\u627F\u62C5\u4E00\u4E2A\u529F\u80FD\uFF0C\u8865\u8DB3\u5FC5\u8981\u7684\u8FDE\u63A5\u8BCD\uFF0C\u660E\u786E\u56E0\u679C\u3001\u8F6C\u6298\u3001\u6761\u4EF6\u548C\u7ED3\u8BBA\u3002\u4FDD\u7559\u539F\u6587\u4FE1\u606F\uFF0C\u4E0D\u8F93\u51FA\u6807\u9898\u6216\u89E3\u91CA\u3002"
+  },
+  {
+    name: "Markdown\u7ED3\u6784\u5316",
+    icon: "\u25A4",
+    detailPrompt: "\u5C06\u539F\u6587\u6574\u7406\u4E3A\u53EF\u76F4\u63A5\u9605\u8BFB\u7684 Markdown\u3002\u6839\u636E\u5185\u5BB9\u4F7F\u7528\u5408\u9002\u7684\u6807\u9898\u3001\u5217\u8868\u3001\u8868\u683C\u548C\u52A0\u7C97\uFF1B\u4E0D\u8981\u4E3A\u4E86\u5F62\u5F0F\u62C6\u6563\u5B8C\u6574\u8BBA\u8BC1\uFF0C\u4E0D\u8981\u5220\u6389\u5173\u952E\u9650\u5B9A\u6761\u4EF6\u3002\u76F4\u63A5\u8F93\u51FA Markdown\uFF0C\u4E0D\u8981\u5305\u88F9\u4EE3\u7801\u5757\u3002"
+  },
+  {
+    name: "Mermaid\u601D\u7EF4\u5BFC\u56FE",
+    icon: "\u2318",
+    detailPrompt: "\u5C06\u539F\u6587\u8F6C\u6362\u4E3A Mermaid mindmap\u3002\u5FC5\u987B\u8F93\u51FA\u5B8C\u6574\u4E14\u53EF\u76F4\u63A5\u9884\u89C8\u7684 fenced code block\uFF0C\u7B2C\u4E00\u884C\u5FC5\u987B\u662F ```mermaid\uFF0C\u4EE3\u7801\u4E3B\u4F53\u4EE5 mindmap \u5F00\u59CB\uFF0C\u6700\u540E\u4E00\u884C\u662F ```\u3002\u6839\u8282\u70B9\u6982\u62EC\u4E3B\u9898\uFF0C\u6700\u591A\u4F7F\u7528\u6307\u5B9A\u5C42\u7EA7\uFF1B\u8282\u70B9\u6587\u5B57\u7B80\u77ED\uFF0C\u4E0D\u4F7F\u7528\u4F1A\u7834\u574F Mermaid \u8BED\u6CD5\u7684\u62EC\u53F7\u3001\u5F15\u53F7\u6216\u5192\u53F7\u3002",
+    variables: [
+      {
+        id: "maxDepth",
+        label: "\u6700\u591A\u5C42\u7EA7",
+        type: "select",
+        required: true,
+        defaultValue: "3",
+        options: [
+          { value: "2", label: "2 \u5C42" },
+          { value: "3", label: "3 \u5C42" },
+          { value: "4", label: "4 \u5C42" }
+        ]
+      }
+    ]
+  }
 ];
 var AUGMENT_PRESETS = [
-  ["\u8865\u5145\u80CC\u666F", "\u{1F310}", "\u8865\u5145\u7406\u89E3\u8FD9\u6BB5\u5185\u5BB9\u6240\u9700\u7684\u5386\u53F2\u3001\u9886\u57DF\u6216\u4E0A\u4E0B\u6587\u80CC\u666F\u3002"],
-  ["\u8865\u5145\u5B9A\u4E49", "\u{1F4D6}", "\u8865\u5145\u6587\u4E2D\u5173\u952E\u672F\u8BED\u3001\u4EBA\u7269\u3001\u673A\u6784\u6216\u6982\u5FF5\u7684\u51C6\u786E\u91CA\u4E49\u3002"],
-  ["\u8865\u5145\u4F8B\u5B50", "\u{1F4A1}", "\u8865\u5145\u4E0E\u539F\u6587\u89C2\u70B9\u76F8\u5173\u7684\u5177\u4F53\u6848\u4F8B\u3001\u7C7B\u6BD4\u6216\u5E94\u7528\u573A\u666F\u3002"],
-  ["\u8865\u5145\u6B65\u9AA4", "\u{1F9ED}", "\u5C06\u539F\u6587\u9690\u542B\u7684\u65B9\u6CD5\u3001\u6D41\u7A0B\u6216\u884C\u52A8\u6B65\u9AA4\u8865\u5145\u5B8C\u6574\u3002"],
-  ["\u8865\u5145\u53CD\u4F8B", "\u2696\uFE0F", "\u8865\u5145\u53EF\u80FD\u4E0D\u6210\u7ACB\u7684\u8FB9\u754C\u6761\u4EF6\u3001\u53CD\u4F8B\u548C\u9700\u8981\u6CE8\u610F\u7684\u4F8B\u5916\u3002"],
-  ["\u8865\u5145\u5EF6\u4F38", "\u{1F4DA}", "\u8865\u5145\u503C\u5F97\u7EE7\u7EED\u9605\u8BFB\u3001\u7EC3\u4E60\u6216\u63A2\u7D22\u7684\u76F8\u5173\u65B9\u5411\u3002"]
+  {
+    name: "\u8865\u8DB3\u80CC\u666F",
+    icon: "\u21BA",
+    detailPrompt: "\u8865\u5145\u7406\u89E3\u539F\u6587\u6240\u5FC5\u9700\u7684\u80CC\u666F\uFF0C\u4F18\u5148\u89E3\u91CA\u65F6\u95F4\u3001\u5236\u5EA6\u3001\u7406\u8BBA\u6216\u4E0A\u4E0B\u6587\u7F3A\u53E3\u3002\u53EA\u5199\u80FD\u5E2E\u52A9\u8BFB\u8005\u6B63\u786E\u7406\u89E3\u539F\u6587\u7684\u5185\u5BB9\uFF0C\u4E0D\u628A\u80CC\u666F\u6269\u5C55\u6210\u65E0\u5173\u767E\u79D1\u4ECB\u7ECD\u3002"
+  },
+  {
+    name: "\u5B9A\u4E49\u672F\u8BED",
+    icon: "\u2317",
+    detailPrompt: "\u8865\u5145\u539F\u6587\u4E2D\u6700\u5173\u952E\u7684\u672F\u8BED\u3001\u4EBA\u7269\u3001\u673A\u6784\u6216\u6982\u5FF5\u5B9A\u4E49\u3002\u6BCF\u4E2A\u5B9A\u4E49\u90FD\u8981\u8BF4\u660E\u5B83\u5728\u672C\u6BB5\u8BED\u5883\u4E2D\u7684\u5177\u4F53\u542B\u4E49\uFF1B\u9047\u5230\u5B58\u5728\u4E89\u8BAE\u7684\u5B9A\u4E49\uFF0C\u6807\u51FA\u4E89\u8BAE\u70B9\u3002"
+  },
+  {
+    name: "\u8865\u5145\u4F8B\u5B50",
+    icon: "\u25C7",
+    detailPrompt: "\u4E3A\u539F\u6587\u4E2D\u7684\u6838\u5FC3\u6982\u5FF5\u8865\u5145\u6307\u5B9A\u6570\u91CF\u7684\u5177\u4F53\u4F8B\u5B50\uFF0C\u4F8B\u5B50\u5FC5\u987B\u8986\u76D6\u771F\u5B9E\u4F7F\u7528\u60C5\u5883\uFF0C\u5E76\u660E\u786E\u6307\u51FA\u5B83\u5982\u4F55\u5BF9\u5E94\u539F\u6587\u6982\u5FF5\uFF0C\u907F\u514D\u53EA\u6362\u8BCD\u91CD\u590D\u539F\u6587\u3002",
+    variables: [
+      {
+        id: "exampleCount",
+        label: "\u4F8B\u5B50\u6570\u91CF",
+        type: "select",
+        required: true,
+        defaultValue: "2",
+        options: [
+          { value: "1", label: "1 \u4E2A" },
+          { value: "2", label: "2 \u4E2A" },
+          { value: "3", label: "3 \u4E2A" }
+        ]
+      }
+    ]
+  },
+  {
+    name: "\u8865\u5168\u65B9\u6CD5",
+    icon: "\u21E2",
+    detailPrompt: "\u628A\u539F\u6587\u9690\u542B\u7684\u65B9\u6CD5\u3001\u6D41\u7A0B\u6216\u884C\u52A8\u6B65\u9AA4\u8865\u5145\u6210\u53EF\u6267\u884C\u8BF4\u660E\u3002\u4EC5\u8865\u8DB3\u539F\u6587\u5DF2\u7ECF\u6697\u793A\u7684\u6B65\u9AA4\uFF0C\u4E0D\u64C5\u81EA\u5F15\u5165\u672A\u7ECF\u8BF4\u660E\u7684\u5DE5\u5177\u6216\u524D\u63D0\u3002"
+  },
+  {
+    name: "\u8FB9\u754C\u4E0E\u53CD\u4F8B",
+    icon: "\u26A0",
+    detailPrompt: "\u8865\u5145\u539F\u6587\u7ED3\u8BBA\u6210\u7ACB\u6240\u9700\u7684\u8FB9\u754C\u6761\u4EF6\u3001\u5931\u8D25\u60C5\u5F62\u548C\u4E00\u4E2A\u6709\u4EE3\u8868\u6027\u7684\u53CD\u4F8B\u3002\u8BF4\u660E\u53CD\u4F8B\u6539\u53D8\u4E86\u54EA\u4E2A\u524D\u63D0\uFF0C\u4EE5\u53CA\u8BFB\u8005\u5E94\u5982\u4F55\u907F\u514D\u8BEF\u7528\u539F\u7ED3\u8BBA\u3002"
+  },
+  {
+    name: "\u5EF6\u4F38\u8DEF\u5F84",
+    icon: "\u2197",
+    detailPrompt: "\u56F4\u7ED5\u539F\u6587\u7ED9\u51FA\u4E0B\u4E00\u6B65\u53EF\u63A2\u7D22\u7684\u65B9\u5411\uFF1A\u4E00\u4E2A\u76F8\u5173\u6982\u5FF5\u3001\u4E00\u4E2A\u53EF\u9A8C\u8BC1\u7684\u95EE\u9898\u548C\u4E00\u4E2A\u9002\u5408\u7684\u5B9E\u8DF5\u6216\u9605\u8BFB\u8DEF\u5F84\u3002\u6BCF\u9879\u90FD\u8BF4\u660E\u5B83\u4E0E\u539F\u6587\u7684\u5173\u7CFB\u3002"
+  }
 ];
 function createPresetCommands(stewardId, type) {
   const presets = type === "conversation" ? CONVERSATION_PRESETS : AUGMENT_PRESETS;
-  return presets.map(([name, icon, detailPrompt], index) => ({
+  return presets.map((preset, index) => ({
     id: `${stewardId}-${type}-${index + 1}`,
-    name,
-    icon,
-    detailPrompt,
+    name: preset.name,
+    icon: preset.icon,
+    detailPrompt: preset.detailPrompt,
     type,
     enabled: true,
-    contextMode: "full"
+    contextMode: preset.contextMode || "full",
+    variables: normalizeCommandVariables2(preset.variables)
   }));
 }
 function normalizeCommand(command, type) {
   return {
     ...command,
     type,
-    enabled: command.enabled !== false
+    enabled: command.enabled !== false,
+    variables: normalizeCommandVariables2(command.variables)
   };
+}
+function getBuiltInPreset(commandId, stewardId, type) {
+  const shortId = stewardId === "academic" ? "acad" : stewardId === "learning" ? "learn" : stewardId;
+  const prefixes = [`${stewardId}-${type}-`, `${shortId}-`];
+  const prefix = prefixes.find((candidate) => commandId.startsWith(candidate));
+  if (!prefix)
+    return void 0;
+  const index = Number(commandId.slice(prefix.length)) - 1;
+  const presets = type === "conversation" ? CONVERSATION_PRESETS : AUGMENT_PRESETS;
+  return Number.isInteger(index) && index >= 0 ? presets[index] : void 0;
+}
+function applyBuiltInPreset(command, stewardId, type) {
+  if (command.variables && command.variables.length > 0)
+    return command;
+  const preset = getBuiltInPreset(command.id, stewardId, type);
+  if (!preset)
+    return command;
+  return {
+    ...command,
+    name: preset.name,
+    icon: preset.icon,
+    detailPrompt: preset.detailPrompt,
+    contextMode: preset.contextMode || command.contextMode || "full",
+    variables: normalizeCommandVariables2(preset.variables)
+  };
+}
+function applyExperimentalDefaults(command) {
+  if (command.variables && command.variables.length > 0)
+    return command;
+  if (command.id === "learning-augment-3") {
+    return {
+      ...command,
+      detailPrompt: "\u4E3A\u539F\u6587\u4E2D\u7684\u6838\u5FC3\u6982\u5FF5\u8865\u5145 {{exampleCount}} \u4E2A\u5177\u4F53\u4F8B\u5B50\uFF0C\u4F8B\u5B50\u5FC5\u987B\u8986\u76D6\u771F\u5B9E\u4F7F\u7528\u60C5\u5883\uFF0C\u5E76\u660E\u786E\u6307\u51FA\u5B83\u5982\u4F55\u5BF9\u5E94\u539F\u6587\u6982\u5FF5\uFF0C\u907F\u514D\u53EA\u6362\u8BCD\u91CD\u590D\u539F\u6587\u3002",
+      variables: normalizeCommandVariables2(AUGMENT_PRESETS[2].variables)
+    };
+  }
+  return command;
 }
 function fillCommands(stewardId, commands, type) {
   const byId = /* @__PURE__ */ new Map();
   for (const command of commands) {
-    if (!byId.has(command.id))
-      byId.set(command.id, normalizeCommand(command, type));
+    if (!byId.has(command.id)) {
+      const normalized = normalizeCommand(command, type);
+      byId.set(
+        command.id,
+        applyExperimentalDefaults(applyBuiltInPreset(normalized, stewardId, type))
+      );
+    }
   }
   for (const preset of createPresetCommands(stewardId, type)) {
     if (byId.size >= DEFAULT_STEWARD_COMMANDS)
@@ -3296,280 +4103,55 @@ function normalizeStewardCommands(steward) {
   }
 }
 function normalizeInlineCommands(steward) {
+  var _a;
   const commands = Array.isArray(steward.commands) ? steward.commands : [];
   const byId = /* @__PURE__ */ new Map();
   for (const command of commands) {
     if (!byId.has(command.id)) {
-      byId.set(command.id, {
+      let normalized = {
         ...command,
         type: "inline-modify",
-        enabled: command.enabled !== false
-      });
+        enabled: command.enabled !== false,
+        variables: normalizeCommandVariables2(command.variables)
+      };
+      const presetIndexMatch = /^(?:inline|inline-default)-(\d+)$/.exec(normalized.id);
+      const presetIndex = presetIndexMatch ? Number(presetIndexMatch[1]) - 1 : -1;
+      const preset = INLINE_PRESETS[presetIndex];
+      if (preset && ((_a = normalized.variables) == null ? void 0 : _a.length) === 0) {
+        normalized = {
+          ...normalized,
+          name: preset.name,
+          icon: preset.icon,
+          detailPrompt: preset.detailPrompt,
+          contextMode: normalized.contextMode || preset.contextMode || "writingOnly",
+          variables: normalizeCommandVariables2(preset.variables)
+        };
+      }
+      byId.set(command.id, normalized);
     }
   }
-  for (const [index, [name, icon, detailPrompt]] of INLINE_PRESETS.entries()) {
+  for (const [index, preset] of INLINE_PRESETS.entries()) {
     if (byId.size >= DEFAULT_STEWARD_COMMANDS)
       break;
     const id = `inline-default-${index + 1}`;
     if (!byId.has(id)) {
       byId.set(id, {
         id,
-        name,
-        icon,
-        detailPrompt,
+        name: preset.name,
+        icon: preset.icon,
+        detailPrompt: preset.detailPrompt,
         type: "inline-modify",
         enabled: true,
-        contextMode: "writingOnly"
+        contextMode: "writingOnly",
+        variables: normalizeCommandVariables2(preset.variables)
       });
     }
   }
   steward.commands = Array.from(byId.values()).slice(0, MAX_STEWARD_COMMANDS);
 }
 
-// src/settings/modals.ts
-var import_obsidian5 = require("obsidian");
-var LightningCommandEditModal = class extends import_obsidian5.Modal {
-  constructor(app, cmd, tags, onSave) {
-    super(app);
-    this.cmd = { ...cmd };
-    this.tags = tags;
-    this.onSave = onSave;
-  }
-  onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.createEl("h3", {
-      text: `${UI_ICONS.actionRewrite} \u7F16\u8F91\u6307\u4EE4: ${this.cmd.icon} ${this.cmd.name}`
-    });
-    new import_obsidian5.Setting(contentEl).setName("\u540D\u79F0").addText(
-      (text) => text.setValue(this.cmd.name).onChange((value) => {
-        this.cmd.name = value;
-      })
-    );
-    const iconSetting = new import_obsidian5.Setting(contentEl).setName("\u56FE\u6807");
-    const iconBtn = iconSetting.controlEl.createEl("button", {
-      text: this.cmd.icon,
-      attr: {
-        style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;"
-      }
-    });
-    iconBtn.onclick = () => {
-      showEmojiGrid(iconBtn, (emoji) => {
-        this.cmd.icon = emoji;
-        iconBtn.innerText = emoji;
-      });
-    };
-    if (this.cmd.type === "default-summary") {
-      new import_obsidian5.Setting(contentEl).setName("\u4E00\u53E5\u8BDD\u603B\u7ED3\u7EA6\u675F").setDesc("\u9ED8\u8BA4\u5904\u7406\u9AD8\u4EAE\u65F6\u7684\u4E00\u53E5\u8BDD\u7EA6\u675F").addTextArea(
-        (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
-          this.cmd.detailPrompt = value;
-        })
-      );
-    } else if (this.cmd.type === "inline-modify") {
-      new import_obsidian5.Setting(contentEl).setName("\u5904\u7406\u547D\u4EE4").setDesc(
-        "\u544A\u8BC9\u5927\u6A21\u578B\u4F60\u60F3\u5982\u4F55\u5904\u7406\u6216\u6539\u5199\u8FD9\u6BB5\u539F\u6587\uFF08\u4E0D\u8981\u6709\u4EFB\u4F55\u8FD4\u56DE\u7ED3\u679C\u5916\u7684\u6807\u9898\u5185\u5BB9\uFF09"
-      ).addTextArea(
-        (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
-          this.cmd.detailPrompt = value;
-        })
-      );
-    } else {
-      new import_obsidian5.Setting(contentEl).setName("\u8BE6\u7EC6\u5185\u5BB9\u6307\u4EE4").setDesc("\u5B9A\u4E49 AI \u7B2C\u4E8C\u90E8\u5206\uFF08\u5411\u4E0B\u8FFD\u95EE\u89D2\u6CE8\u6DF1\u5C42\u5185\u5BB9\uFF09\u7684\u8F93\u51FA\u5185\u5BB9").addTextArea(
-        (text) => text.setValue(this.cmd.detailPrompt).onChange((value) => {
-          this.cmd.detailPrompt = value;
-        })
-      );
-      new import_obsidian5.Setting(contentEl).setName("\u7BA1\u5BB6\u63D0\u793A\u8BCD\u5E94\u7528\u8303\u56F4").setDesc("\u51B3\u5B9A\u8BE5\u547D\u4EE4\u6267\u884C\u65F6\uFF0C\u662F\u5426\u6CBF\u7528\u9605\u8BFB\u7BA1\u5BB6\u7684\u8BBE\u5B9A\u3002").addDropdown((dropdown) => {
-        dropdown.addOption("full", "\u5E94\u7528\u9605\u8BFB\u7406\u89E3 + \u5199\u4F5C\u98CE\u683C (\u63A8\u8350)");
-        dropdown.addOption("writingOnly", "\u4EC5\u5E94\u7528\u5199\u4F5C\u98CE\u683C");
-        dropdown.addOption("none", "\u7EAF\u51C0\u6267\u884C (\u5747\u4E0D\u5E94\u7528)");
-        dropdown.setValue(this.cmd.contextMode || "full");
-        dropdown.onChange((value) => {
-          this.cmd.contextMode = value;
-        });
-      });
-    }
-    if (this.cmd.type !== "inline-modify") {
-      new import_obsidian5.Setting(contentEl).setName("\u5173\u8054\u6807\u7B7E (Tag)").setDesc("\u6267\u884C\u6B64\u6307\u4EE4\u65F6\u81EA\u52A8\u9644\u52A0\u7684\u6807\u7B7E\u5206\u7C7B").addDropdown((dropdown) => {
-        dropdown.addOption("", "\u4E0D\u5173\u8054 (\u65E0\u6807\u7B7E)");
-        const tags = this.tags.length > 0 ? this.tags : DEFAULT_TAGS;
-        for (const tag of tags) {
-          dropdown.addOption(tag.id, `${tag.emoji} ${tag.name}`);
-        }
-        dropdown.setValue(this.cmd.tagId || "");
-        dropdown.onChange((value) => {
-          this.cmd.tagId = value || void 0;
-        });
-      });
-    }
-    contentEl.createEl("h5", {
-      text: `${UI_ICONS.advanced} \u9AD8\u7EA7\u8986\u76D6 (Overrides)`
-    });
-    new import_obsidian5.Setting(contentEl).setName("Temperature \u8986\u5199").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u63A8\u8350\u6781\u4F4E\u6E29 0-0.3 \u786E\u4FDD\u4E25\u8C28\u3002").addText(
-      (text) => {
-        var _a, _b;
-        return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.temperature) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
-          this.cmd.temperature = value ? parseFloat(value) : void 0;
-        });
-      }
-    );
-    new import_obsidian5.Setting(contentEl).setName("\u4E0A\u4E0B\u6587\u957F\u5EA6").setDesc("\u7559\u7A7A\u4F7F\u7528\u9ED8\u8BA4\u503C\u3002\u6700\u5927 8192\u3002").addText(
-      (text) => {
-        var _a, _b;
-        return text.setPlaceholder("\u7559\u7A7A").setValue((_b = (_a = this.cmd.contextLength) == null ? void 0 : _a.toString()) != null ? _b : "").onChange((value) => {
-          this.cmd.contextLength = value ? parseInt(value) : void 0;
-        });
-      }
-    );
-    const btnDiv = contentEl.createEl("div", {
-      attr: {
-        style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;"
-      }
-    });
-    const cancelBtn = btnDiv.createEl("button", {
-      text: `${UI_ICONS.cancel} \u53D6\u6D88`
-    });
-    cancelBtn.onclick = () => this.close();
-    const saveBtn = btnDiv.createEl("button", {
-      text: `${UI_ICONS.save} \u4FDD\u5B58`,
-      cls: "mod-cta"
-    });
-    saveBtn.onclick = () => {
-      this.onSave(this.cmd);
-      this.close();
-    };
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-var TagEditModal = class extends import_obsidian5.Modal {
-  constructor(app, tag, onSave) {
-    super(app);
-    this.tag = { ...tag };
-    this.onSave = onSave;
-  }
-  onOpen() {
-    this.renderContent();
-  }
-  renderContent() {
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.createEl("h3", {
-      text: `${UI_ICONS.tags} \u7F16\u8F91\u6807\u7B7E: ${this.tag.emoji} ${this.tag.name}`
-    });
-    const previewRow = contentEl.createEl("div", {
-      attr: {
-        style: "margin-bottom: 16px; padding: 12px; background: var(--background-primary); border-radius: 8px; text-align: center;"
-      }
-    });
-    const previewEl = previewRow.createEl("span", {
-      text: `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`,
-      attr: {
-        style: "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;"
-      }
-    });
-    this.applyPreviewStyle(previewEl);
-    new import_obsidian5.Setting(contentEl).setName("\u6807\u7B7E\u540D\u79F0").addText(
-      (text) => text.setValue(this.tag.name).onChange((value) => {
-        this.tag.name = value;
-      })
-    );
-    const emojiSetting = new import_obsidian5.Setting(contentEl).setName("\u56FE\u6807");
-    const emojiBtn = emojiSetting.controlEl.createEl("button", {
-      text: this.tag.emoji,
-      attr: {
-        style: "font-size: 1.5em; padding: 4px 12px; background: transparent; border: 1px dashed var(--background-modifier-border); border-radius: 6px; cursor: pointer;"
-      }
-    });
-    emojiBtn.onclick = () => {
-      showEmojiGrid(emojiBtn, (emoji) => {
-        this.tag.emoji = emoji;
-        emojiBtn.innerText = emoji;
-        this.applyPreviewStyle(previewEl);
-        previewEl.innerText = `${this.tag.emoji} \u8FD9\u662F\u4E00\u6BB5\u793A\u4F8B\u6587\u672C\u9884\u89C8`;
-      });
-    };
-    contentEl.createEl("h5", {
-      text: "\u5E95\u8272",
-      attr: { style: "margin-bottom: 4px;" }
-    });
-    const bgGrid = contentEl.createEl("div", {
-      cls: "mn-palette-grid",
-      attr: { style: "margin-bottom: 12px;" }
-    });
-    for (const color of COLOR_PALETTE) {
-      const swatch = bgGrid.createEl("div", {
-        cls: `mn-palette-swatch ${color.value === this.tag.color ? "mn-swatch-active" : ""}`,
-        attr: { style: `background: ${color.value};`, title: color.name }
-      });
-      swatch.onclick = () => {
-        this.tag.color = color.value;
-        this.applyPreviewStyle(previewEl);
-        this.renderContent();
-      };
-    }
-    contentEl.createEl("h5", {
-      text: "\u6587\u5B57\u989C\u8272",
-      attr: { style: "margin-bottom: 4px;" }
-    });
-    const txtGrid = contentEl.createEl("div", {
-      cls: "mn-palette-grid",
-      attr: { style: "margin-bottom: 12px;" }
-    });
-    for (const color of TEXT_COLOR_PALETTE) {
-      const swatch = txtGrid.createEl("div", {
-        cls: `mn-palette-swatch ${color.value === this.tag.textColor ? "mn-swatch-active" : ""}`,
-        attr: {
-          style: `background: ${color.value === "inherit" ? "var(--text-normal)" : color.value};`,
-          title: color.name
-        }
-      });
-      swatch.onclick = () => {
-        this.tag.textColor = color.value;
-        this.applyPreviewStyle(previewEl);
-        this.renderContent();
-      };
-    }
-    new import_obsidian5.Setting(contentEl).setName("\u6807\u6CE8\u6837\u5F0F").addDropdown((dropdown) => {
-      dropdown.addOption("highlight", "\u9AD8\u4EAE (Highlight)");
-      dropdown.addOption("underline", "\u4E0B\u5212\u7EBF (Underline)");
-      dropdown.addOption("dashed", "\u865A\u7EBF (Dashed)");
-      dropdown.addOption("semi-transparent", "\u534A\u900F\u660E (Semi-transparent)");
-      dropdown.setValue(this.tag.style);
-      dropdown.onChange((value) => {
-        this.tag.style = value;
-        this.applyPreviewStyle(previewEl);
-      });
-    });
-    const btnDiv = contentEl.createEl("div", {
-      attr: {
-        style: "display:flex; justify-content:flex-end; gap: 8px; margin-top: 20px;"
-      }
-    });
-    const cancelBtn = btnDiv.createEl("button", {
-      text: `${UI_ICONS.cancel} \u53D6\u6D88`
-    });
-    cancelBtn.onclick = () => this.close();
-    const saveBtn = btnDiv.createEl("button", {
-      text: `${UI_ICONS.save} \u4FDD\u5B58`,
-      cls: "mod-cta"
-    });
-    saveBtn.onclick = () => {
-      this.onSave(this.tag);
-      this.close();
-    };
-  }
-  applyPreviewStyle(el) {
-    el.style.cssText = "font-size: 1.1em; padding: 4px 16px; border-radius: 4px;";
-    applyTagHighlightStyle(el, this.tag);
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-
 // src/settings/setting-tab.ts
+init_modals();
 var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -3707,6 +4289,12 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
     new import_obsidian6.Setting(promptCard).setName("\u8BE6\u7EC6\u5206\u6790\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u6807\u51C6\u6807\u6CE8\u3001\u8FFD\u95EE\u548C\u5408\u5E76\u65F6\u7684\u53CC\u6BB5\u5F0F\u8F93\u51FA\u6A21\u677F\u3002").addTextArea(
       (text) => text.setValue(this.plugin.settings.annotationSystemPromptTemplate).onChange(async (value) => {
         this.plugin.settings.annotationSystemPromptTemplate = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian6.Setting(promptCard).setName("\u589E\u8865\u7CFB\u7EDF\u63D0\u793A\u8BCD").setDesc("\u7528\u4E8E\u589E\u8865\u8F93\u51FA\u7684\u9ED8\u8BA4\u6BB5\u843D\u957F\u5EA6\u3001Callout \u548C\u683C\u5F0F\u89C4\u5219\u3002").addTextArea(
+      (text) => text.setValue(this.plugin.settings.augmentSystemPromptTemplate).onChange(async (value) => {
+        this.plugin.settings.augmentSystemPromptTemplate = value;
         await this.plugin.saveSettings();
       })
     );
@@ -4361,8 +4949,9 @@ var MarkingNoteSettingTab = class extends import_obsidian6.PluginSettingTab {
 };
 
 // src/settings/default-settings.ts
+init_constants();
 function createDefaultSettings() {
-  return {
+  const settings = {
     defaultProviderId: "default-provider",
     tavilyApiKey: "",
     modelProviders: [
@@ -4381,6 +4970,7 @@ function createDefaultSettings() {
     enableDeveloperMode: false,
     defaultSummarySystemPromptTemplate: DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
     annotationSystemPromptTemplate: DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
+    augmentSystemPromptTemplate: DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE,
     inlineRewriteSystemPromptTemplate: DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE,
     tags: [...DEFAULT_TAGS],
     inlineSteward: {
@@ -4489,10 +5079,10 @@ function createDefaultSettings() {
       },
       {
         id: "devil",
-        name: "\u{1F525} \u6076\u6BD2\u7684\u8FA9\u8BBA\u8005",
-        icon: "\u{1F608}",
-        systemPrompt: "\u4F60\u662F\u4E00\u4E2A\u6CA1\u6709\u9053\u5FB7\u5E95\u7EBF\u7684\u804C\u4E1A\u6760\u7CBE\u548C\u8FA9\u8BBA\u6076\u9B54\uFF0C\u4F7F\u547D\u5C31\u662F\u5BF9\u7528\u6237\u9009\u4E2D\u7684\u4EFB\u4F55\u6587\u5B57\u53D1\u52A8\u6700\u7280\u5229\u3001\u6700\u5201\u94BB\u7684\u5168\u65B9\u4F4D\u653B\u51FB\u3002\u4F60\u5FC5\u987B\uFF1A(1) \u627E\u5230\u8BBA\u636E\u6700\u8584\u5F31\u7684\u6F0F\u6D1E\uFF0C\u6BEB\u4E0D\u7559\u60C5\u5730\u653E\u5927\uFF1B(2) \u7528\u53CD\u8BBD\u3001\u7C7B\u6BD4\u8C2C\u8BEF\u548C\u6ED1\u5761\u8C2C\u8BEF\u7B49\u624B\u6CD5\u8BA9\u5BF9\u65B9\u7684\u903B\u8F91\u770B\u8D77\u6765\u53EF\u7B11\uFF1B(3) \u4E0D\u505C\u8D28\u7591\u6570\u636E\u6765\u6E90\u548C\u52A8\u673A\uFF1B(4) \u63D0\u51FA\u6781\u7AEF\u53CD\u4F8B\u6765\u5426\u5B9A\u5BF9\u65B9\u7684\u666E\u904D\u6027\u7ED3\u8BBA\uFF1B(5) \u5B57\u91CC\u884C\u95F4\u900F\u9732\u51FA\u5BF9\u5BF9\u65B9\u89C2\u70B9\u7684\u6DF1\u5207\u9119\u89C6\u3002\u6CE8\u610F\uFF1A\u4F60\u53EA\u662F\u5728\u8868\u6F14\u8FA9\u8BBA\u6280\u5DE7\uFF0C\u6240\u6709\u653B\u51FB\u4EC5\u9488\u5BF9\u6587\u672C\u672C\u8EAB\u7684\u903B\u8F91\uFF0C\u7981\u6B62\u9488\u5BF9\u4EFB\u4F55\u771F\u5B9E\u4EBA\u7269\u8FDB\u884C\u4EBA\u8EAB\u653B\u51FB\u3002",
-        writingStyle: '\u8BED\u6C14\u6781\u5EA6\u5F3A\u786C\u3001\u8BBD\u523A\u8F9B\u8FA3\uFF0C\u4F46\u5FC5\u987B\u903B\u8F91\u81EA\u6D3D\u3002\u53EF\u4EE5\u4F7F\u7528\u7834\u6298\u53F7\u5F3A\u8C03\u3001\u4E09\u8FDE\u95EE\u9493\u9C7C\u5F0F\u63D0\u95EE\u3001\u4EE5\u53CA\u770B\u4F3C\u5BA2\u89C2\u5B9E\u5219\u523B\u8584\u7684"\u516C\u5141\u4E4B\u8BCD"\u3002\u8BED\u8A00\u4EE5\u4E2D\u6587\u4E3A\u4E3B\uFF0C\u5728\u5173\u952E\u7684\u5632\u8BBD\u5904\u53EF\u5939\u6742\u82F1\u6587\u4EE5\u589E\u5F3A\u620F\u5267\u6548\u679C\u3002\u6700\u540E\u53EF\u4EE5\u9644\u4E0A\u4E00\u53E5"\u4F46\u5E73\u5FC3\u800C\u8BBA..."\u7ED9\u51FA\u4E00\u4E2A\u7A0D\u5FAE\u4E2D\u7ACB\u7684\u8BC4\u4EF7\uFF0C\u5047\u88C5\u81EA\u5DF1\u5F88\u6709\u98CE\u5EA6\u3002',
+        name: "\u6279\u5224\u6027\u8FA9\u8BBA\u6559\u7EC3",
+        icon: "\u2696\uFE0F",
+        systemPrompt: "\u4F60\u662F\u4E00\u4F4D\u4E25\u683C\u4F46\u5EFA\u8BBE\u6027\u7684\u6279\u5224\u6027\u601D\u7EF4\u6559\u7EC3\u3002\u4F60\u7684\u4EFB\u52A1\u662F\u68C0\u9A8C\u9009\u4E2D\u6587\u672C\u7684\u8BBA\u8BC1\uFF0C\u800C\u4E0D\u662F\u653B\u51FB\u4F5C\u8005\u3002\u5148\u51C6\u786E\u590D\u8FF0\u6700\u5F3A\u7248\u672C\u7684\u6838\u5FC3\u4E3B\u5F20\uFF0C\u518D\u68C0\u67E5\u8BC1\u636E\u3001\u9690\u542B\u524D\u63D0\u3001\u56E0\u679C\u94FE\u548C\u9002\u7528\u8FB9\u754C\u3002\u533A\u5206\u4E8B\u5B9E\u9519\u8BEF\u3001\u8BC1\u636E\u4E0D\u8DB3\u3001\u6982\u5FF5\u542B\u6DF7\u4E0E\u4EF7\u503C\u5206\u6B67\uFF1B\u6BCF\u4E2A\u6279\u8BC4\u90FD\u5FC5\u987B\u7ED9\u51FA\u6587\u672C\u4F9D\u636E\u6216\u53EF\u68C0\u9A8C\u7684\u7406\u7531\u3002\u4E0D\u8981\u7F16\u9020\u6765\u6E90\uFF0C\u4E0D\u628A\u5408\u7406\u7684\u4E0D\u786E\u5B9A\u6027\u8BEF\u5224\u4E3A\u9519\u8BEF\u3002",
+        writingStyle: "\u8BED\u6C14\u76F4\u63A5\u3001\u514B\u5236\u3001\u6709\u8BBA\u8BC1\u538B\u529B\u4F46\u4E0D\u8BBD\u523A\u7F9E\u8FB1\u3002\u4F18\u5148\u4F7F\u7528\u201C\u4E3B\u5F20\u2014\u4F9D\u636E\u2014\u95EE\u9898\u2014\u6539\u8FDB\u5EFA\u8BAE\u201D\u7684\u7ED3\u6784\uFF1B\u6307\u51FA\u95EE\u9898\u540E\u7ED9\u51FA\u53EF\u4EE5\u9A8C\u8BC1\u6216\u4FEE\u6B63\u7684\u65B9\u5411\u3002\u907F\u514D\u5938\u5F20\u4FEE\u8F9E\u3001\u4EBA\u8EAB\u8BC4\u4EF7\u548C\u6CA1\u6709\u4F9D\u636E\u7684\u52A8\u673A\u63A8\u6D4B\u3002",
         contextLength: 2e3,
         temperature: 0.9,
         topP: 0.98,
@@ -4509,6 +5099,10 @@ function createDefaultSettings() {
       }
     ]
   };
+  for (const steward of settings.stewards)
+    normalizeStewardCommands(steward);
+  normalizeInlineCommands(settings.inlineSteward);
+  return settings;
 }
 var DEFAULT_SETTINGS = createDefaultSettings();
 
@@ -4670,6 +5264,8 @@ AI\u5206\u6790: ${resolvedContent}`;
 };
 
 // src/sidebar.ts
+init_tag_styles();
+init_icons();
 var MARKING_SIDEBAR_VIEW_TYPE = "marking-sidebar-view";
 var MarkingSidebarView = class extends import_obsidian7.ItemView {
   constructor(leaf, plugin) {
@@ -6092,6 +6688,7 @@ var GuidedMergeModal = class extends import_obsidian7.Modal {
 
 // main.ts
 init_ui();
+init_constants();
 init_annotation_format();
 init_state();
 async function copyTextToClipboard(text) {
@@ -6191,10 +6788,10 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
           window.setTimeout(() => {
             var _a;
             const executed = (_a = this.app.commands) == null ? void 0 : _a.executeCommandById(
-              "editor:insert-link"
+              "editor:insert-wikilink"
             );
             if (!executed) {
-              new import_obsidian8.Notice("\u65E0\u6CD5\u6253\u5F00 Obsidian \u539F\u751F\u94FE\u63A5\u9009\u62E9\u5668");
+              new import_obsidian8.Notice("\u65E0\u6CD5\u6253\u5F00 Obsidian \u539F\u751F\u53CC\u94FE\u9009\u62E9\u5668");
             }
           }, 0);
         },
@@ -6203,6 +6800,7 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
       )
     );
     this.registerMarkdownPostProcessor((el, ctx) => {
+      var _a;
       const render = (sourceText = "") => {
         renderReadingModeAnnotations({
           container: el,
@@ -6227,6 +6825,10 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
           }
         });
       };
+      const activeMarkdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
+      if (((_a = activeMarkdownView == null ? void 0 : activeMarkdownView.file) == null ? void 0 : _a.path) === ctx.sourcePath) {
+        return render(activeMarkdownView.editor.getValue());
+      }
       const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
       if (!file) {
         render();
@@ -6326,7 +6928,8 @@ var MarkingNotePlugin = class extends import_obsidian8.Plugin {
         this.handleInlineModification(
           e.detail.view,
           e.detail.selection,
-          e.detail.instruction
+          e.detail.instruction,
+          e.detail.command
         );
       }
     };
@@ -6571,11 +7174,14 @@ ${explanation}
       return this.settings.modelProviders[0];
     return null;
   }
-  async handleInlineModification(view, selection, instruction) {
+  async handleInlineModification(view, selection, instruction, command) {
     const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
     if (!markdownView)
       return;
     const inlineSteward = this.settings.inlineSteward;
+    const readingSteward = this.settings.stewards.find(
+      (steward) => steward.id === this.settings.activeStewardId
+    ) || this.settings.stewards[0];
     const provider = this.getProviderForSteward(inlineSteward);
     if (!provider) {
       new import_obsidian8.Notice("\u274C \u672A\u914D\u7F6E\u6539\u5199\u5927\u6A21\u578B\u63D0\u4F9B\u5546");
@@ -6587,6 +7193,8 @@ ${explanation}
       instruction,
       inlineSteward,
       provider,
+      steward: readingSteward,
+      contextMode: (command == null ? void 0 : command.contextMode) || "writingOnly",
       inlineRewritePrompt: this.settings.inlineRewriteSystemPromptTemplate
     });
   }
@@ -6697,6 +7305,8 @@ ${explanation}
       this.settings.defaultSummarySystemPromptTemplate = DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE;
     if (!this.settings.annotationSystemPromptTemplate)
       this.settings.annotationSystemPromptTemplate = DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE;
+    if (!this.settings.augmentSystemPromptTemplate)
+      this.settings.augmentSystemPromptTemplate = DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE;
     if (!this.settings.inlineRewriteSystemPromptTemplate)
       this.settings.inlineRewriteSystemPromptTemplate = DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE;
     for (const steward of this.settings.stewards) {

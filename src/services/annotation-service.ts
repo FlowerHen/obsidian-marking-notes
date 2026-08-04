@@ -19,6 +19,7 @@ import type {
 import { TavilyClient } from "../tavily";
 import { MarkState } from "../state";
 import { annotationRepository } from "../repository/annotation-repository";
+import { formatAugmentOutput } from "./augment-format";
 import {
 	dispatchEditorChangePreservingViewport,
 	setEditorValuePreservingViewport,
@@ -27,6 +28,7 @@ import {
 interface PromptTemplates {
 	defaultSummary: string;
 	annotation: string;
+	augment?: string;
 }
 
 interface AnnotateSelectionInput {
@@ -66,6 +68,8 @@ interface InlineRewriteInput {
 	instruction: string;
 	inlineSteward: InlineStewardConfig;
 	provider: ModelProvider;
+	steward?: StewardConfig;
+	contextMode?: "full" | "writingOnly" | "none";
 	inlineRewritePrompt: string;
 }
 
@@ -95,10 +99,16 @@ export class AnnotationService {
 		}
 
 		try {
+			const contextPrompt =
+				input.contextMode === "full"
+					? `\n\n【当前管家主提示词】\n${input.steward?.systemPrompt || ""}\n\n【当前管家写作风格】\n${input.steward?.writingStyle || ""}`
+					: input.contextMode === "writingOnly"
+						? `\n\n【当前管家写作风格】\n${input.steward?.writingStyle || ""}`
+						: "";
 			const body = {
 				model: input.provider.modelId,
 				messages: [
-					{ role: "system", content: input.inlineRewritePrompt },
+					{ role: "system", content: `${input.inlineRewritePrompt}${contextPrompt}` },
 					{ role: "user", content: userPrompt },
 				],
 				temperature: input.inlineSteward.temperature ?? 0.3,
@@ -126,9 +136,10 @@ export class AnnotationService {
 
 			let newText =
 				data.choices?.[0]?.message?.content?.trim() || input.selection;
-			if (newText.startsWith("```markdown") && newText.endsWith("```")) {
+			const isMermaidBlock = /^```mermaid\s/i.test(newText) && newText.endsWith("```");
+			if (!isMermaidBlock && newText.startsWith("```markdown") && newText.endsWith("```")) {
 				newText = newText.slice(11, -3).trim();
-			} else if (newText.startsWith("```") && newText.endsWith("```")) {
+			} else if (!isMermaidBlock && newText.startsWith("```") && newText.endsWith("```")) {
 				newText = newText.slice(3, -3).trim();
 			}
 
@@ -233,8 +244,9 @@ export class AnnotationService {
 			defaultSummaryPrompt: "用一句话高度概括结论",
 			command: input.command,
 			promptTemplates: this.promptTemplates(input.settings),
+			purpose: "augment",
 		});
-		return result?.richText || null;
+		return result ? formatAugmentOutput(result.richText, input.command?.detailPrompt || "") : null;
 	}
 
 	async followUp(
@@ -317,11 +329,13 @@ export class AnnotationService {
 		settings: Pick<
 			MarkingNoteSettings,
 			"defaultSummarySystemPromptTemplate" | "annotationSystemPromptTemplate"
-		>,
+		> &
+			Partial<Pick<MarkingNoteSettings, "augmentSystemPromptTemplate">>,
 	): PromptTemplates {
 		return {
 			defaultSummary: settings.defaultSummarySystemPromptTemplate,
 			annotation: settings.annotationSystemPromptTemplate,
+			augment: settings.augmentSystemPromptTemplate,
 		};
 	}
 

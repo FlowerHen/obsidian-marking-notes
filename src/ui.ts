@@ -1,13 +1,15 @@
 import type { EditorView } from "@codemirror/view";
 import type { MarkingNode } from "./state";
 import type { LightningCommand, StewardConfig } from "./domain/types";
-import { type App, Component, MarkdownRenderer } from "obsidian";
+import { type App, Component, MarkdownRenderer, Notice } from "obsidian";
 import { annotationRepository } from "./repository/annotation-repository";
 import { dispatchEditorChangePreservingViewport } from "./editor-viewport";
 import {
 	getDesktopActionPosition,
 	getMobileActionBottom,
 } from "./ui/action-surface";
+import { resolveCommandPrompt } from "./commands/variables";
+import { CommandVariableInputModal } from "./settings/modals";
 
 // --- Context passed to PopoverEditor ---
 
@@ -54,9 +56,14 @@ export class FloatingMenu {
 	private viewportCleanup: (() => void) | null = null;
 
 	constructor(
+		private readonly app: App,
 		private onCommand: (selection: string, command: LightningCommand) => void,
 		private onAugment: (selection: string, command: LightningCommand) => void,
-		private onInlineModify: (selection: string, instruction: string) => void,
+		private onInlineModify: (
+			selection: string,
+			command: LightningCommand,
+			instruction: string,
+		) => void,
 		private onLink: () => void,
 	) {}
 
@@ -197,6 +204,35 @@ export class FloatingMenu {
 		dropdown.appendChild(settingsButton);
 	}
 
+	private runCommandWithVariables(
+		command: LightningCommand,
+		operation: "conversation" | "augment",
+	) {
+		const execute = (values: Record<string, string | string[]>) => {
+			const resolved = resolveCommandPrompt(command, values);
+			if (resolved.undeclared.length > 0) {
+				new Notice(`指令包含未声明变量：${resolved.undeclared.join("、")}`);
+				return;
+			}
+			if (resolved.missing.length > 0) {
+				new Notice(`请填写必填变量：${resolved.missing.join("、")}`);
+				return;
+			}
+			const resolvedCommand = { ...command, detailPrompt: resolved.prompt };
+			if (operation === "augment") {
+				this.onAugment(this.currentSelection, resolvedCommand);
+			} else {
+				this.onCommand(this.currentSelection, resolvedCommand);
+			}
+		};
+
+		if (command.variables && command.variables.length > 0) {
+			new CommandVariableInputModal(this.app, command, execute).open();
+			return;
+		}
+		execute({});
+	}
+
 	private showCommandDropdown(anchor: HTMLElement, operation = "conversation") {
 		const existing = document.querySelector(".ai-lightning-dropdown");
 		if (existing) existing.remove();
@@ -242,9 +278,7 @@ export class FloatingMenu {
 							item.appendChild(leftPart);
 							item.appendChild(rightPart);
 							item.onclick = () => {
-								if (operation === "augment")
-									this.onAugment(this.currentSelection, cmd);
-								else this.onCommand(this.currentSelection, cmd);
+								this.runCommandWithVariables(cmd, operation as "conversation" | "augment");
 								dropdown.remove();
 								this.close();
 							};
@@ -328,7 +362,7 @@ export class FloatingMenu {
 
 		const event = new CustomEvent("marking-note-get-inline-commands", {
 			detail: {
-				callback: (commands: any[]) => {
+				callback: (commands: LightningCommand[]) => {
 					if (commands.length === 0) {
 						this.appendEmptyCommandState(dropdown, "无改写指令");
 					} else {
@@ -337,7 +371,19 @@ export class FloatingMenu {
 							item.addClass("ai-lightning-item");
 							item.innerText = `${cmd.icon} ${cmd.name}`;
 							item.onclick = () => {
-								this.onInlineModify(this.currentSelection, cmd.detailPrompt);
+								const execute = (values: Record<string, string | string[]>) => {
+									const resolved = resolveCommandPrompt(cmd, values);
+									if (resolved.undeclared.length > 0 || resolved.missing.length > 0) {
+										new Notice("请先修正指令变量配置或填写必填变量");
+										return;
+									}
+									this.onInlineModify(this.currentSelection, cmd, resolved.prompt);
+								};
+								if (cmd.variables && cmd.variables.length > 0) {
+									new CommandVariableInputModal(this.app, cmd, execute).open();
+								} else {
+									execute({});
+								}
 								dropdown.remove();
 								this.close();
 							};

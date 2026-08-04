@@ -986,6 +986,15 @@
 		overflow-y: auto;
 		box-sizing: border-box;
 	}
+
+	.mn-variable-editor-row {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.mn-variable-editor-row input,
+	.mn-variable-editor-row select {
+		width: 100%;
+	}
 }
 
 @media (max-width: 420px) {
@@ -1068,6 +1077,47 @@
 	padding: 15px;
 	margin: 10px 0;
 	background: var(--background-secondary);
+}
+
+.mn-command-variable-editor {
+	margin: 14px 0;
+	padding: 10px;
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 6px;
+}
+
+.mn-variable-editor-row {
+	display: grid;
+	grid-template-columns: minmax(90px, 1fr) minmax(90px, 1fr) 100px auto minmax(150px, 1.4fr) auto;
+	gap: 6px;
+	align-items: center;
+	margin: 6px 0;
+}
+
+.mn-variable-editor-row input,
+.mn-variable-editor-row select {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.mn-variable-required,
+.mn-variable-option {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.mn-variable-multiselect {
+	margin: 8px 0;
+}
+
+.mn-variable-multiselect .setting-item-name {
+	margin-bottom: 6px;
+}
+
+.mn-variable-option {
+	margin-right: 12px;
+	margin-bottom: 6px;
 }
 
 .mn-command-section {

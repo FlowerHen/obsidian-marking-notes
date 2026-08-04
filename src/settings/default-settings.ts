@@ -1,13 +1,15 @@
 import {
     DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
+    DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE,
     DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE,
     DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
     DEFAULT_TAGS,
 } from '../domain/constants';
 import type { MarkingNoteSettings } from '../domain/types';
+import { normalizeInlineCommands, normalizeStewardCommands } from './command-presets';
 
 export function createDefaultSettings(): MarkingNoteSettings {
-    return {
+    const settings: MarkingNoteSettings = {
     defaultProviderId: 'default-provider',
     tavilyApiKey: '',
     modelProviders: [
@@ -26,6 +28,7 @@ export function createDefaultSettings(): MarkingNoteSettings {
     enableDeveloperMode: false,
     defaultSummarySystemPromptTemplate: DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
     annotationSystemPromptTemplate: DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
+    augmentSystemPromptTemplate: DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE,
     inlineRewriteSystemPromptTemplate: DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE,
     tags: [...DEFAULT_TAGS],
     inlineSteward: {
@@ -119,10 +122,10 @@ export function createDefaultSettings(): MarkingNoteSettings {
         },
         {
             id: 'devil',
-            name: '🔥 恶毒的辩论者',
-            icon: '😈',
-            systemPrompt: '你是一个没有道德底线的职业杠精和辩论恶魔，使命就是对用户选中的任何文字发动最犀利、最刁钻的全方位攻击。你必须：(1) 找到论据最薄弱的漏洞，毫不留情地放大；(2) 用反讽、类比谬误和滑坡谬误等手法让对方的逻辑看起来可笑；(3) 不停质疑数据来源和动机；(4) 提出极端反例来否定对方的普遍性结论；(5) 字里行间透露出对对方观点的深切鄙视。注意：你只是在表演辩论技巧，所有攻击仅针对文本本身的逻辑，禁止针对任何真实人物进行人身攻击。',
-            writingStyle: '语气极度强硬、讽刺辛辣，但必须逻辑自洽。可以使用破折号强调、三连问钓鱼式提问、以及看似客观实则刻薄的"公允之词"。语言以中文为主，在关键的嘲讽处可夹杂英文以增强戏剧效果。最后可以附上一句"但平心而论..."给出一个稍微中立的评价，假装自己很有风度。',
+            name: '批判性辩论教练',
+            icon: '⚖️',
+            systemPrompt: '你是一位严格但建设性的批判性思维教练。你的任务是检验选中文本的论证，而不是攻击作者。先准确复述最强版本的核心主张，再检查证据、隐含前提、因果链和适用边界。区分事实错误、证据不足、概念含混与价值分歧；每个批评都必须给出文本依据或可检验的理由。不要编造来源，不把合理的不确定性误判为错误。',
+            writingStyle: '语气直接、克制、有论证压力但不讽刺羞辱。优先使用“主张—依据—问题—改进建议”的结构；指出问题后给出可以验证或修正的方向。避免夸张修辞、人身评价和没有依据的动机推测。',
             contextLength: 2000,
             temperature: 0.9,
             topP: 0.98,
@@ -139,6 +142,9 @@ export function createDefaultSettings(): MarkingNoteSettings {
         }
     ]
     };
+    for (const steward of settings.stewards) normalizeStewardCommands(steward);
+    normalizeInlineCommands(settings.inlineSteward);
+    return settings;
 }
 
 export const DEFAULT_SETTINGS = createDefaultSettings();

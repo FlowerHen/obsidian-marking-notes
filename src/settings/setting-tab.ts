@@ -222,6 +222,18 @@ export class MarkingNoteSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(promptCard)
+			.setName("增补系统提示词")
+			.setDesc("用于增补输出的默认段落长度、Callout 和格式规则。")
+			.addTextArea((text) =>
+				text
+					.setValue(this.plugin.settings.augmentSystemPromptTemplate)
+					.onChange(async (value) => {
+						this.plugin.settings.augmentSystemPromptTemplate = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(promptCard)
 			.setName("原文改写系统提示词")
 			.setDesc("用于直接覆盖原文的改写引擎。")
 			.addTextArea((text) =>

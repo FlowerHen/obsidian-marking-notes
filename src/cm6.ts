@@ -177,16 +177,18 @@ export function createMarkingExtensions(
 						if (coords) {
 							if (!this.menu) {
 								this.menu = new FloatingMenu(
+									plugin.app,
 									(s: string, cmd: LightningCommand) =>
 										onCommand(update.view, s, cmd),
 									(s: string, cmd: LightningCommand) =>
 										onAugment(update.view, s, cmd),
-									(s: string, instruction: string) => {
+									(s: string, command: LightningCommand, instruction: string) => {
 										window.dispatchEvent(
 											new CustomEvent("marking-note-inline-modify", {
 												detail: {
 													view: update.view,
 													selection: s,
+													command,
 													instruction,
 												},
 											}),

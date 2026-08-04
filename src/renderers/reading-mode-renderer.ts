@@ -16,14 +16,32 @@ interface RenderReadingModeAnnotationsInput {
 	}) => void;
 }
 
+function normalizeText(value: string): string {
+	return value.replace(/\s+/g, " ").trim();
+}
+
+function findMatchingNode(
+	mark: HTMLElement,
+	nodes: MarkingNode[],
+	used: Set<string>,
+): MarkingNode | undefined {
+	const markText = normalizeText(mark.textContent || "");
+	if (!markText) return undefined;
+
+	return nodes.find(
+		(node) => !used.has(node.id) && normalizeText(node.text) === markText,
+	);
+}
+
 export function renderReadingModeAnnotations(
 	input: RenderReadingModeAnnotationsInput,
 ): void {
 	const marks = Array.from(input.container.querySelectorAll("mark"));
 	const sourceNodes = input.nodes || [];
+	const usedNodeIds = new Set<string>();
 
-	marks.forEach((mark, index) => {
-		const node = sourceNodes[index];
+	marks.forEach((mark) => {
+		const node = findMatchingNode(mark, sourceNodes, usedNodeIds);
 		mark.classList.add("marking-highlight-region");
 		mark.style.cursor = node && !node.isPlain ? "pointer" : "default";
 
@@ -32,10 +50,12 @@ export function renderReadingModeAnnotations(
 			return;
 		}
 
+		usedNodeIds.add(node.id);
 		const state = node.state;
 		const tagId = node.tagId || "";
 		const summary = node.summary || "";
 		mark.dataset.markingId = node.id;
+		mark.dataset.markingState = state;
 		mark.classList.add(`mark-state-${state}`);
 
 		const tag = tagId
@@ -46,22 +66,23 @@ export function renderReadingModeAnnotations(
 			applyTagHighlightStyle(mark, tag);
 		}
 
+		const existingBadge = mark.nextElementSibling;
+		if (
+			existingBadge instanceof HTMLElement &&
+			existingBadge.classList.contains("marking-capsule") &&
+			existingBadge.dataset.markingId === node.id
+		) {
+			return;
+		}
+
 		const badge = document.createElement("span");
 		badge.addClass("marking-capsule", `marking-capsule-${state}`);
 		badge.dataset.markingId = node.id;
 		if (tagId) badge.dataset.tagId = tagId;
 
-		const emoji =
-			tag?.emoji ||
-			(state === "0"
-				? "🪄"
-				: state === "1"
-					? "⚡"
-					: state === "2"
-						? "👤"
-						: "📦");
+		const icon = tag?.emoji || (state === "0" ? "○" : state === "1" ? "✎" : state === "2" ? "◉" : "✓");
 		const iconSpan = document.createElement("span");
-		iconSpan.innerText = emoji;
+		iconSpan.innerText = icon;
 		badge.appendChild(iconSpan);
 
 		if (summary) {

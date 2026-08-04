@@ -23,6 +23,7 @@ import {
 import { type PopoverContext, PopoverEditor, PopoverViewer } from "./src/ui";
 import {
 	DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE,
+	DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE,
 	DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE,
 	DEFAULT_SUMMARY_SYSTEM_PROMPT_TEMPLATE,
 	DEFAULT_TAGS,
@@ -146,17 +147,17 @@ export default class MarkingNotePlugin extends Plugin {
 					}
 
 					// The action bar lives outside CodeMirror. Restore the selection
-					// before asking Obsidian to open its native link picker.
+					// before asking Obsidian to open its native wikilink picker.
 					view.dispatch({
 						selection: { anchor: selection.from, head: selection.to },
 					});
 					view.focus();
 					window.setTimeout(() => {
 						const executed = (this.app as any).commands?.executeCommandById(
-							"editor:insert-link",
+							"editor:insert-wikilink",
 						);
 						if (!executed) {
-							new Notice("无法打开 Obsidian 原生链接选择器");
+							new Notice("无法打开 Obsidian 原生双链选择器");
 						}
 					}, 0);
 				},
@@ -191,6 +192,12 @@ export default class MarkingNotePlugin extends Plugin {
 					},
 				});
 			};
+			const activeMarkdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeMarkdownView?.file?.path === ctx.sourcePath) {
+				// Preview can be rendered before the latest editor buffer reaches the vault cache.
+				return render(activeMarkdownView.editor.getValue());
+			}
+
 			const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
 			if (!file) {
 				render();
@@ -305,6 +312,7 @@ export default class MarkingNotePlugin extends Plugin {
 					e.detail.view,
 					e.detail.selection,
 					e.detail.instruction,
+					e.detail.command,
 				);
 			}
 		}) as EventListener;
@@ -588,11 +596,16 @@ export default class MarkingNotePlugin extends Plugin {
 		view: EditorView,
 		selection: string,
 		instruction: string,
+		command?: LightningCommand,
 	) {
 		const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (!markdownView) return;
 
 		const inlineSteward = this.settings.inlineSteward;
+		const readingSteward =
+			this.settings.stewards.find(
+				(steward) => steward.id === this.settings.activeStewardId,
+			) || this.settings.stewards[0];
 		// Cast inlineSteward to any since getProvider expects normal steward, but duck typing works for boundModelProviderId
 		const provider = this.getProviderForSteward(inlineSteward as any);
 
@@ -607,6 +620,8 @@ export default class MarkingNotePlugin extends Plugin {
 			instruction,
 			inlineSteward,
 			provider,
+			steward: readingSteward,
+			contextMode: command?.contextMode || "writingOnly",
 			inlineRewritePrompt: this.settings.inlineRewriteSystemPromptTemplate,
 		});
 	}
@@ -747,6 +762,9 @@ export default class MarkingNotePlugin extends Plugin {
 		if (!this.settings.annotationSystemPromptTemplate)
 			this.settings.annotationSystemPromptTemplate =
 				DEFAULT_ANNOTATION_SYSTEM_PROMPT_TEMPLATE;
+		if (!this.settings.augmentSystemPromptTemplate)
+			this.settings.augmentSystemPromptTemplate =
+				DEFAULT_AUGMENT_SYSTEM_PROMPT_TEMPLATE;
 		if (!this.settings.inlineRewriteSystemPromptTemplate)
 			this.settings.inlineRewriteSystemPromptTemplate =
 				DEFAULT_INLINE_REWRITE_SYSTEM_PROMPT_TEMPLATE;

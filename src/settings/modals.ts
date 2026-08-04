@@ -1,14 +1,119 @@
-import { type App, Modal, Setting } from "obsidian";
+import { type App, Modal, Notice, Setting } from "obsidian";
 
 import {
 	COLOR_PALETTE,
 	DEFAULT_TAGS,
 	TEXT_COLOR_PALETTE,
 } from "../domain/constants";
-import type { LightningCommand, MarkingTag } from "../domain/types";
+import type {
+	LightningCommand,
+	LightningVariableType,
+	LightningVariableValue,
+	MarkingTag,
+} from "../domain/types";
 import { applyTagHighlightStyle } from "../tag-styles";
 import { showEmojiGrid } from "../ui/emoji-picker";
 import { UI_ICONS } from "../ui/icons";
+
+export class CommandVariableInputModal extends Modal {
+	constructor(
+		app: App,
+		private readonly command: LightningCommand,
+		private readonly onSubmit: (
+			values: Record<string, LightningVariableValue>,
+		) => void,
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.createEl("h3", { text: `输入参数: ${this.command.name}` });
+		const values: Record<string, LightningVariableValue> = {};
+		const variables = this.command.variables || [];
+
+		for (const variable of variables) {
+			const defaultValue = variable.defaultValue;
+			if (defaultValue !== undefined) values[variable.id] = defaultValue;
+
+			if (variable.type === "text") {
+				new Setting(contentEl)
+					.setName(`${variable.label}${variable.required ? " *" : ""}`)
+					.addText((text) => {
+						text.setPlaceholder(variable.placeholder || "请输入");
+						text.setValue(typeof defaultValue === "string" ? defaultValue : "");
+						text.onChange((value) => {
+							values[variable.id] = value;
+						});
+					});
+				continue;
+			}
+
+			if (variable.type === "select") {
+				new Setting(contentEl)
+					.setName(`${variable.label}${variable.required ? " *" : ""}`)
+					.addDropdown((dropdown) => {
+						for (const option of variable.options || []) {
+							dropdown.addOption(option.value, option.label);
+						}
+						const initial = typeof defaultValue === "string" ? defaultValue : "";
+						if (initial) dropdown.setValue(initial);
+						dropdown.onChange((value) => {
+							values[variable.id] = value;
+						});
+					});
+				continue;
+			}
+
+			const group = contentEl.createDiv({ cls: "mn-variable-multiselect" });
+			group.createEl("div", {
+				text: `${variable.label}${variable.required ? " *" : ""}`,
+				cls: "setting-item-name",
+			});
+			const selected = new Set(
+				Array.isArray(defaultValue) ? defaultValue : [],
+			);
+			for (const option of variable.options || []) {
+				const row = group.createEl("label", { cls: "mn-variable-option" });
+				const checkbox = row.createEl("input", { type: "checkbox" });
+				checkbox.checked = selected.has(option.value);
+				row.createEl("span", { text: option.label });
+				checkbox.onchange = () => {
+					if (checkbox.checked) selected.add(option.value);
+					else selected.delete(option.value);
+					values[variable.id] = Array.from(selected);
+				};
+			}
+			values[variable.id] = Array.from(selected);
+		}
+
+		const actions = contentEl.createDiv({ cls: "modal-button-container" });
+		const cancel = actions.createEl("button", { text: `${UI_ICONS.cancel} 取消` });
+		cancel.onclick = () => this.close();
+		const submit = actions.createEl("button", {
+			text: `${UI_ICONS.save} 执行`,
+			cls: "mod-cta",
+		});
+		submit.onclick = () => {
+			const missing = variables.filter((variable) => {
+				if (!variable.required) return false;
+				const value = values[variable.id];
+				return !value || (Array.isArray(value) ? value.length === 0 : !value.trim());
+			});
+			if (missing.length > 0) {
+				new Notice(`请填写必填参数：${missing.map((item) => item.label).join("、")}`);
+				return;
+			}
+			this.onSubmit(values);
+			this.close();
+		};
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}
 
 export class LightningCommandEditModal extends Modal {
 	cmd: LightningCommand;
@@ -99,6 +204,40 @@ export class LightningCommandEditModal extends Modal {
 				});
 		}
 
+		if (this.cmd.type === "inline-modify") {
+			new Setting(contentEl)
+				.setName("管家提示词应用范围")
+				.setDesc("决定改写时是否附加当前阅读管家的主提示词和写作风格。")
+				.addDropdown((dropdown) => {
+					dropdown.addOption("full", "主提示词 + 写作风格");
+					dropdown.addOption("writingOnly", "仅写作风格");
+					dropdown.addOption("none", "均不附加");
+					dropdown.setValue(this.cmd.contextMode || "writingOnly");
+					dropdown.onChange((value) => {
+					this.cmd.contextMode = value as "full" | "writingOnly" | "none";
+				});
+				});
+		}
+
+		const variableSection = contentEl.createDiv({ cls: "mn-command-variable-editor" });
+		variableSection.createEl("h5", { text: "实验性变量" });
+		variableSection.createEl("p", {
+			text: "在提示词中使用 {{变量ID}}。执行指令时会先收集输入。",
+			cls: "setting-item-description",
+		});
+		const variableList = variableSection.createDiv({ cls: "mn-variable-list" });
+		this.renderVariableEditor(variableList);
+		const addVariable = variableSection.createEl("button", { text: `${UI_ICONS.add} 添加变量` });
+		addVariable.onclick = () => {
+			const index = (this.cmd.variables || []).length + 1;
+			this.cmd.variables = [
+				...(this.cmd.variables || []),
+				{ id: `variable${index}`, label: `变量 ${index}`, type: "text", required: false },
+			];
+			variableList.empty();
+			this.renderVariableEditor(variableList);
+		};
+
 		if (this.cmd.type !== "inline-modify") {
 			new Setting(contentEl)
 				.setName("关联标签 (Tag)")
@@ -160,6 +299,62 @@ export class LightningCommandEditModal extends Modal {
 			this.onSave(this.cmd);
 			this.close();
 		};
+	}
+
+	private renderVariableEditor(container: HTMLElement) {
+		for (const [index, variable] of (this.cmd.variables || []).entries()) {
+			const row = container.createDiv({ cls: "mn-variable-editor-row" });
+			const id = row.createEl("input", { type: "text", value: variable.id, placeholder: "变量ID" });
+			id.oninput = () => {
+				variable.id = id.value.trim().replace(/[^A-Za-z0-9_-]/g, "_");
+			};
+			const label = row.createEl("input", { type: "text", value: variable.label, placeholder: "显示名称" });
+			label.oninput = () => {
+				variable.label = label.value;
+			};
+			const type = row.createEl("select");
+			for (const option of [
+				["text", "文本"],
+				["select", "单选"],
+				["multiselect", "多选"],
+			] as const) type.createEl("option", { value: option[0], text: option[1] });
+			type.value = variable.type;
+			type.onchange = () => {
+				variable.type = type.value as LightningVariableType;
+				container.empty();
+				this.renderVariableEditor(container);
+			};
+			const required = row.createEl("label", { cls: "mn-variable-required" });
+			const checkbox = required.createEl("input", { type: "checkbox" });
+			checkbox.checked = variable.required === true;
+			checkbox.onchange = () => {
+				variable.required = checkbox.checked;
+			};
+			required.createEl("span", { text: "必填" });
+			if (variable.type !== "text") {
+				const options = row.createEl("input", {
+					type: "text",
+					value: (variable.options || []).map((option) => `${option.value}=${option.label}`).join(", "),
+					placeholder: "选项: value=label, value=label",
+				});
+				options.oninput = () => {
+					variable.options = options.value
+						.split(",")
+						.map((item) => item.trim())
+						.filter(Boolean)
+						.map((item) => {
+							const [value, ...label] = item.split("=");
+							return { value: value.trim(), label: label.join("=").trim() || value.trim() };
+						});
+				};
+			}
+			const remove = row.createEl("button", { text: UI_ICONS.remove, attr: { "aria-label": "删除变量" } });
+			remove.onclick = () => {
+				this.cmd.variables?.splice(index, 1);
+				container.empty();
+				this.renderVariableEditor(container);
+			};
+		}
 	}
 
 	onClose() {

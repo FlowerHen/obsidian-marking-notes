@@ -28,6 +28,25 @@ export type LightningCommandType =
 	| "default-summary"
 	| "inline-modify";
 
+export type LightningVariableType = "text" | "select" | "multiselect";
+
+export interface LightningVariableOption {
+	value: string;
+	label: string;
+}
+
+export interface LightningCommandVariable {
+	id: string;
+	label: string;
+	type: LightningVariableType;
+	required?: boolean;
+	placeholder?: string;
+	defaultValue?: string | string[];
+	options?: LightningVariableOption[];
+}
+
+export type LightningVariableValue = string | string[];
+
 export interface LightningCommand {
 	id: string;
 	name: string;
@@ -44,6 +63,7 @@ export interface LightningCommand {
 	thinkingBudget?: number;
 	footnoteLength?: number;
 	language?: string;
+	variables?: LightningCommandVariable[];
 }
 
 export interface StewardConfig {
@@ -85,5 +105,6 @@ export interface MarkingNoteSettings {
 	enableDeveloperMode: boolean;
 	defaultSummarySystemPromptTemplate: string;
 	annotationSystemPromptTemplate: string;
+	augmentSystemPromptTemplate: string;
 	inlineRewriteSystemPromptTemplate: string;
 }
